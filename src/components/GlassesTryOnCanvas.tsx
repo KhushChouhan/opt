@@ -4,7 +4,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Camera, Upload, Check, AlertCircle, RefreshCw, ShoppingCart, HelpCircle } from 'lucide-react';
+import { Camera, Upload, Check, AlertCircle, RefreshCw, ShoppingCart, HelpCircle, Sliders } from 'lucide-react';
 import { loadScript } from '@/lib/loadScript';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -32,10 +32,13 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   // Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationFrameId = useRef<number | null>(null);
+  const renderFrameId = useRef<number | null>(null);
   const faceMeshRef = useRef<any>(null);
   const overlayImageRef = useRef<HTMLImageElement | null>(null);
   const uploadedImageRef = useRef<HTMLImageElement | null>(null);
+  
+  // Decoupled Landmark Ref (WebGL engine style)
+  const latestLandmarks = useRef<any>(null);
 
   // App States
   const [cameraState, setCameraState] = useState<'loading' | 'active' | 'denied' | 'fallback'>('loading');
@@ -43,6 +46,10 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   const [faceDetected, setFaceDetected] = useState(false);
   const [snapshot, setSnapshot] = useState<string | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // Camera Selection States
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
 
   // Fallback Manual Overlay States (if no face detected / static upload)
   const [manualScale, setManualScale] = useState(1.0);
@@ -103,7 +110,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         faceMesh.onResults(handleFaceResults);
         faceMeshRef.current = faceMesh;
 
-        // Start webcam stream
+        // Start default webcam stream
         startWebcam();
       } catch (err) {
         console.error('Error initializing try-on canvas:', err);
@@ -126,9 +133,9 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
   // Stop video streams and cancel animation loops
   const stopAllStreams = () => {
-    if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current);
-      animationFrameId.current = null;
+    if (renderFrameId.current) {
+      cancelAnimationFrame(renderFrameId.current);
+      renderFrameId.current = null;
     }
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
@@ -138,15 +145,18 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   };
 
   // Start the camera
-  const startWebcam = async () => {
+  const startWebcam = async (deviceId?: string) => {
     stopAllStreams();
     setCameraState('loading');
     setLoadingMessage('Accessing camera, please allow permissions...');
+    latestLandmarks.current = null;
+    setFaceDetected(false);
 
     try {
-      const constraints = {
+      const constraints: any = {
         video: {
-          facingMode: 'user',
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          facingMode: deviceId ? undefined : 'user',
           width: { ideal: 640 },
           height: { ideal: 480 },
           frameRate: { ideal: 30 }
@@ -156,17 +166,40 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
+      // Enumerate device options for multi-camera selectors after permission grant
+      navigator.mediaDevices.enumerateDevices().then((devicesList) => {
+        const videoDevices = devicesList.filter((d) => d.kind === 'videoinput');
+        setDevices(videoDevices);
+        if (!deviceId && videoDevices.length > 0) {
+          // Sync default selected id
+          const defaultDevice = videoDevices.find((d) => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('integrated')) || videoDevices[0];
+          setSelectedDeviceId(defaultDevice.deviceId);
+        }
+      }).catch((e) => console.warn('Could not enumerate media devices:', e));
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        // iOS Safari compatibility requirements
         videoRef.current.setAttribute('playsinline', 'true');
         videoRef.current.setAttribute('muted', 'true');
-        videoRef.current.play();
+        videoRef.current.muted = true;
         
-        videoRef.current.onloadedmetadata = () => {
+        videoRef.current.onloadedmetadata = async () => {
           setCameraState('active');
-          // Start drawing loop
-          animationFrameId.current = requestAnimationFrame(processingLoop);
+          
+          try {
+            if (videoRef.current) {
+              await videoRef.current.play();
+            }
+          } catch (playErr) {
+            console.error('Autoplay blocked or failed:', playErr);
+          }
+
+          // Start the decoupled fast rendering loop (60fps)
+          if (renderFrameId.current) cancelAnimationFrame(renderFrameId.current);
+          renderFrameId.current = requestAnimationFrame(drawLoop);
+
+          // Start the decoupled detection loop
+          startDetectionLoop();
         };
       }
     } catch (error) {
@@ -175,22 +208,46 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     }
   };
 
-  // Processing loop to feed video frames to MediaPipe
-  const processingLoop = async () => {
-    if (cameraState === 'active' && videoRef.current && faceMeshRef.current) {
-      if (videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-        try {
-          await faceMeshRef.current.send({ image: videoRef.current });
-        } catch (err) {
-          console.error('Error sending frame to FaceMesh:', err);
+  // Asynchronous detection loop (decoupled from rendering loop)
+  const startDetectionLoop = () => {
+    let isDetecting = false;
+    
+    const runDetection = async () => {
+      if (cameraState === 'active' && videoRef.current && faceMeshRef.current && !isDetecting) {
+        if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+          isDetecting = true;
+          try {
+            await faceMeshRef.current.send({ image: videoRef.current });
+          } catch (err) {
+            console.error('FaceMesh frame processing error:', err);
+          } finally {
+            isDetecting = false;
+          }
         }
       }
-      animationFrameId.current = requestAnimationFrame(processingLoop);
-    }
+      
+      // Schedule next check in 33ms (~30fps tracking)
+      if (cameraState === 'active') {
+        setTimeout(runDetection, 33);
+      }
+    };
+
+    runDetection();
   };
 
   // Callback when FaceMesh yields results
   const handleFaceResults = (results: any) => {
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      latestLandmarks.current = results.multiFaceLandmarks[0];
+      setFaceDetected(true);
+    } else {
+      latestLandmarks.current = null;
+      setFaceDetected(false);
+    }
+  };
+
+  // High-performance decoupled draw loop (runs at 60fps)
+  const drawLoop = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -199,66 +256,54 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     const width = canvas.width;
     const height = canvas.height;
 
-    ctx.clearRect(0, 0, width, height);
-
-    // 1. Draw camera feed (mirrored)
+    // 1. Draw webcam feed or uploaded photo (mirrored)
     ctx.save();
     ctx.translate(width, 0);
     ctx.scale(-1, 1);
     
-    if (cameraState === 'active' && videoRef.current) {
+    if (cameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2) {
       ctx.drawImage(videoRef.current, 0, 0, width, height);
     } else if (cameraState === 'fallback' && uploadedImageRef.current) {
       ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
+    } else {
+      // Background fallback
+      ctx.fillStyle = '#0b132b';
+      ctx.fillRect(0, 0, width, height);
     }
     ctx.restore();
 
-    // 2. Draw overlay if face is detected
-    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-      setFaceDetected(true);
-      const landmarks = results.multiFaceLandmarks[0];
-
-      // Anchor math:
-      // Nose bridge centers (average of 168 and 6)
-      // Landmarks are 0-1, so map to canvas dimensions
-      // Note: Because video is mirrored, we also mirror the x coordinates to align with flipped draw!
-      // In mirrored draw, x_coord = (1 - x) * width
-      const getX = (lm: any) => (1 - lm.x) * width;
+    // 2. Draw overlay based on landmarks or manual sliders
+    if (cameraState === 'active' && latestLandmarks.current) {
+      const landmarks = latestLandmarks.current;
+      
+      const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
       const getY = (lm: any) => lm.y * height;
 
       const x_nose = (getX(landmarks[168]) + getX(landmarks[6])) / 2;
       const y_nose = (getY(landmarks[168]) + getY(landmarks[6])) / 2;
 
-      // Temple edges (Left: 234, Right: 454)
       const x_left = getX(landmarks[234]);
       const y_left = getY(landmarks[234]);
       const x_right = getX(landmarks[454]);
       const y_right = getY(landmarks[454]);
 
-      // Calculate width (distance between temples)
       const dx = x_right - x_left;
       const dy = y_right - y_left;
       const baseDistance = Math.sqrt(dx * dx + dy * dy);
       
-      // Fine-tuned scaling factor for eyeglasses frames
       let glassesWidth = baseDistance * 1.12; 
 
-      // Yaw/Perspective correction:
-      // Compare distance from nose center to left vs right temple.
-      // If head turns, one distance shortens. We scale the width to mimic perspective depth.
+      // Yaw/Perspective correction
       const dist_to_left = Math.abs(x_nose - x_left);
       const dist_to_right = Math.abs(x_right - x_nose);
       const symmetry_ratio = Math.min(dist_to_left, dist_to_right) / Math.max(dist_to_left, dist_to_right);
       
-      // Apply slight perspective compression
       if (symmetry_ratio < 0.95) {
         glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
       }
 
-      // Roll angle (rotation)
       const rollAngle = Math.atan2(dy, dx);
 
-      // Draw the overlay
       if (overlayImageRef.current) {
         const img = overlayImageRef.current;
         const aspectRatio = img.naturalHeight / img.naturalWidth;
@@ -270,7 +315,6 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         ctx.drawImage(img, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
         ctx.restore();
       } else {
-        // Safe vector fallback if image fails to load
         ctx.save();
         ctx.translate(x_nose, y_nose);
         ctx.rotate(rollAngle);
@@ -279,49 +323,66 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         ctx.strokeRect(-glassesWidth / 2, -10, glassesWidth, 20);
         ctx.restore();
       }
+    } else if (cameraState === 'fallback' && latestLandmarks.current) {
+      // Static photo with face detected
+      const landmarks = latestLandmarks.current;
+      const getX = (lm: any) => (1 - lm.x) * width;
+      const getY = (lm: any) => lm.y * height;
+      const x_nose = (getX(landmarks[168]) + getX(landmarks[6])) / 2;
+      const y_nose = (getY(landmarks[168]) + getY(landmarks[6])) / 2;
+      const x_left = getX(landmarks[234]);
+      const x_right = getX(landmarks[454]);
+      const dx = x_right - x_left;
+      const dy = getY(landmarks[454]) - getY(landmarks[234]);
+      const baseDistance = Math.sqrt(dx * dx + dy * dy);
+      const glassesWidth = baseDistance * 1.12;
+      const rollAngle = Math.atan2(dy, dx);
+
+      if (overlayImageRef.current) {
+        const img = overlayImageRef.current;
+        const aspectRatio = img.naturalHeight / img.naturalWidth;
+        const glassesHeight = glassesWidth * aspectRatio;
+        ctx.save();
+        ctx.translate(x_nose, y_nose);
+        ctx.rotate(rollAngle);
+        ctx.drawImage(img, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
+        ctx.restore();
+      }
     } else {
-      setFaceDetected(false);
-      // If no face is detected (e.g. static fallback upload) render manual overlay
-      drawManualOverlay(ctx, width, height);
-    }
-  };
+      // Manual dragging mode (fallback / denied / no face found)
+      const x = manualPosition.x === 0 ? width / 2 : manualPosition.x;
+      const y = manualPosition.y === 0 ? height / 2.3 : manualPosition.y;
 
-  // Draw overlay based on manual slider positioning
-  const drawManualOverlay = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    // 1. Redraw static image if in fallback
-    if (cameraState === 'fallback' && uploadedImageRef.current) {
-      ctx.clearRect(0, 0, width, height);
-      ctx.save();
-      ctx.translate(width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
-      ctx.restore();
-    }
+      if (overlayImageRef.current) {
+        const img = overlayImageRef.current;
+        const aspectRatio = img.naturalHeight / img.naturalWidth;
+        const w = 180 * manualScale;
+        const h = w * aspectRatio;
 
-    // Set default coordinates in center if not positioned yet
-    const x = manualPosition.x === 0 ? width / 2 : manualPosition.x;
-    const y = manualPosition.y === 0 ? height / 2.3 : manualPosition.y;
-
-    if (overlayImageRef.current) {
-      const img = overlayImageRef.current;
-      const aspectRatio = img.naturalHeight / img.naturalWidth;
-      const w = 180 * manualScale;
-      const h = w * aspectRatio;
-
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate((manualRotation * Math.PI) / 180);
-      ctx.drawImage(img, -w / 2, -h / 2, w, h);
-      
-      // If in fallback manual state, show a subtle bounding box indicator
-      if (cameraState === 'fallback' || cameraState === 'denied') {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((manualRotation * Math.PI) / 180);
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        
         ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
         ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
+        ctx.restore();
       }
-      ctx.restore();
     }
+
+    // Continue drawing loop at 60fps
+    if (cameraState === 'active' || cameraState === 'fallback') {
+      renderFrameId.current = requestAnimationFrame(drawLoop);
+    }
+  };
+
+  // Camera Selector Handler
+  const handleDeviceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const devId = e.target.value;
+    setSelectedDeviceId(devId);
+    startWebcam(devId);
   };
 
   // File Upload Handlers (Fallback)
@@ -337,6 +398,8 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     setCameraState('loading');
     setLoadingMessage('Loading uploaded image...');
     stopAllStreams();
+    latestLandmarks.current = null;
+    setFaceDetected(false);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -354,6 +417,10 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           setManualRotation(0);
         }
 
+        // Start render loop for static image
+        if (renderFrameId.current) cancelAnimationFrame(renderFrameId.current);
+        renderFrameId.current = requestAnimationFrame(drawLoop);
+
         // Run face-mesh on uploaded static image
         setTimeout(async () => {
           if (faceMeshRef.current) {
@@ -361,29 +428,18 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               await faceMeshRef.current.send({ image: img });
             } catch (err) {
               console.error('Error running facemesh on static image:', err);
-              // Draw manual overlay directly as backup
-              triggerManualDraw();
             }
-          } else {
-            triggerManualDraw();
           }
-        }, 500);
+        }, 300);
       };
     };
     reader.readAsDataURL(file);
   };
 
-  const triggerManualDraw = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) drawManualOverlay(ctx, canvas.width, canvas.height);
-    }
-  };
-
   // Drag-and-drop mechanics for manual adjustments
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (cameraState !== 'fallback' && cameraState !== 'denied') return;
+    if (cameraState !== 'fallback' && cameraState !== 'denied' && !faceDetected) return;
+    // Allow dragging in fallback/denied modes
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -392,7 +448,6 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     const y = e.clientY - rect.top;
 
     setIsDragging(true);
-    // Track offset
     setDragStart({
       x: x - (manualPosition.x === 0 ? canvas.width / 2 : manualPosition.x),
       y: y - (manualPosition.y === 0 ? canvas.height / 2.3 : manualPosition.y),
@@ -412,8 +467,6 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       x: x - dragStart.x,
       y: y - dragStart.y,
     });
-
-    triggerManualDraw();
   };
 
   const handleMouseUpOrLeave = () => {
@@ -450,17 +503,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       x: x - dragStart.x,
       y: y - dragStart.y,
     });
-
-    triggerManualDraw();
   };
-
-  // Re-draw on slider updates
-  useEffect(() => {
-    if (cameraState === 'fallback' || cameraState === 'denied') {
-      triggerManualDraw();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualScale, manualRotation, manualPosition, cameraState]);
 
   // Capture image snapshot (keeps in-memory Base64)
   const takeSnapshot = () => {
@@ -477,7 +520,6 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     setFormError('');
     setIsSubmitting(true);
 
-    // Client-side validations
     if (customerName.trim().length < 2) {
       setFormError('Please enter a valid name (at least 2 characters).');
       setIsSubmitting(false);
@@ -504,7 +546,6 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       return;
     }
 
-    // Generate client-side UUID before posting so redirects work reliably
     const orderId = crypto.randomUUID();
 
     try {
@@ -527,7 +568,6 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         throw new Error(data.error || 'Failed to place order.');
       }
 
-      // Success redirects to order success page
       setIsCheckoutOpen(false);
       router.push(`/order-success?id=${orderId}&product=${encodeURIComponent(product.name)}`);
     } catch (err: any) {
@@ -550,19 +590,67 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Try-on Mirror Container (Left column) */}
         <div className="lg:col-span-8 space-y-4">
+          
+          {/* Active Camera Device Selector (Premium feature) */}
+          {cameraState === 'active' && devices.length > 1 && (
+            <div className="flex items-center justify-between bg-[#0b132b]/80 p-3 rounded-lg border border-[#d4af37]/20 text-xs">
+              <span className="text-gray-300 font-semibold uppercase tracking-wider flex items-center">
+                <Camera className="w-4 h-4 text-[#d4af37] mr-1.5" /> Select Camera:
+              </span>
+              <select
+                value={selectedDeviceId}
+                onChange={handleDeviceChange}
+                className="bg-[#1c2541] border border-gray-700 text-white rounded px-2.5 py-1 focus:outline-none focus:border-[#d4af37]"
+              >
+                {devices.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label || `Camera ${devices.indexOf(device) + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Canvas Wrapper */}
           <div className="relative aspect-[4/3] w-full bg-[#0b132b] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-2xl">
             {/* Loading Cover */}
-            {(cameraState === 'loading') && (
+            {cameraState === 'loading' && (
               <div className="absolute inset-0 z-30 bg-[#060b13] flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <RefreshCw className="w-10 h-10 text-[#d4af37] animate-spin" />
                 <p className="text-sm font-semibold text-gray-300">{loadingMessage}</p>
               </div>
             )}
 
-            {/* Scanline overlay for aesthetic mirror effect */}
+            {/* Permission Denied UI (Graceful degradation) */}
+            {cameraState === 'denied' && (
+              <div className="absolute inset-0 z-30 bg-[#0b132b] flex flex-col items-center justify-center p-8 text-center space-y-5">
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full">
+                  <AlertCircle className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className="text-white font-bold text-base uppercase font-luxury">Camera Stream Blocked</h4>
+                  <p className="text-xs text-gray-400 max-w-sm mx-auto mt-2 leading-relaxed">
+                    Camera permissions were denied or are currently in use by another application. 
+                    Please click the camera icon in your browser's address bar to allow permission and reload, or upload a photo below to try on.
+                  </p>
+                </div>
+                <label className="flex items-center space-x-2 px-4 py-2 bg-[#d4af37] text-[#060b13] hover:bg-[#d4af37]/95 rounded-md text-xs font-bold cursor-pointer transition-all">
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Photo to Try On</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+
+            {/* Scanline overlay for mirror effect */}
             {cameraState === 'active' && <div className="scanline" />}
 
-            {/* Video stream (hidden behind canvas) */}
+            {/* Hidden video element */}
             <video
               ref={videoRef}
               className="hidden"
@@ -570,7 +658,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               muted
             />
 
-            {/* Canvas overlay (always visible) */}
+            {/* Canvas (active render) */}
             <canvas
               ref={canvasRef}
               width={640}
@@ -587,7 +675,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               }`}
             />
 
-            {/* Top Stats HUD overlay */}
+            {/* Top HUD overlay status */}
             {cameraState === 'active' && (
               <div className="absolute top-4 left-4 z-20 bg-black/60 px-3 py-1.5 rounded border border-[#d4af37]/20 text-[10px] uppercase font-bold tracking-wider text-[#d4af37] flex items-center space-x-1.5">
                 <span className={`w-2 h-2 rounded-full ${faceDetected ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
@@ -596,19 +684,19 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
             )}
           </div>
 
-          {/* Fallback / Upload / Calibration panel */}
+          {/* Calibration / Upload Help panel */}
           <div className="p-5 glass-panel rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <h4 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start">
                 <HelpCircle className="w-4 h-4 text-[#d4af37] mr-1.5" />
-                Camera problems?
+                Need calibration?
               </h4>
               <p className="text-xs text-gray-400 mt-1">
-                If camera blocks or is unavailable, upload a selfie instead.
+                Drag the overlay or upload a selfie. WebGL maps the glasses dynamically.
               </p>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
-              <label className="flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10 rounded-md text-xs font-semibold cursor-pointer transition-all">
+              <label className="flex-grow sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10 rounded-md text-xs font-semibold cursor-pointer transition-all">
                 <Upload className="w-4 h-4" />
                 <span>Upload Selfie</span>
                 <input
@@ -619,7 +707,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
                 />
               </label>
               {cameraState !== 'active' && (
-                <Button variant="outline" className="text-xs flex-1 sm:flex-initial" onClick={startWebcam}>
+                <Button variant="outline" className="text-xs flex-grow sm:flex-initial" onClick={() => startWebcam(selectedDeviceId)}>
                   <Camera className="w-4 h-4 mr-2" />
                   Try Web Cam
                 </Button>
@@ -627,11 +715,12 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
             </div>
           </div>
 
-          {/* Manual adjustment HUD if camera denied/fallback */}
-          {(cameraState === 'fallback' || cameraState === 'denied') && (
+          {/* Manual adjustment HUD if camera denied/fallback/no face */}
+          {(cameraState === 'fallback' || cameraState === 'denied' || !faceDetected) && (
             <div className="p-6 glass-panel rounded-lg space-y-4">
-              <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider">
-                Manual Calibration (Drag overlay on photo or use sliders)
+              <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider flex items-center">
+                <Sliders className="w-4 h-4 text-[#d4af37] mr-2" />
+                Manual Adjustments (Drag frame on canvas or use sliders)
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 {/* Scale slider */}

@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { createClient } = require('@supabase/supabase-js');
+const ws = require('ws');
+
 
 // Helper to load .env file manually (Node v18 fallback)
 function loadEnv() {
@@ -38,7 +40,10 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  realtime: { transport: ws }
+});
+
 
 async function runSeed() {
   console.log('Starting Database Seed...');

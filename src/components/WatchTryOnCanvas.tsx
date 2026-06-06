@@ -4,7 +4,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Camera, Upload, Check, AlertCircle, RefreshCw, ShoppingCart, HelpCircle } from 'lucide-react';
+import { Camera, Upload, Check, AlertCircle, RefreshCw, ShoppingCart, HelpCircle, Sliders } from 'lucide-react';
 import { loadScript } from '@/lib/loadScript';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -32,10 +32,13 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   // Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationFrameId = useRef<number | null>(null);
+  const renderFrameId = useRef<number | null>(null);
   const handsRef = useRef<any>(null);
   const overlayImageRef = useRef<HTMLImageElement | null>(null);
   const uploadedImageRef = useRef<HTMLImageElement | null>(null);
+
+  // Decoupled Landmark Ref (WebGL engine style)
+  const latestHandResults = useRef<any>(null);
 
   // App States
   const [cameraState, setCameraState] = useState<'loading' | 'active' | 'denied' | 'fallback'>('loading');
@@ -43,6 +46,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   const [handDetected, setHandDetected] = useState(false);
   const [snapshot, setSnapshot] = useState<string | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // Camera Selection States
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
 
   // Fallback Manual Overlay States
   const [manualScale, setManualScale] = useState(1.0);
@@ -80,7 +87,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           overlayImageRef.current = img;
         };
         img.onerror = () => {
-          console.error('Failed to load watch overlay image.');
+          console.error('Failed to load watch overlay image, using fallbacks.');
         };
 
         // Configure Hands detector
@@ -103,7 +110,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         hands.onResults(handleHandResults);
         handsRef.current = hands;
 
-        // Start webcam stream
+        // Start default webcam stream
         startWebcam();
       } catch (err) {
         console.error('Error initializing watch try-on canvas:', err);
@@ -124,10 +131,11 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
 
+  // Stop video streams and cancel animation loops
   const stopAllStreams = () => {
-    if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current);
-      animationFrameId.current = null;
+    if (renderFrameId.current) {
+      cancelAnimationFrame(renderFrameId.current);
+      renderFrameId.current = null;
     }
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
@@ -136,15 +144,19 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     }
   };
 
-  const startWebcam = async () => {
+  // Start the camera
+  const startWebcam = async (deviceId?: string) => {
     stopAllStreams();
     setCameraState('loading');
     setLoadingMessage('Accessing camera, please allow permissions...');
+    latestHandResults.current = null;
+    setHandDetected(false);
 
     try {
-      const constraints = {
+      const constraints: any = {
         video: {
-          facingMode: 'user',
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          facingMode: deviceId ? undefined : 'user',
           width: { ideal: 640 },
           height: { ideal: 480 },
           frameRate: { ideal: 30 }
@@ -153,39 +165,91 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Enumerate device options for multi-camera selectors after permission grant
+      navigator.mediaDevices.enumerateDevices().then((devicesList) => {
+        const videoDevices = devicesList.filter((d) => d.kind === 'videoinput');
+        setDevices(videoDevices);
+        if (!deviceId && videoDevices.length > 0) {
+          // Sync default selected id
+          const defaultDevice = videoDevices.find((d) => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('integrated')) || videoDevices[0];
+          setSelectedDeviceId(defaultDevice.deviceId);
+        }
+      }).catch((e) => console.warn('Could not enumerate media devices:', e));
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.setAttribute('playsinline', 'true');
         videoRef.current.setAttribute('muted', 'true');
-        videoRef.current.play();
-
-        videoRef.current.onloadedmetadata = () => {
+        videoRef.current.muted = true;
+        
+        videoRef.current.onloadedmetadata = async () => {
           setCameraState('active');
-          animationFrameId.current = requestAnimationFrame(processingLoop);
+          
+          try {
+            if (videoRef.current) {
+              await videoRef.current.play();
+            }
+          } catch (playErr) {
+            console.error('Autoplay blocked or failed:', playErr);
+          }
+
+          // Start the decoupled fast rendering loop (60fps)
+          if (renderFrameId.current) cancelAnimationFrame(renderFrameId.current);
+          renderFrameId.current = requestAnimationFrame(drawLoop);
+
+          // Start the decoupled detection loop
+          startDetectionLoop();
         };
       }
     } catch (error) {
-      console.warn('Camera access denied:', error);
+      console.warn('Camera access denied or unavailable:', error);
       setCameraState('denied');
     }
   };
 
-  const processingLoop = async () => {
-    if (cameraState === 'active' && videoRef.current && handsRef.current) {
-      if (videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-        try {
-          await handsRef.current.send({ image: videoRef.current });
-        } catch (err) {
-          console.error('Error sending frame to Hands:', err);
+  // Asynchronous detection loop (decoupled from rendering loop)
+  const startDetectionLoop = () => {
+    let isDetecting = false;
+    
+    const runDetection = async () => {
+      if (cameraState === 'active' && videoRef.current && handsRef.current && !isDetecting) {
+        if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+          isDetecting = true;
+          try {
+            await handsRef.current.send({ image: videoRef.current });
+          } catch (err) {
+            console.error('Hands frame processing error:', err);
+          } finally {
+            isDetecting = false;
+          }
         }
       }
-      animationFrameId.current = requestAnimationFrame(processingLoop);
-    }
+      
+      // Schedule next check in 33ms (~30fps tracking)
+      if (cameraState === 'active') {
+        setTimeout(runDetection, 33);
+      }
+    };
+
+    runDetection();
   };
 
-  // Callback when Hands yields landmarks
+  // Callback when Hands yields results
   const handleHandResults = (results: any) => {
+    latestHandResults.current = results;
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      const confidence = results.multiHandedness?.[0]?.score || 0.8;
+      if (confidence >= 0.7) {
+        setHandDetected(true);
+        return;
+      }
+    }
+    setHandDetected(false);
+  };
+
+  // High-performance decoupled draw loop (runs at 60fps)
+  const drawLoop = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -194,25 +258,27 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     const width = canvas.width;
     const height = canvas.height;
 
-    ctx.clearRect(0, 0, width, height);
-
-    // 1. Draw camera feed (mirrored)
+    // 1. Draw webcam feed or uploaded photo (mirrored)
     ctx.save();
     ctx.translate(width, 0);
     ctx.scale(-1, 1);
-
-    if (cameraState === 'active' && videoRef.current) {
+    
+    if (cameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2) {
       ctx.drawImage(videoRef.current, 0, 0, width, height);
     } else if (cameraState === 'fallback' && uploadedImageRef.current) {
       ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
+    } else {
+      // Background fallback
+      ctx.fillStyle = '#0b132b';
+      ctx.fillRect(0, 0, width, height);
     }
     ctx.restore();
 
-    // 2. Draw overlay if hand detected with good confidence
-    const confidence = results.multiHandLandmarks ? results.multiHandedness?.[0]?.score || 0.8 : 0;
-    
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.7) {
-      setHandDetected(true);
+    // 2. Draw overlay based on landmarks or manual sliders
+    const results = latestHandResults.current;
+    const confidence = results && results.multiHandLandmarks ? results.multiHandedness?.[0]?.score || 0.8 : 0;
+
+    if (cameraState === 'active' && results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.7) {
       const landmarks = results.multiHandLandmarks[0];
       const handedness = results.multiHandedness[0]; // Left vs Right hand
 
@@ -277,47 +343,87 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         ctx.stroke();
         ctx.restore();
       }
-    } else {
-      setHandDetected(false);
-      drawManualOverlay(ctx, width, height);
-    }
-  };
+    } else if (cameraState === 'fallback' && results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.7) {
+      // Static photo with hand detected
+      const landmarks = results.multiHandLandmarks[0];
+      const handedness = results.multiHandedness[0];
 
-  const drawManualOverlay = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    if (cameraState === 'fallback' && uploadedImageRef.current) {
-      ctx.clearRect(0, 0, width, height);
-      ctx.save();
-      ctx.translate(width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
-      ctx.restore();
-    }
+      const getX = (lm: any) => (1 - lm.x) * width;
+      const getY = (lm: any) => lm.y * height;
 
-    const x = manualPosition.x === 0 ? width / 2 : manualPosition.x;
-    const y = manualPosition.y === 0 ? height / 2 : manualPosition.y;
+      const x_wrist = getX(landmarks[0]);
+      const y_wrist = getY(landmarks[0]);
+      const x_mcp = getX(landmarks[9]);
+      const y_mcp = getY(landmarks[9]);
 
-    if (overlayImageRef.current) {
-      const img = overlayImageRef.current;
-      const aspectRatio = img.naturalHeight / img.naturalWidth;
-      const w = 150 * manualScale;
-      const h = w * aspectRatio;
+      const vx = x_wrist - x_mcp;
+      const vy = y_wrist - y_mcp;
+      const handLength = Math.sqrt(vx * vx + vy * vy);
 
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate((manualRotation * Math.PI) / 180);
-      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      const ux = vx / handLength;
+      const uy = vy / handLength;
 
-      if (cameraState === 'fallback' || cameraState === 'denied') {
-        ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
+      const x_watch = x_wrist + ux * (handLength * 0.18);
+      const y_watch = y_wrist + uy * (handLength * 0.18);
+
+      const watchWidth = handLength * 0.42;
+      const angle = Math.atan2(vy, vx) + Math.PI / 2;
+      const isRightHand = handedness.label === 'Right';
+
+      if (overlayImageRef.current) {
+        const img = overlayImageRef.current;
+        const aspectRatio = img.naturalHeight / img.naturalWidth;
+        const watchHeight = watchWidth * aspectRatio;
+
+        ctx.save();
+        ctx.translate(x_watch, y_watch);
+        ctx.rotate(angle);
+        if (isRightHand) {
+          ctx.scale(-1, 1);
+        }
+        ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
+        ctx.restore();
       }
-      ctx.restore();
+    } else {
+      // Manual dragging mode (fallback / denied / no hand found)
+      const x = manualPosition.x === 0 ? width / 2 : manualPosition.x;
+      const y = manualPosition.y === 0 ? height / 2 : manualPosition.y;
+
+      if (overlayImageRef.current) {
+        const img = overlayImageRef.current;
+        const aspectRatio = img.naturalHeight / img.naturalWidth;
+        const w = 150 * manualScale;
+        const h = w * aspectRatio;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((manualRotation * Math.PI) / 180);
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+        if (cameraState === 'fallback' || cameraState === 'denied') {
+          ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
+        }
+        ctx.restore();
+      }
+    }
+
+    // Continue drawing loop at 60fps
+    if (cameraState === 'active' || cameraState === 'fallback') {
+      renderFrameId.current = requestAnimationFrame(drawLoop);
     }
   };
 
-  // Upload Handlers
+  // Camera Selector Handler
+  const handleDeviceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const devId = e.target.value;
+    setSelectedDeviceId(devId);
+    startWebcam(devId);
+  };
+
+  // File Upload Handlers (Fallback)
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -330,6 +436,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     setCameraState('loading');
     setLoadingMessage('Loading uploaded image...');
     stopAllStreams();
+    latestHandResults.current = null;
+    setHandDetected(false);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -338,13 +446,18 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       img.onload = () => {
         uploadedImageRef.current = img;
         setCameraState('fallback');
-
+        
+        // Reset manual position to center of canvas
         const canvas = canvasRef.current;
         if (canvas) {
           setManualPosition({ x: canvas.width / 2, y: canvas.height / 2 });
           setManualScale(1.0);
           setManualRotation(0);
         }
+
+        // Start render loop for static image
+        if (renderFrameId.current) cancelAnimationFrame(renderFrameId.current);
+        renderFrameId.current = requestAnimationFrame(drawLoop);
 
         // Run hand detector on static image
         setTimeout(async () => {
@@ -353,28 +466,17 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               await handsRef.current.send({ image: img });
             } catch (err) {
               console.error('Error running hands on static image:', err);
-              triggerManualDraw();
             }
-          } else {
-            triggerManualDraw();
           }
-        }, 500);
+        }, 300);
       };
     };
     reader.readAsDataURL(file);
   };
 
-  const triggerManualDraw = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) drawManualOverlay(ctx, canvas.width, canvas.height);
-    }
-  };
-
-  // Touch and Drag handlers
+  // Drag-and-drop mechanics for manual adjustments
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (cameraState !== 'fallback' && cameraState !== 'denied') return;
+    if (cameraState === 'active' && handDetected) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -402,15 +504,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       x: x - dragStart.x,
       y: y - dragStart.y,
     });
-    triggerManualDraw();
   };
 
   const handleMouseUpOrLeave = () => {
     setIsDragging(false);
   };
 
+  // Touch handlers for mobile devices
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (cameraState !== 'fallback' && cameraState !== 'denied') return;
+    if (cameraState === 'active' && handDetected) return;
     const canvas = canvasRef.current;
     if (!canvas || e.touches.length === 0) return;
 
@@ -438,17 +540,9 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       x: x - dragStart.x,
       y: y - dragStart.y,
     });
-    triggerManualDraw();
   };
 
-  // Re-draw on slider updates
-  useEffect(() => {
-    if (cameraState === 'fallback' || cameraState === 'denied') {
-      triggerManualDraw();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualScale, manualRotation, manualPosition, cameraState]);
-
+  // Capture image snapshot (keeps in-memory Base64)
   const takeSnapshot = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -457,6 +551,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     setIsCheckoutOpen(true);
   };
 
+  // Form Submission
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -476,7 +571,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     }
 
     if (address.trim().length < 10) {
-      setFormError('Please enter a detailed physical address (min 10 characters).');
+      setFormError('Please enter a detailed physical delivery address (min 10 chars).');
       setIsSubmitting(false);
       return;
     }
@@ -507,14 +602,14 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit order.');
+        throw new Error(data.error || 'Failed to place order.');
       }
 
       setIsCheckoutOpen(false);
       router.push(`/order-success?id=${orderId}&product=${encodeURIComponent(product.name)}`);
     } catch (err: any) {
       console.error('Checkout error:', err);
-      setFormError(err.message || 'An unexpected database error occurred.');
+      setFormError(err.message || 'An unexpected database error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -522,6 +617,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Back to catalog */}
       <div className="mb-6">
         <Link href="/products" className="text-sm text-gray-400 hover:text-[#d4af37] transition-colors">
           &larr; Back to Catalog
@@ -529,9 +625,32 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Try-on Mirror Container */}
+        {/* Try-on Mirror Container (Left column) */}
         <div className="lg:col-span-8 space-y-4">
+          
+          {/* Active Camera Device Selector (Premium feature) */}
+          {cameraState === 'active' && devices.length > 1 && (
+            <div className="flex items-center justify-between bg-[#0b132b]/80 p-3 rounded-lg border border-[#d4af37]/20 text-xs">
+              <span className="text-gray-300 font-semibold uppercase tracking-wider flex items-center">
+                <Camera className="w-4 h-4 text-[#d4af37] mr-1.5" /> Select Camera:
+              </span>
+              <select
+                value={selectedDeviceId}
+                onChange={handleDeviceChange}
+                className="bg-[#1c2541] border border-gray-700 text-white rounded px-2.5 py-1 focus:outline-none focus:border-[#d4af37]"
+              >
+                {devices.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label || `Camera ${devices.indexOf(device) + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Canvas Wrapper */}
           <div className="relative aspect-[4/3] w-full bg-[#0b132b] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-2xl">
+            {/* Loading Cover */}
             {cameraState === 'loading' && (
               <div className="absolute inset-0 z-30 bg-[#060b13] flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <RefreshCw className="w-10 h-10 text-[#d4af37] animate-spin" />
@@ -539,8 +658,36 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               </div>
             )}
 
+            {/* Permission Denied UI (Graceful degradation) */}
+            {cameraState === 'denied' && (
+              <div className="absolute inset-0 z-30 bg-[#0b132b] flex flex-col items-center justify-center p-8 text-center space-y-5">
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full">
+                  <AlertCircle className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className="text-white font-bold text-base uppercase font-luxury">Camera Stream Blocked</h4>
+                  <p className="text-xs text-gray-400 max-w-sm mx-auto mt-2 leading-relaxed">
+                    Camera permissions were denied or are currently in use by another application. 
+                    Please click the camera icon in your browser's address bar to allow permission and reload, or upload a photo below to try on.
+                  </p>
+                </div>
+                <label className="flex items-center space-x-2 px-4 py-2 bg-[#d4af37] text-[#060b13] hover:bg-[#d4af37]/95 rounded-md text-xs font-bold cursor-pointer transition-all">
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Photo to Try On</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+
+            {/* Scanline overlay for mirror effect */}
             {cameraState === 'active' && <div className="scanline" />}
 
+            {/* Hidden video element */}
             <video
               ref={videoRef}
               className="hidden"
@@ -548,6 +695,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               muted
             />
 
+            {/* Canvas (active render) */}
             <canvas
               ref={canvasRef}
               width={640}
@@ -560,10 +708,11 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               onTouchMove={handleTouchMove}
               onTouchEnd={handleMouseUpOrLeave}
               className={`w-full h-full object-cover select-none ${
-                cameraState === 'fallback' || cameraState === 'denied' ? 'cursor-move' : ''
+                cameraState === 'fallback' || cameraState === 'denied' || (cameraState === 'active' && !handDetected) ? 'cursor-move' : ''
               }`}
             />
 
+            {/* Top HUD overlay status */}
             {cameraState === 'active' && (
               <div className="absolute top-4 left-4 z-20 bg-black/60 px-3 py-1.5 rounded border border-[#d4af37]/20 text-[10px] uppercase font-bold tracking-wider text-[#d4af37] flex items-center space-x-1.5">
                 <span className={`w-2 h-2 rounded-full ${handDetected ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
@@ -572,21 +721,21 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             )}
           </div>
 
-          {/* Fallback panel */}
+          {/* Calibration / Upload Help panel */}
           <div className="p-5 glass-panel rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <h4 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start">
                 <HelpCircle className="w-4 h-4 text-[#d4af37] mr-1.5" />
-                Camera problems?
+                Need calibration?
               </h4>
               <p className="text-xs text-gray-400 mt-1">
-                For best results, align your hand/wrist with the camera, or upload a photo.
+                Drag the watch on the canvas or use the sliders below to calibrate size and rotation.
               </p>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
-              <label className="flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10 rounded-md text-xs font-semibold cursor-pointer transition-all">
+              <label className="flex-grow sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10 rounded-md text-xs font-semibold cursor-pointer transition-all">
                 <Upload className="w-4 h-4" />
-                <span>Upload Hand Photo</span>
+                <span>Upload Selfie/Hand</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -595,7 +744,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                 />
               </label>
               {cameraState !== 'active' && (
-                <Button variant="outline" className="text-xs flex-1 sm:flex-initial" onClick={startWebcam}>
+                <Button variant="outline" className="text-xs flex-grow sm:flex-initial" onClick={() => startWebcam(selectedDeviceId)}>
                   <Camera className="w-4 h-4 mr-2" />
                   Try Web Cam
                 </Button>
@@ -603,13 +752,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             </div>
           </div>
 
-          {/* Adjustments */}
-          {(cameraState === 'fallback' || cameraState === 'denied') && (
+          {/* Manual adjustment HUD */}
+          {(cameraState === 'fallback' || cameraState === 'denied' || !handDetected) && (
             <div className="p-6 glass-panel rounded-lg space-y-4">
-              <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider">
-                Manual Watch Calibration (Drag watch or use sliders)
+              <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider flex items-center">
+                <Sliders className="w-4 h-4 text-[#d4af37] mr-2" />
+                Manual Adjustments (Drag watch on canvas or use sliders)
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                {/* Scale slider */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Watch Size</span>
@@ -625,6 +776,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     className="w-full accent-[#d4af37] bg-gray-700 h-1 rounded"
                   />
                 </div>
+                {/* Rotation slider */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Angle Rotation</span>
@@ -645,7 +797,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           )}
         </div>
 
-        {/* Product Details Panel */}
+        {/* Product Details Panel (Right column) */}
         <div className="lg:col-span-4 space-y-6">
           <Card className="border-gray-800 bg-[#0b132b]/50">
             <CardContent className="p-6 space-y-6">
