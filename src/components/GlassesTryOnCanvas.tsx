@@ -58,6 +58,21 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  // Refs to prevent stale closure bugs in requestAnimationFrame loops
+  const cameraStateRef = useRef(cameraState);
+  const manualScaleRef = useRef(manualScale);
+  const manualPositionRef = useRef(manualPosition);
+  const manualRotationRef = useRef(manualRotation);
+
+  // Diagnostic Refs
+  const detectionFrameCount = useRef(0);
+  const detectionError = useRef<string | null>(null);
+
+  useEffect(() => { cameraStateRef.current = cameraState; }, [cameraState]);
+  useEffect(() => { manualScaleRef.current = manualScale; }, [manualScale]);
+  useEffect(() => { manualPositionRef.current = manualPosition; }, [manualPosition]);
+  useEffect(() => { manualRotationRef.current = manualRotation; }, [manualRotation]);
+
   // Checkout Form States
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
@@ -213,13 +228,17 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     let isDetecting = false;
     
     const runDetection = async () => {
-      if (cameraState === 'active' && videoRef.current && faceMeshRef.current && !isDetecting) {
+      const currentCameraState = cameraStateRef.current;
+      if (currentCameraState === 'active' && videoRef.current && faceMeshRef.current && !isDetecting) {
         if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA or higher
           isDetecting = true;
           try {
             await faceMeshRef.current.send({ image: videoRef.current });
-          } catch (err) {
+            detectionFrameCount.current += 1;
+            detectionError.current = null;
+          } catch (err: any) {
             console.error('FaceMesh frame processing error:', err);
+            detectionError.current = err?.message || String(err);
           } finally {
             isDetecting = false;
           }
@@ -227,7 +246,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       }
       
       // Schedule next check in 33ms (~30fps tracking)
-      if (cameraState === 'active') {
+      if (cameraStateRef.current === 'active' || cameraStateRef.current === 'loading') {
         setTimeout(runDetection, 33);
       }
     };
@@ -248,143 +267,142 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
   // High-performance decoupled draw loop (runs at 60fps)
   const drawLoop = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    try {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+      const width = canvas.width;
+      const height = canvas.height;
 
-    // 1. Draw webcam feed or uploaded photo (mirrored)
-    ctx.save();
-    ctx.translate(width, 0);
-    ctx.scale(-1, 1);
-    
-    if (cameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2) {
-      ctx.drawImage(videoRef.current, 0, 0, width, height);
-    } else if (cameraState === 'fallback' && uploadedImageRef.current) {
-      ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
-    } else {
-      // Background fallback
-      ctx.fillStyle = '#0b132b';
-      ctx.fillRect(0, 0, width, height);
-    }
-    ctx.restore();
+      const currentCameraState = cameraStateRef.current;
 
-    // 2. Draw overlay based on landmarks or manual sliders
-    if (cameraState === 'active' && latestLandmarks.current) {
-      const landmarks = latestLandmarks.current;
+      // 1. Draw webcam feed or uploaded photo (mirrored)
+      ctx.save();
+      ctx.translate(width, 0);
+      ctx.scale(-1, 1);
       
-      const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
-      const getY = (lm: any) => lm.y * height;
-
-      const x_nose = (getX(landmarks[168]) + getX(landmarks[6])) / 2;
-      const y_nose = (getY(landmarks[168]) + getY(landmarks[6])) / 2;
-
-      const x_left = getX(landmarks[234]);
-      const y_left = getY(landmarks[234]);
-      const x_right = getX(landmarks[454]);
-      const y_right = getY(landmarks[454]);
-
-      const dx = x_right - x_left;
-      const dy = y_right - y_left;
-      const baseDistance = Math.sqrt(dx * dx + dy * dy);
-      
-      let glassesWidth = baseDistance * 1.12; 
-
-      // Yaw/Perspective correction
-      const dist_to_left = Math.abs(x_nose - x_left);
-      const dist_to_right = Math.abs(x_right - x_nose);
-      const symmetry_ratio = Math.min(dist_to_left, dist_to_right) / Math.max(dist_to_left, dist_to_right);
-      
-      if (symmetry_ratio < 0.95) {
-        glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
-      }
-
-      const rollAngle = Math.atan2(dy, dx);
-
-      if (overlayImageRef.current) {
-        const img = overlayImageRef.current;
-        const aspectRatio = img.naturalHeight / img.naturalWidth;
-        const glassesHeight = glassesWidth * aspectRatio;
-
-        ctx.save();
-        ctx.translate(x_nose, y_nose);
-        ctx.rotate(rollAngle);
-        ctx.drawImage(img, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
-        ctx.restore();
+      if (currentCameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0) {
+        ctx.drawImage(videoRef.current, 0, 0, width, height);
+      } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
+        ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
       } else {
-        ctx.save();
-        ctx.translate(x_nose, y_nose);
-        ctx.rotate(rollAngle);
-        ctx.strokeStyle = '#d4af37';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(-glassesWidth / 2, -10, glassesWidth, 20);
-        ctx.restore();
+        // Background fallback
+        ctx.fillStyle = '#0b132b';
+        ctx.fillRect(0, 0, width, height);
       }
-    } else if (cameraState === 'fallback' && latestLandmarks.current) {
-      // Static photo with face detected
-      const landmarks = latestLandmarks.current;
-      const getX = (lm: any) => (1 - lm.x) * width;
-      const getY = (lm: any) => lm.y * height;
-      const x_nose = (getX(landmarks[168]) + getX(landmarks[6])) / 2;
-      const y_nose = (getY(landmarks[168]) + getY(landmarks[6])) / 2;
-      const x_left = getX(landmarks[234]);
-      const x_right = getX(landmarks[454]);
-      const dx = x_right - x_left;
-      const dy = getY(landmarks[454]) - getY(landmarks[234]);
-      const baseDistance = Math.sqrt(dx * dx + dy * dy);
-      const glassesWidth = baseDistance * 1.12;
-      const rollAngle = Math.atan2(dy, dx);
+      ctx.restore();
 
-      if (overlayImageRef.current) {
-        const img = overlayImageRef.current;
-        const aspectRatio = img.naturalHeight / img.naturalWidth;
-        const glassesHeight = glassesWidth * aspectRatio;
-        ctx.save();
-        ctx.translate(x_nose, y_nose);
-        ctx.rotate(rollAngle);
-        ctx.drawImage(img, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
-        ctx.restore();
-      }
-    } else {
-      // Manual dragging mode (fallback / denied / no face found)
-      const x = manualPosition.x === 0 ? width / 2 : manualPosition.x;
-      const y = manualPosition.y === 0 ? height / 2.3 : manualPosition.y;
-
-      if (overlayImageRef.current) {
-        const img = overlayImageRef.current;
-        const aspectRatio = img.naturalHeight / img.naturalWidth;
-        const w = 180 * manualScale;
-        const h = w * aspectRatio;
-
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate((manualRotation * Math.PI) / 180);
-        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      // 2. Draw overlay based on landmarks or manual sliders
+      if (currentCameraState === 'active' && latestLandmarks.current) {
+        const landmarks = latestLandmarks.current;
         
-        ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
-        ctx.restore();
+        const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
+        const getY = (lm: any) => lm.y * height;
+
+        const x_nose = (getX(landmarks[168]) + getX(landmarks[6])) / 2;
+        const y_nose = (getY(landmarks[168]) + getY(landmarks[6])) / 2;
+
+        const x_left = getX(landmarks[234]);
+        const y_left = getY(landmarks[234]);
+        const x_right = getX(landmarks[454]);
+        const y_right = getY(landmarks[454]);
+
+        const dx = x_right - x_left;
+        const dy = y_right - y_left;
+        const baseDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        let glassesWidth = baseDistance * 1.12; 
+
+        // Yaw/Perspective correction
+        const dist_to_left = Math.abs(x_nose - x_left);
+        const dist_to_right = Math.abs(x_right - x_nose);
+        const symmetry_ratio = Math.min(dist_to_left, dist_to_right) / Math.max(dist_to_left, dist_to_right);
+        
+        if (symmetry_ratio < 0.95) {
+          glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
+        }
+
+        const rollAngle = Math.atan2(dy, dx);
+
+        if (overlayImageRef.current) {
+          const img = overlayImageRef.current;
+          const aspectRatio = img.naturalHeight / img.naturalWidth;
+          const glassesHeight = glassesWidth * aspectRatio;
+
+          ctx.save();
+          ctx.translate(x_nose, y_nose);
+          ctx.rotate(rollAngle);
+          ctx.drawImage(img, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.translate(x_nose, y_nose);
+          ctx.rotate(rollAngle);
+          ctx.strokeStyle = '#d4af37';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(-glassesWidth / 2, -10, glassesWidth, 20);
+          ctx.restore();
+        }
+      } else if (currentCameraState === 'fallback' && latestLandmarks.current) {
+        // Static photo with face detected
+        const landmarks = latestLandmarks.current;
+        const getX = (lm: any) => (1 - lm.x) * width;
+        const getY = (lm: any) => lm.y * height;
+        const x_nose = (getX(landmarks[168]) + getX(landmarks[6])) / 2;
+        const y_nose = (getY(landmarks[168]) + getY(landmarks[6])) / 2;
+        const x_left = getX(landmarks[234]);
+        const x_right = getX(landmarks[454]);
+        const dx = x_right - x_left;
+        const dy = getY(landmarks[454]) - getY(landmarks[234]);
+        const baseDistance = Math.sqrt(dx * dx + dy * dy);
+        const glassesWidth = baseDistance * 1.12;
+        const rollAngle = Math.atan2(dy, dx);
+
+        if (overlayImageRef.current) {
+          const img = overlayImageRef.current;
+          const aspectRatio = img.naturalHeight / img.naturalWidth;
+          const glassesHeight = glassesWidth * aspectRatio;
+          ctx.save();
+          ctx.translate(x_nose, y_nose);
+          ctx.rotate(rollAngle);
+          ctx.drawImage(img, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
+          ctx.restore();
+        }
+      } else {
+        // Manual dragging mode (fallback / denied / no face found)
+        const x = manualPositionRef.current.x === 0 ? width / 2 : manualPositionRef.current.x;
+        const y = manualPositionRef.current.y === 0 ? height / 2.3 : manualPositionRef.current.y;
+
+        if (overlayImageRef.current) {
+          const img = overlayImageRef.current;
+          const aspectRatio = img.naturalHeight / img.naturalWidth;
+          const w = 180 * manualScaleRef.current;
+          const h = w * aspectRatio;
+
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate((manualRotationRef.current * Math.PI) / 180);
+          ctx.drawImage(img, -w / 2, -h / 2, w, h);
+          
+          ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
+          ctx.restore();
+        }
       }
-    }
 
-    // 3. Draw debug overlay on the canvas
-    ctx.save();
-    ctx.font = '10px monospace';
-    ctx.fillStyle = '#ff3b30'; // Red color for visibility
-    const readyState = videoRef.current ? videoRef.current.readyState : 'null';
-    const paused = videoRef.current ? (videoRef.current.paused ? 'paused' : 'playing') : 'null';
-    const hasStream = videoRef.current && videoRef.current.srcObject ? 'has_stream' : 'no_stream';
-    ctx.fillText(`Debug: state=${cameraState} | ready=${readyState} | ${paused} | ${hasStream}`, 10, height - 15);
-    ctx.restore();
 
-    // Continue drawing loop at 60fps
-    if (cameraState === 'active' || cameraState === 'fallback') {
-      renderFrameId.current = requestAnimationFrame(drawLoop);
+    } catch (e) {
+      console.error('Error in canvas drawLoop:', e);
+    } finally {
+      const currentCameraState = cameraStateRef.current;
+      // Continue drawing loop at 60fps
+      if (currentCameraState === 'active' || currentCameraState === 'fallback') {
+        renderFrameId.current = requestAnimationFrame(drawLoop);
+      }
     }
   };
 

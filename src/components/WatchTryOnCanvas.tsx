@@ -58,6 +58,21 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  // Refs to prevent stale closure bugs in requestAnimationFrame loops
+  const cameraStateRef = useRef(cameraState);
+  const manualScaleRef = useRef(manualScale);
+  const manualPositionRef = useRef(manualPosition);
+  const manualRotationRef = useRef(manualRotation);
+
+  // Diagnostic Refs
+  const detectionFrameCount = useRef(0);
+  const detectionError = useRef<string | null>(null);
+
+  useEffect(() => { cameraStateRef.current = cameraState; }, [cameraState]);
+  useEffect(() => { manualScaleRef.current = manualScale; }, [manualScale]);
+  useEffect(() => { manualPositionRef.current = manualPosition; }, [manualPosition]);
+  useEffect(() => { manualRotationRef.current = manualRotation; }, [manualRotation]);
+
   // Checkout Form States
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
@@ -102,9 +117,9 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         hands.setOptions({
           maxNumHands: 1,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          modelComplexity: 0,
+          minDetectionConfidence: 0.4,
+          minTrackingConfidence: 0.4,
         });
 
         hands.onResults(handleHandResults);
@@ -213,13 +228,17 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     let isDetecting = false;
     
     const runDetection = async () => {
-      if (cameraState === 'active' && videoRef.current && handsRef.current && !isDetecting) {
+      const currentCameraState = cameraStateRef.current;
+      if (currentCameraState === 'active' && videoRef.current && handsRef.current && !isDetecting) {
         if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA or higher
           isDetecting = true;
           try {
             await handsRef.current.send({ image: videoRef.current });
-          } catch (err) {
+            detectionFrameCount.current += 1;
+            detectionError.current = null;
+          } catch (err: any) {
             console.error('Hands frame processing error:', err);
+            detectionError.current = err?.message || String(err);
           } finally {
             isDetecting = false;
           }
@@ -227,7 +246,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       }
       
       // Schedule next check in 33ms (~30fps tracking)
-      if (cameraState === 'active') {
+      if (cameraStateRef.current === 'active' || cameraStateRef.current === 'loading') {
         setTimeout(runDetection, 33);
       }
     };
@@ -240,7 +259,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     latestHandResults.current = results;
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
       const confidence = results.multiHandedness?.[0]?.score || 0.8;
-      if (confidence >= 0.7) {
+      if (confidence >= 0.4) {
         setHandDetected(true);
         return;
       }
@@ -250,179 +269,173 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
   // High-performance decoupled draw loop (runs at 60fps)
   const drawLoop = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    try {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+      const width = canvas.width;
+      const height = canvas.height;
 
-    // 1. Draw webcam feed or uploaded photo (mirrored)
-    ctx.save();
-    ctx.translate(width, 0);
-    ctx.scale(-1, 1);
-    
-    if (cameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2) {
-      ctx.drawImage(videoRef.current, 0, 0, width, height);
-    } else if (cameraState === 'fallback' && uploadedImageRef.current) {
-      ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
-    } else {
-      // Background fallback
-      ctx.fillStyle = '#0b132b';
-      ctx.fillRect(0, 0, width, height);
-    }
-    ctx.restore();
+      const currentCameraState = cameraStateRef.current;
 
-    // 2. Draw overlay based on landmarks or manual sliders
-    const results = latestHandResults.current;
-    const confidence = results && results.multiHandLandmarks ? results.multiHandedness?.[0]?.score || 0.8 : 0;
-
-    if (cameraState === 'active' && results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.7) {
-      const landmarks = results.multiHandLandmarks[0];
-      const handedness = results.multiHandedness[0]; // Left vs Right hand
-
-      // Wrist base (0) and Middle Knuckle (9)
-      const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
-      const getY = (lm: any) => lm.y * height;
-
-      const x_wrist = getX(landmarks[0]);
-      const y_wrist = getY(landmarks[0]);
-      const x_mcp = getX(landmarks[9]);
-      const y_mcp = getY(landmarks[9]);
-
-      // Calculate direction vector from Middle Knuckle to Wrist (forearm axis)
-      const vx = x_wrist - x_mcp;
-      const vy = y_wrist - y_mcp;
-      const handLength = Math.sqrt(vx * vx + vy * vy);
-
-      const ux = vx / handLength;
-      const uy = vy / handLength;
-
-      // Project the watch slightly down the arm (past the wrist base)
-      // We project 18% of the hand length past landmark 0 along the forearm vector
-      const x_watch = x_wrist + ux * (handLength * 0.18);
-      const y_watch = y_wrist + uy * (handLength * 0.18);
-
-      // Determine watch scale (dial size should be ~38% of hand length)
-      const watchWidth = handLength * 0.42;
-
-      // Rotate the watch along the arm direction
-      // Default strap PNG is vertical, so we add 90 degrees (PI/2) to line up perpendicular to forearm
-      const angle = Math.atan2(vy, vx) + Math.PI / 2;
-
-      // Check handedness to mirror if needed (asymmetrical dial winders)
-      const isRightHand = handedness.label === 'Right';
-
-      // Draw the overlay
-      if (overlayImageRef.current) {
-        const img = overlayImageRef.current;
-        const aspectRatio = img.naturalHeight / img.naturalWidth;
-        const watchHeight = watchWidth * aspectRatio;
-
-        ctx.save();
-        ctx.translate(x_watch, y_watch);
-        ctx.rotate(angle);
-        
-        // Flip watch horizontally for right hands if needed to place winder on correct side
-        if (isRightHand) {
-          ctx.scale(-1, 1);
-        }
-
-        ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
-        ctx.restore();
+      // 1. Draw webcam feed or uploaded photo (mirrored)
+      ctx.save();
+      ctx.translate(width, 0);
+      ctx.scale(-1, 1);
+      
+      if (currentCameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0) {
+        ctx.drawImage(videoRef.current, 0, 0, width, height);
+      } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
+        ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
       } else {
-        // Fallback drawing shape
-        ctx.save();
-        ctx.translate(x_watch, y_watch);
-        ctx.rotate(angle);
-        ctx.strokeStyle = '#d4af37';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+        // Background fallback
+        ctx.fillStyle = '#0b132b';
+        ctx.fillRect(0, 0, width, height);
       }
-    } else if (cameraState === 'fallback' && results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.7) {
-      // Static photo with hand detected
-      const landmarks = results.multiHandLandmarks[0];
-      const handedness = results.multiHandedness[0];
+      ctx.restore();
 
-      const getX = (lm: any) => (1 - lm.x) * width;
-      const getY = (lm: any) => lm.y * height;
+      // 2. Draw overlay based on landmarks or manual sliders
+      const results = latestHandResults.current;
+      const confidence = results && results.multiHandLandmarks ? results.multiHandedness?.[0]?.score || 0.8 : 0;
 
-      const x_wrist = getX(landmarks[0]);
-      const y_wrist = getY(landmarks[0]);
-      const x_mcp = getX(landmarks[9]);
-      const y_mcp = getY(landmarks[9]);
+      if (currentCameraState === 'active' && results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.4) {
+        const landmarks = results.multiHandLandmarks[0];
+        const handedness = results.multiHandedness[0]; // Left vs Right hand
 
-      const vx = x_wrist - x_mcp;
-      const vy = y_wrist - y_mcp;
-      const handLength = Math.sqrt(vx * vx + vy * vy);
+        // Wrist base (0) and Middle Knuckle (9)
+        const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
+        const getY = (lm: any) => lm.y * height;
 
-      const ux = vx / handLength;
-      const uy = vy / handLength;
+        const x_wrist = getX(landmarks[0]);
+        const y_wrist = getY(landmarks[0]);
+        const x_mcp = getX(landmarks[9]);
+        const y_mcp = getY(landmarks[9]);
 
-      const x_watch = x_wrist + ux * (handLength * 0.18);
-      const y_watch = y_wrist + uy * (handLength * 0.18);
+        // Calculate direction vector from Middle Knuckle to Wrist (forearm axis)
+        const vx = x_wrist - x_mcp;
+        const vy = y_wrist - y_mcp;
+        const handLength = Math.sqrt(vx * vx + vy * vy);
 
-      const watchWidth = handLength * 0.42;
-      const angle = Math.atan2(vy, vx) + Math.PI / 2;
-      const isRightHand = handedness.label === 'Right';
+        const ux = vx / handLength;
+        const uy = vy / handLength;
 
-      if (overlayImageRef.current) {
-        const img = overlayImageRef.current;
-        const aspectRatio = img.naturalHeight / img.naturalWidth;
-        const watchHeight = watchWidth * aspectRatio;
+        // Project the watch slightly down the arm (past the wrist base)
+        const x_watch = x_wrist + ux * (handLength * 0.18);
+        const y_watch = y_wrist + uy * (handLength * 0.18);
 
-        ctx.save();
-        ctx.translate(x_watch, y_watch);
-        ctx.rotate(angle);
-        if (isRightHand) {
-          ctx.scale(-1, 1);
+        // Determine watch scale (dial size should be ~38% of hand length)
+        const watchWidth = handLength * 0.42;
+
+        // Rotate the watch along the arm direction
+        const angle = Math.atan2(vy, vx) + Math.PI / 2;
+
+        const isRightHand = handedness.label === 'Right';
+
+        // Draw the overlay
+        if (overlayImageRef.current) {
+          const img = overlayImageRef.current;
+          const aspectRatio = img.naturalHeight / img.naturalWidth;
+          const watchHeight = watchWidth * aspectRatio;
+
+          ctx.save();
+          ctx.translate(x_watch, y_watch);
+          ctx.rotate(angle);
+          
+          if (isRightHand) {
+            ctx.scale(-1, 1);
+          }
+
+          ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.translate(x_watch, y_watch);
+          ctx.rotate(angle);
+          ctx.strokeStyle = '#d4af37';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
         }
-        ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
-        ctx.restore();
-      }
-    } else {
-      // Manual dragging mode (fallback / denied / no hand found)
-      const x = manualPosition.x === 0 ? width / 2 : manualPosition.x;
-      const y = manualPosition.y === 0 ? height / 2 : manualPosition.y;
+      } else if (currentCameraState === 'fallback' && results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.4) {
+        // Static photo with hand detected
+        const landmarks = results.multiHandLandmarks[0];
+        const handedness = results.multiHandedness[0];
 
-      if (overlayImageRef.current) {
-        const img = overlayImageRef.current;
-        const aspectRatio = img.naturalHeight / img.naturalWidth;
-        const w = 150 * manualScale;
-        const h = w * aspectRatio;
+        const getX = (lm: any) => (1 - lm.x) * width;
+        const getY = (lm: any) => lm.y * height;
 
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate((manualRotation * Math.PI) / 180);
-        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        const x_wrist = getX(landmarks[0]);
+        const y_wrist = getY(landmarks[0]);
+        const x_mcp = getX(landmarks[9]);
+        const y_mcp = getY(landmarks[9]);
 
-        if (cameraState === 'fallback' || cameraState === 'denied') {
-          ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4, 4]);
-          ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
+        const vx = x_wrist - x_mcp;
+        const vy = y_wrist - y_mcp;
+        const handLength = Math.sqrt(vx * vx + vy * vy);
+
+        const ux = vx / handLength;
+        const uy = vy / handLength;
+
+        const x_watch = x_wrist + ux * (handLength * 0.18);
+        const y_watch = y_wrist + uy * (handLength * 0.18);
+
+        const watchWidth = handLength * 0.42;
+        const angle = Math.atan2(vy, vx) + Math.PI / 2;
+        const isRightHand = handedness.label === 'Right';
+
+        if (overlayImageRef.current) {
+          const img = overlayImageRef.current;
+          const aspectRatio = img.naturalHeight / img.naturalWidth;
+          const watchHeight = watchWidth * aspectRatio;
+
+          ctx.save();
+          ctx.translate(x_watch, y_watch);
+          ctx.rotate(angle);
+          if (isRightHand) {
+            ctx.scale(-1, 1);
+          }
+          ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
+          ctx.restore();
         }
-        ctx.restore();
+      } else {
+        // Manual dragging mode (fallback / denied / no hand found)
+        const x = manualPositionRef.current.x === 0 ? width / 2 : manualPositionRef.current.x;
+        const y = manualPositionRef.current.y === 0 ? height / 2 : manualPositionRef.current.y;
+
+        if (overlayImageRef.current) {
+          const img = overlayImageRef.current;
+          const aspectRatio = img.naturalHeight / img.naturalWidth;
+          const w = 150 * manualScaleRef.current;
+          const h = w * aspectRatio;
+
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate((manualRotationRef.current * Math.PI) / 180);
+          ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+          if (currentCameraState === 'fallback' || currentCameraState === 'denied') {
+            ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
+          }
+          ctx.restore();
+        }
       }
-    }
 
-    // 3. Draw debug overlay on the canvas
-    ctx.save();
-    ctx.font = '10px monospace';
-    ctx.fillStyle = '#ff3b30'; // Red color for visibility
-    const readyState = videoRef.current ? videoRef.current.readyState : 'null';
-    const paused = videoRef.current ? (videoRef.current.paused ? 'paused' : 'playing') : 'null';
-    const hasStream = videoRef.current && videoRef.current.srcObject ? 'has_stream' : 'no_stream';
-    ctx.fillText(`Debug: state=${cameraState} | ready=${readyState} | ${paused} | ${hasStream}`, 10, height - 15);
-    ctx.restore();
 
-    // Continue drawing loop at 60fps
-    if (cameraState === 'active' || cameraState === 'fallback') {
-      renderFrameId.current = requestAnimationFrame(drawLoop);
+    } catch (e) {
+      console.error('Error in canvas drawLoop:', e);
+    } finally {
+      const currentCameraState = cameraStateRef.current;
+      // Continue drawing loop at 60fps
+      if (currentCameraState === 'active' || currentCameraState === 'fallback') {
+        renderFrameId.current = requestAnimationFrame(drawLoop);
+      }
     }
   };
 
