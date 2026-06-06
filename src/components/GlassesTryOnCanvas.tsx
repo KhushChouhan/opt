@@ -631,7 +631,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
                   <h4 className="text-white font-bold text-base uppercase font-luxury">Camera Stream Blocked</h4>
                   <p className="text-xs text-gray-400 max-w-sm mx-auto mt-2 leading-relaxed">
                     Camera permissions were denied or are currently in use by another application. 
-                    Please click the camera icon in your browser's address bar to allow permission and reload, or upload a photo below to try on.
+                    Please click the camera icon in your browser&apos;s address bar to allow permission and reload, or upload a photo below to try on.
                   </p>
                 </div>
                 <label className="flex items-center space-x-2 px-4 py-2 bg-[#d4af37] text-[#060b13] hover:bg-[#d4af37]/95 rounded-md text-xs font-bold cursor-pointer transition-all">
