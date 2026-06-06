@@ -410,6 +410,16 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       }
     }
 
+    // 3. Draw debug overlay on the canvas
+    ctx.save();
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#ff3b30'; // Red color for visibility
+    const readyState = videoRef.current ? videoRef.current.readyState : 'null';
+    const paused = videoRef.current ? (videoRef.current.paused ? 'paused' : 'playing') : 'null';
+    const hasStream = videoRef.current && videoRef.current.srcObject ? 'has_stream' : 'no_stream';
+    ctx.fillText(`Debug: state=${cameraState} | ready=${readyState} | ${paused} | ${hasStream}`, 10, height - 15);
+    ctx.restore();
+
     // Continue drawing loop at 60fps
     if (cameraState === 'active' || cameraState === 'fallback') {
       renderFrameId.current = requestAnimationFrame(drawLoop);
@@ -690,7 +700,16 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             {/* Hidden video element */}
             <video
               ref={videoRef}
-              style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                height: '100%',
+                opacity: 0,
+                zIndex: -10,
+                pointerEvents: 'none'
+              }}
               playsInline
               muted
             />
