@@ -653,7 +653,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
             {/* Hidden video element */}
             <video
               ref={videoRef}
-              className="hidden"
+              style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
               playsInline
               muted
             />
