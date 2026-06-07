@@ -4,12 +4,17 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Camera, Upload, Check, AlertCircle, RefreshCw, ShoppingCart, HelpCircle, Sliders } from 'lucide-react';
 import { loadScript } from '@/lib/loadScript';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
+
+// Feature flags for try-on fitting engine A/B testing and local calibration debugging
+const USE_NEW_FITTING_ENGINE = true;
+const ENABLE_DEBUG_HUD = false; // Set to true to render nose bridge (168), nose tip (1), and pitch stats on canvas in local dev
 
 interface Product {
   id: string;
@@ -19,6 +24,12 @@ interface Product {
   description: string;
   image_url: string;
   overlay_image_url: string;
+  lens_image_url?: string;
+  reflection_image_url?: string;
+  overlay_scale?: number | null;
+  overlay_x_offset?: number | null;
+  overlay_y_offset?: number | null;
+  overlay_rotation_offset?: number | null;
   stock: number;
 }
 
@@ -35,6 +46,9 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   const renderFrameId = useRef<number | null>(null);
   const faceMeshRef = useRef<any>(null);
   const overlayImageRef = useRef<HTMLImageElement | null>(null);
+  const overlayCropRef = useRef<{ shiftX: number; shiftY: number } | null>(null);
+  const lensImageRef = useRef<HTMLImageElement | null>(null);
+  const reflectionImageRef = useRef<HTMLImageElement | null>(null);
   const uploadedImageRef = useRef<HTMLImageElement | null>(null);
   
   // Decoupled Landmark Ref (WebGL engine style)
@@ -81,6 +95,37 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Session details for Admin Live Calibration Mode
+  const { data: session } = useSession();
+  const [showCalibrator, setShowCalibrator] = useState(false);
+
+  useEffect(() => {
+    setShowCalibrator(!!session);
+  }, [session]);
+
+  // Live calibration override states
+  const [liveScale, setLiveScale] = useState<number>(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
+  const [liveXOffset, setLiveXOffset] = useState<number>(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
+  const [liveYOffset, setLiveYOffset] = useState<number>(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
+  const [liveRotationOffset, setLiveRotationOffset] = useState<number>(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+
+  const liveScaleRef = useRef(liveScale);
+  const liveXOffsetRef = useRef(liveXOffset);
+  const liveYOffsetRef = useRef(liveYOffset);
+  const liveRotationOffsetRef = useRef(liveRotationOffset);
+
+  useEffect(() => { liveScaleRef.current = liveScale; }, [liveScale]);
+  useEffect(() => { liveXOffsetRef.current = liveXOffset; }, [liveXOffset]);
+  useEffect(() => { liveYOffsetRef.current = liveYOffset; }, [liveYOffset]);
+  useEffect(() => { liveRotationOffsetRef.current = liveRotationOffset; }, [liveRotationOffset]);
+
+  useEffect(() => {
+    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
+    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
+    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
+    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+  }, [product]);
+
   // Initialize and load dependencies
   useEffect(() => {
     let active = true;
@@ -94,16 +139,110 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
         if (!active) return;
 
-        // Load overlay image
+        // Load overlay image with cache-busting to prevent cached non-CORS response errors
         const img = new Image();
-        img.src = product.overlay_image_url;
         img.crossOrigin = 'anonymous';
+        const cb = `cb=${Date.now()}`;
+        img.src = product.overlay_image_url.includes('?')
+          ? `${product.overlay_image_url}&${cb}`
+          : `${product.overlay_image_url}?${cb}`;
         img.onload = () => {
           overlayImageRef.current = img;
+          
+          // Auto-trim transparent padding to center the actual frame correctly
+          try {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.naturalWidth;
+            tempCanvas.height = img.naturalHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            if (tempCtx) {
+              tempCtx.drawImage(img, 0, 0);
+              const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+              const data = imgData.data;
+              
+              let minX = tempCanvas.width;
+              let maxX = 0;
+              let minY = tempCanvas.height;
+              let maxY = 0;
+              let hasPixels = false;
+              
+              for (let y = 0; y < tempCanvas.height; y++) {
+                for (let x = 0; x < tempCanvas.width; x++) {
+                  const alpha = data[(y * tempCanvas.width + x) * 4 + 3];
+                  // Use alpha > 30 to be robust against noise/semi-transparent compression artifacts
+                  if (alpha > 30) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                    hasPixels = true;
+                  }
+                }
+              }
+              
+              if (hasPixels) {
+                const w = maxX - minX + 1;
+                const h = maxY - minY + 1;
+                const actualCenterX = minX + w / 2;
+                const actualCenterY = minY + h / 2;
+                const dx = actualCenterX - img.naturalWidth / 2;
+                const dy = actualCenterY - img.naturalHeight / 2;
+                
+                overlayCropRef.current = {
+                  shiftX: -dx / img.naturalWidth,
+                  shiftY: -dy / img.naturalHeight
+                };
+                console.log('Auto-trim succeeded:', {
+                  w, h, dx, dy,
+                  shiftX: overlayCropRef.current.shiftX,
+                  shiftY: overlayCropRef.current.shiftY
+                });
+              } else {
+                overlayCropRef.current = { shiftX: 0, shiftY: 0 };
+              }
+            }
+          } catch (e) {
+            console.warn('Auto-trim failed (possibly CORS restrictions):', e);
+            overlayCropRef.current = { shiftX: 0, shiftY: 0 };
+          }
         };
         img.onerror = () => {
           console.error('Failed to load overlay image, using fallbacks.');
         };
+ 
+        // Load optional lens image with cache-busting
+        if (product.lens_image_url) {
+          const lensImg = new Image();
+          lensImg.crossOrigin = 'anonymous';
+          lensImg.src = product.lens_image_url.includes('?')
+            ? `${product.lens_image_url}&${cb}`
+            : `${product.lens_image_url}?${cb}`;
+          lensImg.onload = () => {
+            lensImageRef.current = lensImg;
+          };
+          lensImg.onerror = () => {
+            console.error('Failed to load lens image.');
+          };
+        } else {
+          lensImageRef.current = null;
+        }
+ 
+        // Load optional reflection image with cache-busting
+        if (product.reflection_image_url) {
+          const reflImg = new Image();
+          reflImg.crossOrigin = 'anonymous';
+          reflImg.src = product.reflection_image_url.includes('?')
+            ? `${product.reflection_image_url}&${cb}`
+            : `${product.reflection_image_url}?${cb}`;
+          reflImg.onload = () => {
+            reflectionImageRef.current = reflImg;
+          };
+          reflImg.onerror = () => {
+            console.error('Failed to load reflection image.');
+          };
+        } else {
+          reflectionImageRef.current = null;
+        }
 
         // Configure FaceMesh
         const FaceMeshClass = (window as any).FaceMesh;
@@ -295,36 +434,111 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       ctx.restore();
 
       // 2. Draw overlay based on landmarks or manual sliders
-      if (currentCameraState === 'active' && latestLandmarks.current) {
+      if ((currentCameraState === 'active' || currentCameraState === 'fallback') && latestLandmarks.current) {
         const landmarks = latestLandmarks.current;
         
         const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
         const getY = (lm: any) => lm.y * height;
 
-        const x_nose = (getX(landmarks[168]) + getX(landmarks[6])) / 2;
-        const y_nose = (getY(landmarks[168]) + getY(landmarks[6])) / 2;
+        const x_left_eye = getX(landmarks[33]);
+        const y_left_eye = getY(landmarks[33]);
+        const x_right_eye = getX(landmarks[263]);
+        const y_right_eye = getY(landmarks[263]);
+
+        const dx_eyes = x_left_eye - x_right_eye;
+        const dy_eyes = y_left_eye - y_right_eye;
+        const eyeDistance = Math.sqrt(dx_eyes * dx_eyes + dy_eyes * dy_eyes);
+
+        // Center computed from eye outer corners (33 and 263)
+        const x_center = (x_left_eye + x_right_eye) / 2;
+        const y_center = (y_left_eye + y_right_eye) / 2;
 
         const x_left = getX(landmarks[234]);
-        const y_left = getY(landmarks[234]);
         const x_right = getX(landmarks[454]);
-        const y_right = getY(landmarks[454]);
 
-        const dx = x_right - x_left;
-        const dy = y_right - y_left;
+        const dx = x_left - x_right;
+        const dy = (currentCameraState === 'active' ? getY(landmarks[234]) : getY(landmarks[234])) - (currentCameraState === 'active' ? getY(landmarks[454]) : getY(landmarks[454]));
         const baseDistance = Math.sqrt(dx * dx + dy * dy);
         
-        let glassesWidth = baseDistance * 1.12; 
+        // Retrieve live try-on alignment scaling and positioning overrides
+        const overlayScale = liveScaleRef.current;
+        const overlayXOffset = liveXOffsetRef.current;
+        const overlayYOffset = liveYOffsetRef.current;
+        const overlayRotationOffset = liveRotationOffsetRef.current;
 
         // Yaw/Perspective correction
-        const dist_to_left = Math.abs(x_nose - x_left);
-        const dist_to_right = Math.abs(x_right - x_nose);
+        const dist_to_left = Math.abs(x_center - x_left);
+        const dist_to_right = Math.abs(x_right - x_center);
         const symmetry_ratio = Math.min(dist_to_left, dist_to_right) / Math.max(dist_to_left, dist_to_right);
-        
-        if (symmetry_ratio < 0.95) {
-          glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
-        }
+        const yaw = (dist_to_left - dist_to_right) / (dist_to_left + dist_to_right || 1);
 
-        const rollAngle = Math.atan2(dy, dx);
+        // Rotation angle based strictly on eyes (extremely stable, no perspective distortion)
+        const rollAngle = Math.atan2(y_left_eye - y_right_eye, x_left_eye - x_right_eye);
+
+        let glassesWidth = 0;
+        let x_center_shifted = 0;
+        let y_center_shifted = 0;
+
+        if (USE_NEW_FITTING_ENGINE) {
+          const x_168 = getX(landmarks[168]);
+          const y_168 = getY(landmarks[168]);
+          const x_tip = getX(landmarks[1]);
+          const y_tip = getY(landmarks[1]);
+
+          // Blended width scaling: blend cheekbone width and pupil distance for wide-face protection
+          glassesWidth = (baseDistance * 0.6 + eyeDistance * 1.2) * 0.956 * overlayScale;
+          if (symmetry_ratio < 0.95) {
+            glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
+          }
+
+          // Pitch compensation: detect up/down tilt using normalized nose-tip relative position
+          const pitch = (y_tip - y_168) / eyeDistance;
+          const pitchCompensation = -(pitch - 0.35) * eyeDistance * 0.30;
+
+          // Composite positioning: anchor to landmark 168 + vertical lens shift + tilt correction
+          x_center_shifted = x_168 + overlayXOffset;
+          y_center_shifted = y_168 + eyeDistance * 0.08 + pitchCompensation + overlayYOffset;
+
+          // Render temporary debug visuals if enabled locally
+          if (ENABLE_DEBUG_HUD) {
+            ctx.save();
+            // Draw landmark 168 (Nose bridge) in blue
+            ctx.fillStyle = 'blue';
+            ctx.beginPath();
+            ctx.arc(x_168, y_168, 4, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Draw landmark 1 (Nose tip) in red
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(x_tip, y_tip, 4, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Draw final calculated anchor position in gold
+            ctx.fillStyle = 'gold';
+            ctx.beginPath();
+            ctx.arc(x_center_shifted, y_center_shifted, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Render overlay text details
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(10, 40, 220, 60);
+            ctx.fillStyle = '#d4af37';
+            ctx.font = 'bold 11px monospace';
+            ctx.fillText(`Pitch: ${pitch.toFixed(3)}`, 20, 58);
+            ctx.fillText(`Comp: ${pitchCompensation.toFixed(1)}px`, 20, 74);
+            ctx.fillText(`Width: ${glassesWidth.toFixed(1)}px`, 20, 90);
+            ctx.restore();
+          }
+        } else {
+          // Old engine math:
+          glassesWidth = baseDistance * 1.53 * overlayScale;
+          if (symmetry_ratio < 0.95) {
+            glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
+          }
+          x_center_shifted = x_center + overlayXOffset;
+          y_center_shifted = y_center + eyeDistance * 0.16 + overlayYOffset;
+        }
 
         if (overlayImageRef.current) {
           const img = overlayImageRef.current;
@@ -332,44 +546,113 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           const glassesHeight = glassesWidth * aspectRatio;
 
           ctx.save();
-          ctx.translate(x_nose, y_nose);
-          ctx.rotate(rollAngle);
-          ctx.drawImage(img, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
+          ctx.translate(x_center_shifted, y_center_shifted);
+          ctx.rotate(rollAngle + (overlayRotationOffset * Math.PI) / 180);
+          
+          // Apply 3D perspective skew based on head yaw
+          ctx.transform(1, 0, yaw * 0.22, 1, 0, 0);
+
+          let shiftX = 0;
+          let shiftY = 0;
+          if (overlayCropRef.current) {
+            shiftX = overlayCropRef.current.shiftX * glassesWidth;
+            shiftY = overlayCropRef.current.shiftY * glassesHeight;
+          }
+
+          // 1. Draw Lens Layer (Behind the Frame)
+          if (lensImageRef.current || product.category === 'glasses') {
+            ctx.save();
+            if (lensImageRef.current) {
+              ctx.globalAlpha = 0.65; // G-15 Green Lens opacity = 65%
+              // Custom Lens Layer PNG (aligned with shifted frame center)
+              ctx.drawImage(lensImageRef.current, -glassesWidth / 2 + shiftX, -glassesHeight / 2 + shiftY, glassesWidth, glassesHeight);
+            } else if (product.category === 'glasses') {
+              ctx.globalAlpha = 0.15; // Clear glass blue-light tint
+              // Programmatic Lens Tint Layer (Locked to center to align with trimmed frame center)
+              const radiusX = glassesWidth * 0.165; 
+              const radiusY = glassesHeight * 0.32;
+ 
+              ctx.beginPath();
+              ctx.ellipse(-glassesWidth * 0.21 + shiftX, shiftY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.ellipse(glassesWidth * 0.21 + shiftX, shiftY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+ 
+              ctx.fillStyle = 'rgba(215, 230, 255, 0.15)'; // Blue-light clear tint
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+
+          // 2. Draw Frame Layer (Full Opacity, shifted dynamically based on padding)
+          ctx.save();
+          ctx.globalAlpha = 1.0;
+          ctx.drawImage(img, -glassesWidth / 2 + shiftX, -glassesHeight / 2 + shiftY, glassesWidth, glassesHeight);
+          ctx.restore();
+
+          // 3. Draw Reflection Layer (On Top)
+          if (product.category === 'glasses' || product.category === 'sunglasses') {
+            ctx.save();
+            if (reflectionImageRef.current) {
+              ctx.globalAlpha = 0.25;
+              ctx.drawImage(reflectionImageRef.current, -glassesWidth / 2 + shiftX, -glassesHeight / 2 + shiftY, glassesWidth, glassesHeight);
+            } else {
+              // Programmatic Reflection highlights using gradients (Drawn relative to trimmed frame center)
+              ctx.globalAlpha = 0.30; 
+              
+              const radiusX = glassesWidth * 0.165;
+              const radiusY = glassesHeight * 0.32;
+ 
+              const lx = -glassesWidth * 0.21 + shiftX;
+              const rx = glassesWidth * 0.21 + shiftX;
+              const ly = shiftY;
+              const ry = shiftY;
+ 
+              // Draw left reflection highlight
+              const leftGrad = ctx.createLinearGradient(lx - radiusX, ly - radiusY, lx + radiusX, ly + radiusY);
+              leftGrad.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(0.40, 'rgba(255, 255, 255, 0.40)'); // bright diagonal streak
+              leftGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(0.60, 'rgba(255, 255, 255, 0.20)'); // softer streak
+              leftGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+ 
+              ctx.fillStyle = leftGrad;
+              ctx.beginPath();
+              ctx.ellipse(lx, ly, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.fill();
+ 
+              // Draw right reflection highlight
+              const rightGrad = ctx.createLinearGradient(rx - radiusX, ry - radiusY, rx + radiusX, ry + radiusY);
+              rightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(0.40, 'rgba(255, 255, 255, 0.40)');
+              rightGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(0.60, 'rgba(255, 255, 255, 0.20)');
+              rightGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+ 
+              ctx.fillStyle = rightGrad;
+              ctx.beginPath();
+              ctx.ellipse(rx, ry, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+
           ctx.restore();
         } else {
           ctx.save();
-          ctx.translate(x_nose, y_nose);
-          ctx.rotate(rollAngle);
+          ctx.translate(x_center_shifted, y_center_shifted);
+          ctx.rotate(rollAngle + (overlayRotationOffset * Math.PI) / 180);
           ctx.strokeStyle = '#d4af37';
           ctx.lineWidth = 4;
           ctx.strokeRect(-glassesWidth / 2, -10, glassesWidth, 20);
           ctx.restore();
         }
-      } else if (currentCameraState === 'fallback' && latestLandmarks.current) {
-        // Static photo with face detected
-        const landmarks = latestLandmarks.current;
-        const getX = (lm: any) => (1 - lm.x) * width;
-        const getY = (lm: any) => lm.y * height;
-        const x_nose = (getX(landmarks[168]) + getX(landmarks[6])) / 2;
-        const y_nose = (getY(landmarks[168]) + getY(landmarks[6])) / 2;
-        const x_left = getX(landmarks[234]);
-        const x_right = getX(landmarks[454]);
-        const dx = x_right - x_left;
-        const dy = getY(landmarks[454]) - getY(landmarks[234]);
-        const baseDistance = Math.sqrt(dx * dx + dy * dy);
-        const glassesWidth = baseDistance * 1.12;
-        const rollAngle = Math.atan2(dy, dx);
 
-        if (overlayImageRef.current) {
-          const img = overlayImageRef.current;
-          const aspectRatio = img.naturalHeight / img.naturalWidth;
-          const glassesHeight = glassesWidth * aspectRatio;
-          ctx.save();
-          ctx.translate(x_nose, y_nose);
-          ctx.rotate(rollAngle);
-          ctx.drawImage(img, -glassesWidth / 2, -glassesHeight / 2, glassesWidth, glassesHeight);
-          ctx.restore();
-        }
+        // Calibration debug landmarks removed for production launch readiness
       } else {
         // Manual dragging mode (fallback / denied / no face found)
         const x = manualPositionRef.current.x === 0 ? width / 2 : manualPositionRef.current.x;
@@ -384,7 +667,79 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate((manualRotationRef.current * Math.PI) / 180);
+          
+          // 1. Draw Lenses (Behind Frame)
+          if (lensImageRef.current || product.category === 'glasses') {
+            ctx.save();
+            if (lensImageRef.current) {
+              ctx.globalAlpha = 0.65;
+              ctx.drawImage(lensImageRef.current, -w / 2, -h / 2, w, h);
+            } else if (product.category === 'glasses') {
+              ctx.globalAlpha = 0.15; // Clear glass blue-light tint
+              const radiusX = w * 0.15;
+              const radiusY = h * 0.28;
+              
+              ctx.beginPath();
+              ctx.ellipse(-w * 0.22, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.ellipse(w * 0.22, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              
+              ctx.fillStyle = 'rgba(215, 230, 255, 0.15)'; // Blue-light clear tint
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+          
+          // 2. Draw Frame (Full Opacity)
+          ctx.save();
+          ctx.globalAlpha = 1.0;
           ctx.drawImage(img, -w / 2, -h / 2, w, h);
+          ctx.restore();
+
+          // 3. Draw Reflections (On Top)
+          if (product.category === 'glasses' || product.category === 'sunglasses') {
+            ctx.save();
+            if (reflectionImageRef.current) {
+              ctx.globalAlpha = 0.25;
+              ctx.drawImage(reflectionImageRef.current, -w / 2, -h / 2, w, h);
+            } else {
+              ctx.globalAlpha = 0.30;
+              const radiusX = w * 0.15;
+              const radiusY = h * 0.28;
+
+              // Left lens reflection
+              const leftGrad = ctx.createLinearGradient(-w * 0.22 - radiusX, -radiusY, -w * 0.22 + radiusX, radiusY);
+              leftGrad.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(0.40, 'rgba(255, 255, 255, 0.40)');
+              leftGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(0.60, 'rgba(255, 255, 255, 0.20)');
+              leftGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.0)');
+              leftGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+
+              ctx.fillStyle = leftGrad;
+              ctx.beginPath();
+              ctx.ellipse(-w * 0.22, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.fill();
+
+              // Right lens reflection
+              const rightGrad = ctx.createLinearGradient(w * 0.22 - radiusX, -radiusY, w * 0.22 + radiusX, radiusY);
+              rightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(0.40, 'rgba(255, 255, 255, 0.40)');
+              rightGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(0.60, 'rgba(255, 255, 255, 0.20)');
+              rightGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.0)');
+              rightGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+
+              ctx.fillStyle = rightGrad;
+              ctx.beginPath();
+              ctx.ellipse(w * 0.22, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
           
           ctx.strokeStyle = 'rgba(212, 175, 55, 0.4)';
           ctx.lineWidth = 1.5;
@@ -751,6 +1106,205 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               )}
             </div>
           </div>
+
+          {/* Admin Live Calibration HUD */}
+          {showCalibrator && (
+            <div className="p-6 glass-panel rounded-lg border border-[#d4af37]/45 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider flex items-center">
+                  <Sliders className="w-4 h-4 mr-2" />
+                  Admin Live Calibration Panel
+                </h4>
+                <span className="text-[9px] px-2 py-0.5 bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] font-semibold rounded uppercase tracking-wider">
+                  Live Mode
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs text-white">
+                {/* Scale factor */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Scale factor (Width)</span>
+                    <div className="flex items-center space-x-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveScale(prev => Math.max(0.5, Number((prev - 0.01).toFixed(2))))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        -
+                      </button>
+                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveScale.toFixed(2)}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveScale(prev => Math.min(2.0, Number((prev + 0.01).toFixed(2))))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.01"
+                    value={liveScale}
+                    onChange={(e) => setLiveScale(parseFloat(e.target.value))}
+                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                  />
+                </div>
+
+                {/* Rotation Bias */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Rotation Bias (degrees)</span>
+                    <div className="flex items-center space-x-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveRotationOffset(prev => Math.max(-45, prev - 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        -
+                      </button>
+                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveRotationOffset}°</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveRotationOffset(prev => Math.min(45, prev + 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="-45"
+                    max="45"
+                    step="1"
+                    value={liveRotationOffset}
+                    onChange={(e) => setLiveRotationOffset(parseInt(e.target.value))}
+                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                  />
+                </div>
+
+                {/* X Offset */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Horizontal Shift (X Axis)</span>
+                    <div className="flex items-center space-x-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveXOffset(prev => Math.max(-100, prev - 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        -
+                      </button>
+                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveXOffset}px</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveXOffset(prev => Math.min(100, prev + 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="-100"
+                    max="100"
+                    step="1"
+                    value={liveXOffset}
+                    onChange={(e) => setLiveXOffset(parseInt(e.target.value))}
+                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                  />
+                </div>
+
+                {/* Y Offset */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Vertical Shift (Y Axis)</span>
+                    <div className="flex items-center space-x-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveYOffset(prev => Math.max(-100, prev - 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        -
+                      </button>
+                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveYOffset}px</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveYOffset(prev => Math.min(100, prev + 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="-100"
+                    max="100"
+                    step="1"
+                    value={liveYOffset}
+                    onChange={(e) => setLiveYOffset(parseInt(e.target.value))}
+                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2 space-x-3">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
+                    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
+                    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
+                    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+                  }}
+                  className="text-xs"
+                >
+                  Reset Settings
+                </Button>
+                <Button 
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/products/${product.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          name: product.name,
+                          category: product.category,
+                          price: product.price,
+                          description: product.description,
+                          image_url: product.image_url,
+                          overlay_image_url: product.overlay_image_url,
+                          lens_image_url: product.lens_image_url,
+                          reflection_image_url: product.reflection_image_url,
+                          stock: product.stock,
+                          overlay_scale: liveScale,
+                          overlay_x_offset: liveXOffset,
+                          overlay_y_offset: liveYOffset,
+                          overlay_rotation_offset: liveRotationOffset
+                        })
+                      });
+                      if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(data.error || 'Failed to save calibration settings.');
+                      }
+                      alert('Calibration settings successfully saved to database!');
+                    } catch (err: any) {
+                      alert(err.message || 'Error saving calibration settings.');
+                    }
+                  }}
+                  className="text-xs text-[#060b13] bg-[#d4af37] hover:bg-[#d4af37]/90"
+                >
+                  Save Settings
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Manual adjustment HUD if camera denied/fallback/no face */}
           {(cameraState === 'fallback' || cameraState === 'denied' || !faceDetected) && (

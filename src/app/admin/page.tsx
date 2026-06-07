@@ -31,6 +31,12 @@ interface Product {
   description: string;
   image_url: string;
   overlay_image_url: string;
+  lens_image_url?: string;
+  reflection_image_url?: string;
+  overlay_scale?: number | null;
+  overlay_x_offset?: number | null;
+  overlay_y_offset?: number | null;
+  overlay_rotation_offset?: number | null;
   stock: number;
   created_at: string;
 }
@@ -65,13 +71,19 @@ export default function AdminDashboard() {
     description: '',
     image_url: '',
     overlay_image_url: '',
+    lens_image_url: '',
+    reflection_image_url: '',
+    overlay_scale: '',
+    overlay_x_offset: '',
+    overlay_y_offset: '',
+    overlay_rotation_offset: '',
     stock: '0',
   });
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Cloudinary Upload States
-  const [uploadingField, setUploadingField] = useState<'main' | 'overlay' | null>(null);
+  const [uploadingField, setUploadingField] = useState<'main' | 'overlay' | 'lens' | 'reflection' | null>(null);
 
   // Status counters
   const totalOrders = orders ? orders.length : 0;
@@ -103,7 +115,7 @@ export default function AdminDashboard() {
   };
 
   // Cloudinary Direct Upload
-  const handleCloudinaryUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'main' | 'overlay') => {
+  const handleCloudinaryUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'main' | 'overlay' | 'lens' | 'reflection') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -140,7 +152,7 @@ export default function AdminDashboard() {
       const imageUrl = data.secure_url;
       setProductForm(prev => ({
         ...prev,
-        [field === 'main' ? 'image_url' : 'overlay_image_url']: imageUrl,
+        [field === 'main' ? 'image_url' : field === 'overlay' ? 'overlay_image_url' : field === 'lens' ? 'lens_image_url' : 'reflection_image_url']: imageUrl,
       }));
 
     } catch (err: unknown) {
@@ -162,6 +174,12 @@ export default function AdminDashboard() {
       description: '',
       image_url: '',
       overlay_image_url: '',
+      lens_image_url: '',
+      reflection_image_url: '',
+      overlay_scale: '1.0',
+      overlay_x_offset: '0.0',
+      overlay_y_offset: '0.0',
+      overlay_rotation_offset: '0.0',
       stock: '10',
     });
     setFormError('');
@@ -177,6 +195,12 @@ export default function AdminDashboard() {
       description: product.description || '',
       image_url: product.image_url,
       overlay_image_url: product.overlay_image_url,
+      lens_image_url: product.lens_image_url || '',
+      reflection_image_url: product.reflection_image_url || '',
+      overlay_scale: product.overlay_scale !== undefined && product.overlay_scale !== null ? product.overlay_scale.toString() : '1.0',
+      overlay_x_offset: product.overlay_x_offset !== undefined && product.overlay_x_offset !== null ? product.overlay_x_offset.toString() : '0.0',
+      overlay_y_offset: product.overlay_y_offset !== undefined && product.overlay_y_offset !== null ? product.overlay_y_offset.toString() : '0.0',
+      overlay_rotation_offset: product.overlay_rotation_offset !== undefined && product.overlay_rotation_offset !== null ? product.overlay_rotation_offset.toString() : '0.0',
       stock: product.stock.toString(),
     });
     setFormError('');
@@ -188,7 +212,7 @@ export default function AdminDashboard() {
     setFormError('');
     setIsSubmitting(true);
 
-    const { name, price, image_url, overlay_image_url, stock } = productForm;
+    const { name, price, image_url, overlay_image_url, lens_image_url, reflection_image_url, overlay_scale, overlay_x_offset, overlay_y_offset, overlay_rotation_offset, stock } = productForm;
 
     if (!name.trim()) {
       setFormError('Product name is required.');
@@ -216,6 +240,42 @@ export default function AdminDashboard() {
 
     if (!overlay_image_url.startsWith('http') && !overlay_image_url.startsWith('/')) {
       setFormError('Please upload or provide a valid transparent overlay PNG path.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (lens_image_url && !lens_image_url.startsWith('http') && !lens_image_url.startsWith('/')) {
+      setFormError('Please upload or provide a valid lens overlay PNG path.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (reflection_image_url && !reflection_image_url.startsWith('http') && !reflection_image_url.startsWith('/')) {
+      setFormError('Please upload or provide a valid reflection overlay PNG path.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (overlay_scale && isNaN(parseFloat(overlay_scale))) {
+      setFormError('Please enter a valid number for Try-On Scale override.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (overlay_x_offset && isNaN(parseFloat(overlay_x_offset))) {
+      setFormError('Please enter a valid number for Try-On X-Offset override.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (overlay_y_offset && isNaN(parseFloat(overlay_y_offset))) {
+      setFormError('Please enter a valid number for Try-On Y-Offset override.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (overlay_rotation_offset && isNaN(parseFloat(overlay_rotation_offset))) {
+      setFormError('Please enter a valid number for Try-On Rotation override.');
       setIsSubmitting(false);
       return;
     }
@@ -677,6 +737,138 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+
+          {(productForm.category === 'glasses' || productForm.category === 'sunglasses') && (
+            <>
+              {/* Cloudinary Lens PNG Upload Field */}
+              <div className="space-y-1.5">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
+                  Optional Lens Image (PNG overlay, e.g. custom tint)
+                </span>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="https://res.cloudinary.com/... or Upload lens PNG"
+                    value={productForm.lens_image_url}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, lens_image_url: e.target.value }))}
+                    className="flex-grow"
+                  />
+                  <label className="flex items-center justify-center px-4 bg-[#1c2541] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+                    {uploadingField === 'lens' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#d4af37]" />
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-1.5 shrink-0" />
+                        <span>Upload</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleCloudinaryUpload(e, 'lens')}
+                      disabled={uploadingField !== null}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                {productForm.lens_image_url && (
+                  <div className="relative w-16 h-16 rounded border border-gray-800 overflow-hidden bg-black/30">
+                    <Image src={productForm.lens_image_url} alt="Preview lens" fill className="object-contain" />
+                  </div>
+                )}
+              </div>
+
+              {/* Cloudinary Reflection PNG Upload Field */}
+              <div className="space-y-1.5">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
+                  Optional Reflection Image (PNG overlay, e.g. custom reflections)
+                </span>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="https://res.cloudinary.com/... or Upload reflection PNG"
+                    value={productForm.reflection_image_url}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, reflection_image_url: e.target.value }))}
+                    className="flex-grow"
+                  />
+                  <label className="flex items-center justify-center px-4 bg-[#1c2541] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+                    {uploadingField === 'reflection' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#d4af37]" />
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-1.5 shrink-0" />
+                        <span>Upload</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleCloudinaryUpload(e, 'reflection')}
+                      disabled={uploadingField !== null}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                {productForm.reflection_image_url && (
+                  <div className="relative w-16 h-16 rounded border border-gray-800 overflow-hidden bg-black/30">
+                    <Image src={productForm.reflection_image_url} alt="Preview reflection" fill className="object-contain" />
+                  </div>
+                )}
+              </div>
+
+              {/* Try-On Scale, Rotation, X-Offset & Y-Offset Overrides */}
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-800/60 pt-3.5 mt-2">
+                <div>
+                  <Input
+                    label="Scale Override"
+                    type="text"
+                    placeholder="e.g. 1.0"
+                    value={productForm.overlay_scale}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, overlay_scale: e.target.value }))}
+                  />
+                  <p className="text-[9px] text-gray-500 mt-1">
+                    Width multiplier (1.0 = default 1.53). E.g. 0.9 is -10%.
+                  </p>
+                </div>
+                <div>
+                  <Input
+                    label="Rotation Override (deg)"
+                    type="text"
+                    placeholder="e.g. 0.0"
+                    value={productForm.overlay_rotation_offset}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, overlay_rotation_offset: e.target.value }))}
+                  />
+                  <p className="text-[9px] text-gray-500 mt-1">
+                    Slight rotation offset in degrees. Positive rotates clockwise.
+                  </p>
+                </div>
+                <div>
+                  <Input
+                    label="X-Offset (px)"
+                    type="text"
+                    placeholder="e.g. 0.0"
+                    value={productForm.overlay_x_offset}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, overlay_x_offset: e.target.value }))}
+                  />
+                  <p className="text-[9px] text-gray-500 mt-1">
+                    Horizontal shift. Positive moves right, negative left.
+                  </p>
+                </div>
+                <div>
+                  <Input
+                    label="Y-Offset (px)"
+                    type="text"
+                    placeholder="e.g. 0.0"
+                    value={productForm.overlay_y_offset}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, overlay_y_offset: e.target.value }))}
+                  />
+                  <p className="text-[9px] text-gray-500 mt-1">
+                    Vertical shift. Positive moves down, negative up (e.g. -4).
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="pt-2 flex space-x-3">
             <Button
