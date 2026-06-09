@@ -1,9 +1,25 @@
 import type { Metadata } from 'next';
+import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 import './globals.css';
 import Providers from '@/components/Providers';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import FlashDealBanner from '@/components/FlashDealBanner';
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Hariyana Watch & Opticals | Virtual Try-On Store',
@@ -17,9 +33,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="antialiased min-h-screen flex flex-col bg-[#060b13] text-[#f3f4f6]">
+    <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
+      <body className="antialiased min-h-screen flex flex-col bg-[#0D0D0F] text-[#f3f4f6] font-sans">
         <Providers>
+          <FlashDealBanner />
           <Navbar />
           <main className="flex-grow">
             {children}

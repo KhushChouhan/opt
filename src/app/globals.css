@@ -1,88 +1,109 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-sans: 'Plus Jakarta Sans', 'Outfit', sans-serif;
-  --font-serif: 'Cinzel', serif;
-  --navy-dark: #060b13;
-  --navy-medium: #0b132b;
-  --navy-light: #1c2541;
-  --gold-primary: #d4af37;
-  --gold-light: #f3e5ab;
-  --gold-dark: #aa7c11;
+  --charcoal: #0D0D0F;
+  --surface: #141418;
+  --gold: #C9A84C;
+  --muted: #2A2A30;
   --foreground: #f3f4f6;
-  --background: #060b13;
+  --background: #0D0D0F;
+  --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-sans);
   overflow-x: hidden;
 }
 
 h1, h2, h3, .font-luxury {
-  font-family: var(--font-serif);
+  font-family: var(--font-display), 'Cormorant Garamond', serif;
+}
+
+/* Section Padding Scale Utilities */
+.section-sm {
+  padding-top: 3rem; /* py-12 */
+  padding-bottom: 3rem;
+}
+.section-md {
+  padding-top: 5rem; /* py-20 */
+  padding-bottom: 5rem;
+}
+.section-lg {
+  padding-top: 7rem; /* py-28 */
+  padding-bottom: 7rem;
 }
 
 /* Glassmorphism utility card styles */
 .glass-panel {
-  background: rgba(11, 19, 43, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(212, 175, 55, 0.15);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  background: rgba(20, 20, 24, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
 .glass-panel-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s var(--ease-luxury);
 }
 
 .glass-panel-hover:hover {
-  background: rgba(28, 37, 65, 0.8);
-  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(42, 42, 48, 0.85);
+  border-color: rgba(201, 168, 76, 0.35);
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px 0 rgba(212, 175, 55, 0.1);
+  box-shadow: 0 12px 40px 0 rgba(201, 168, 76, 0.1);
 }
 
-/* Custom button states */
-.btn-gold {
-  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-dark) 100%);
-  color: #060b13;
-  font-weight: 600;
-  transition: all 0.3s ease;
+/* Premium Button styling with gradient border animations */
+.btn-premium-gradient {
+  position: relative;
+  background: var(--surface);
   border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: all 0.3s var(--ease-luxury);
 }
 
-.btn-gold:hover {
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
-  transform: scale(1.02);
+.btn-premium-gradient::before {
+  content: '';
+  position: absolute;
+  top: -1px; right: -1px; bottom: -1px; left: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #C9A84C, #2A2A30, #C9A84C, #FFFFFF);
+  background-size: 300% 100%;
+  animation: border-flow 4s linear infinite;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
 }
 
-.btn-outline-gold {
-  background: transparent;
-  color: var(--gold-primary);
-  border: 1px solid var(--gold-primary);
-  font-weight: 500;
-  transition: all 0.3s ease;
+.btn-premium-gradient:hover::before {
+  opacity: 1;
 }
 
-.btn-outline-gold:hover {
-  background: rgba(212, 175, 55, 0.1);
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+.btn-premium-gradient:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(201, 168, 76, 0.15);
 }
 
 /* Micro-animations */
+@keyframes border-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
 @keyframes pulse-gold {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
   }
   50% {
-    opacity: .8;
+    opacity: .7;
     transform: scale(1.05);
   }
 }
@@ -98,7 +119,7 @@ h1, h2, h3, .font-luxury {
   left: 0;
   width: 100%;
   height: 2px;
-  background: rgba(212, 175, 55, 0.5);
+  background: rgba(201, 168, 76, 0.4);
   animation: scan 3s linear infinite;
   z-index: 10;
 }

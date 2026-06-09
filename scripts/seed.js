@@ -99,7 +99,7 @@ async function runSeed() {
       category: 'glasses',
       price: 1499.00,
       description: 'Elegant rectangular eyeglasses with a matte black metal frame. Perfect for daily office wear.',
-      image_url: 'https://res.cloudinary.com/demo/image/upload/v1672322322/sample_glasses_product.jpg',
+      image_url: '/images/hero_glasses.png',
       overlay_image_url: '/images/overlays/glasses_classic.png',
       stock: 15
     },
@@ -108,7 +108,7 @@ async function runSeed() {
       category: 'glasses',
       price: 4500.00,
       description: 'Timeless gold metal wireframe aviator eyeglasses. Light, comfortable, and durable.',
-      image_url: 'https://res.cloudinary.com/demo/image/upload/v1672322322/sample_glasses_gold.jpg',
+      image_url: '/images/hero_glasses.png',
       overlay_image_url: '/images/overlays/glasses_gold.png',
       stock: 8
     },
@@ -117,7 +117,7 @@ async function runSeed() {
       category: 'sunglasses',
       price: 2199.00,
       description: 'Aero-dynamic sports sunglasses with UV protection and a sleek wrap-around profile.',
-      image_url: 'https://res.cloudinary.com/demo/image/upload/v1672322322/sample_sunglasses_sports.jpg',
+      image_url: '/images/hero_sunglasses.png',
       overlay_image_url: '/images/overlays/sunglasses_sports.png',
       stock: 20
     },
@@ -126,7 +126,7 @@ async function runSeed() {
       category: 'sunglasses',
       price: 8999.00,
       description: 'The iconic wayfarer sunglasses with green classic G-15 tinted lenses. Absolute style statement.',
-      image_url: 'https://res.cloudinary.com/demo/image/upload/v1672322322/sample_sunglasses_wayfarer.jpg',
+      image_url: '/images/hero_sunglasses.png',
       overlay_image_url: '/images/overlays/sunglasses_wayfarer.png',
       stock: 5
     },
@@ -135,7 +135,7 @@ async function runSeed() {
       category: 'watches',
       price: 3299.00,
       description: 'Classic analog watch with a brown leather strap and deep navy blue dial. Perfect for formal wear.',
-      image_url: 'https://res.cloudinary.com/demo/image/upload/v1672322322/sample_watch_titan.jpg',
+      image_url: '/images/hero_watch.png',
       overlay_image_url: '/images/overlays/watch_classic.png',
       stock: 12
     },
@@ -144,7 +144,7 @@ async function runSeed() {
       category: 'watches',
       price: 4495.00,
       description: 'Active black steel chronograph watch with multi-dial display and dynamic red accents.',
-      image_url: 'https://res.cloudinary.com/demo/image/upload/v1672322322/sample_watch_fastrack.jpg',
+      image_url: '/images/hero_watch.png',
       overlay_image_url: '/images/overlays/watch_sporty.png',
       stock: 10
     }
@@ -167,7 +167,15 @@ async function runSeed() {
         console.error(`Error inserting ${product.name}:`, insertProdError);
       }
     } else {
-      console.log(`Product ${product.name} already exists. Skipping.`);
+      console.log(`Product ${product.name} already exists. Updating details and local image URL...`);
+      const { error: updateProdError } = await supabase
+        .from('products')
+        .update(product)
+        .eq('id', existingProduct.id);
+
+      if (updateProdError) {
+        console.error(`Error updating ${product.name}:`, updateProdError);
+      }
     }
   }
 
