@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { 
-  Glasses, Watch, Shield, Camera, Send, CheckCircle, 
+  Glasses, Shield, Camera, Send, CheckCircle, 
   Store, User, Star, ChevronLeft, ChevronRight, X, 
   ShoppingCart, Flame, AlertCircle, RefreshCw 
 } from 'lucide-react';
@@ -96,7 +96,7 @@ export default function Home() {
   const router = useRouter();
   
   // API Fetch SWR
-  const { data: dbProducts, error, isLoading } = useSWR<Product[]>('/api/products', fetcher);
+  const { data: dbProducts, isLoading } = useSWR<Product[]>('/api/products', fetcher);
   const products = dbProducts || fallbackProducts;
 
   // 1. Hero Slider States
@@ -228,8 +228,9 @@ export default function Home() {
         orderId,
         productName: selectedProductForOrder.name
       });
-    } catch (err: any) {
-      setCheckoutError(err.message || 'An unexpected database error occurred. Please try again.');
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'An unexpected database error occurred. Please try again.';
+      setCheckoutError(errMsg);
     } finally {
       setIsSubmittingOrder(false);
     }
