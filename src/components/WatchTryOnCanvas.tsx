@@ -3,8 +3,10 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Camera, Upload, Check, AlertCircle, RefreshCw, ShoppingCart, HelpCircle, Sliders } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { Camera, Upload, Check, AlertCircle, RefreshCw, ShoppingCart, HelpCircle, Sliders, Flame } from 'lucide-react';
 import { loadScript } from '@/lib/loadScript';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -20,11 +22,82 @@ interface Product {
   image_url: string;
   overlay_image_url: string;
   stock: number;
+  overlay_scale?: number | null;
+  overlay_x_offset?: number | null;
+  overlay_y_offset?: number | null;
+  overlay_rotation_offset?: number | null;
+  lens_image_url?: string | null;
+  reflection_image_url?: string | null;
+}
+
+interface BBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function computeAssetBBox(img: HTMLImageElement): BBox {
+  if (typeof window === 'undefined') {
+    return { left: 0, top: 0, width: img.naturalWidth || 1, height: img.naturalHeight || 1 };
+  }
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = img.naturalWidth || 1;
+  tempCanvas.height = img.naturalHeight || 1;
+  const tempCtx = tempCanvas.getContext('2d');
+  if (!tempCtx) {
+    return { left: 0, top: 0, width: tempCanvas.width, height: tempCanvas.height };
+  }
+  
+  tempCtx.drawImage(img, 0, 0);
+  let imgData;
+  try {
+    imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+  } catch {
+    // CORS restriction fallback
+    return { left: 0, top: 0, width: tempCanvas.width, height: tempCanvas.height };
+  }
+  
+  const data = imgData.data;
+  const W = tempCanvas.width;
+  const H = tempCanvas.height;
+  
+  let minX = W;
+  let maxX = 0;
+  let minY = H;
+  let maxY = 0;
+  let hasPixels = false;
+  
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const idx = (y * W + x) * 4;
+      const alpha = data[idx + 3];
+      if (alpha > 15) {
+        hasPixels = true;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  
+  if (!hasPixels) {
+    return { left: 0, top: 0, width: W, height: H };
+  }
+  
+  return {
+    left: minX,
+    top: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1
+  };
 }
 
 interface WatchTryOnCanvasProps {
   product: Product;
 }
+
 
 export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   const router = useRouter();
@@ -36,9 +109,51 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   const handsRef = useRef<any>(null);
   const overlayImageRef = useRef<HTMLImageElement | null>(null);
   const uploadedImageRef = useRef<HTMLImageElement | null>(null);
+  const assetBBoxRef = useRef<BBox | null>(null);
 
   // Decoupled Landmark Ref (WebGL engine style)
   const latestHandResults = useRef<any>(null);
+
+
+  // Session & Live Calibrator States
+  const { data: session } = useSession();
+  const [showCalibrator, setShowCalibrator] = useState(false);
+  const [renderMode, setRenderMode] = useState<'original' | 'new' | 'segmentation'>('new');
+
+
+  useEffect(() => {
+    setShowCalibrator(!!session);
+  }, [session]);
+
+  // Live overrides
+  const [liveScale, setLiveScale] = useState<number>(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
+  const [liveXOffset, setLiveXOffset] = useState<number>(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
+  const [liveYOffset, setLiveYOffset] = useState<number>(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
+  const [liveRotationOffset, setLiveRotationOffset] = useState<number>(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+
+  // Decoupled refs for values to prevent closure staleness in loop
+  const liveScaleRef = useRef(liveScale);
+  const liveXOffsetRef = useRef(liveXOffset);
+  const liveYOffsetRef = useRef(liveYOffset);
+  const liveRotationOffsetRef = useRef(liveRotationOffset);
+
+  useEffect(() => { liveScaleRef.current = liveScale; }, [liveScale]);
+  useEffect(() => { liveXOffsetRef.current = liveXOffset; }, [liveXOffset]);
+  useEffect(() => { liveYOffsetRef.current = liveYOffset; }, [liveYOffset]);
+  useEffect(() => { liveRotationOffsetRef.current = liveRotationOffset; }, [liveRotationOffset]);
+
+  useEffect(() => {
+    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
+    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
+    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
+    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+  }, [product]);
+
+  // Temporal smoothing refs to prevent hand tracker jitter
+  const smoothedPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const smoothedAngleRef = useRef<number | null>(null);
+  const smoothedWidthRef = useRef<number | null>(null);
+
 
   // App States
   const [cameraState, setCameraState] = useState<'loading' | 'active' | 'denied' | 'fallback'>('loading');
@@ -76,10 +191,45 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   // Checkout Form States
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
+
   const [address, setAddress] = useState('');
   const [pincode, setPincode] = useState('');
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Conversion Boosting Widgets & Sticky Buy Bar States
+  const [liveViewers, setLiveViewers] = useState<number>(55);
+  const [showStickyBar, setShowStickyBar] = useState<boolean>(false);
+
+  // Initialize and update live viewers
+  useEffect(() => {
+    setLiveViewers(Math.floor(Math.random() * (95 - 45 + 1)) + 45);
+    const interval = setInterval(() => {
+      setLiveViewers((prev) => {
+        const delta = Math.random() > 0.5 ? Math.floor(Math.random() * 3) + 1 : - (Math.floor(Math.random() * 3) + 1);
+        const next = prev + delta;
+        return next >= 40 && next <= 100 ? next : prev;
+      });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Monitor scroll for Sticky Bottom Buy Bar
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setShowStickyBar(true);
+      } else {
+        setShowStickyBar(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Deterministic count based on product ID character codes
+  const salesCount = (product.id.charCodeAt(0) % 12) + 4;
+  const salesHours = (product.id.charCodeAt(1) % 18) + 6;
 
   // Initialize and load dependencies
   useEffect(() => {
@@ -100,10 +250,12 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         img.crossOrigin = 'anonymous';
         img.onload = () => {
           overlayImageRef.current = img;
+          assetBBoxRef.current = computeAssetBBox(img);
         };
         img.onerror = () => {
           console.error('Failed to load watch overlay image, using fallbacks.');
         };
+
 
         // Configure Hands detector
         const HandsClass = (window as any).Hands;
@@ -300,108 +452,273 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       const results = latestHandResults.current;
       const confidence = results && results.multiHandLandmarks ? results.multiHandedness?.[0]?.score || 0.8 : 0;
 
-      if (currentCameraState === 'active' && results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.4) {
-        const landmarks = results.multiHandLandmarks[0];
-        const handedness = results.multiHandedness[0]; // Left vs Right hand
+      const hasHandTracking = (currentCameraState === 'active' || currentCameraState === 'fallback') && 
+        results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.4;
 
-        // Wrist base (0) and Middle Knuckle (9)
-        const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
-        const getY = (lm: any) => lm.y * height;
+      if (hasHandTracking) {
+        if (renderMode === 'original') {
+          // Original rendering mode
+          const landmarks = results.multiHandLandmarks[0];
+          const handedness = results.multiHandedness[0]; // Left vs Right hand
 
-        const x_wrist = getX(landmarks[0]);
-        const y_wrist = getY(landmarks[0]);
-        const x_mcp = getX(landmarks[9]);
-        const y_mcp = getY(landmarks[9]);
+          const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
+          const getY = (lm: any) => lm.y * height;
 
-        // Calculate direction vector from Middle Knuckle to Wrist (forearm axis)
-        const vx = x_wrist - x_mcp;
-        const vy = y_wrist - y_mcp;
-        const handLength = Math.sqrt(vx * vx + vy * vy);
+          const x_wrist = getX(landmarks[0]);
+          const y_wrist = getY(landmarks[0]);
+          const x_mcp = getX(landmarks[9]);
+          const y_mcp = getY(landmarks[9]);
 
-        const ux = vx / handLength;
-        const uy = vy / handLength;
+          const vx = x_wrist - x_mcp;
+          const vy = y_wrist - y_mcp;
+          const handLength = Math.sqrt(vx * vx + vy * vy);
 
-        // Project the watch slightly down the arm (past the wrist base)
-        const x_watch = x_wrist + ux * (handLength * 0.18);
-        const y_watch = y_wrist + uy * (handLength * 0.18);
+          const ux = vx / handLength;
+          const uy = vy / handLength;
 
-        // Determine watch scale (dial size should be ~38% of hand length)
-        const watchWidth = handLength * 0.42;
+          const x_watch = x_wrist + ux * (handLength * 0.18);
+          const y_watch = y_wrist + uy * (handLength * 0.18);
 
-        // Rotate the watch along the arm direction
-        const angle = Math.atan2(vy, vx) + Math.PI / 2;
+          const watchWidth = handLength * 0.42;
+          const angle = Math.atan2(vy, vx) + Math.PI / 2;
+          const isRightHand = handedness.label === 'Right';
 
-        const isRightHand = handedness.label === 'Right';
+          if (overlayImageRef.current) {
+            const img = overlayImageRef.current;
+            const aspectRatio = img.naturalHeight / img.naturalWidth;
+            const watchHeight = watchWidth * aspectRatio;
 
-        // Draw the overlay
-        if (overlayImageRef.current) {
-          const img = overlayImageRef.current;
-          const aspectRatio = img.naturalHeight / img.naturalWidth;
-          const watchHeight = watchWidth * aspectRatio;
-
-          ctx.save();
-          ctx.translate(x_watch, y_watch);
-          ctx.rotate(angle);
-          
-          if (isRightHand) {
-            ctx.scale(-1, 1);
+            ctx.save();
+            ctx.translate(x_watch, y_watch);
+            ctx.rotate(angle);
+            if (isRightHand) {
+              ctx.scale(-1, 1);
+            }
+            ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
+            ctx.restore();
+          } else {
+            ctx.save();
+            ctx.translate(x_watch, y_watch);
+            ctx.rotate(angle);
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
           }
-
-          ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
-          ctx.restore();
         } else {
-          ctx.save();
-          ctx.translate(x_watch, y_watch);
-          ctx.rotate(angle);
-          ctx.strokeStyle = '#d4af37';
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
-      } else if (currentCameraState === 'fallback' && results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.4) {
-        // Static photo with hand detected
-        const landmarks = results.multiHandLandmarks[0];
-        const handedness = results.multiHandedness[0];
+          // New and Segmentation rendering modes
+          const landmarks = results.multiHandLandmarks[0];
+          const handedness = results.multiHandedness[0]; // Left vs Right hand
 
-        const getX = (lm: any) => (1 - lm.x) * width;
-        const getY = (lm: any) => lm.y * height;
+          const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
+          const getY = (lm: any) => lm.y * height;
 
-        const x_wrist = getX(landmarks[0]);
-        const y_wrist = getY(landmarks[0]);
-        const x_mcp = getX(landmarks[9]);
-        const y_mcp = getY(landmarks[9]);
+          const wrist = { x: getX(landmarks[0]), y: getY(landmarks[0]) };
+          const indexMCP = { x: getX(landmarks[5]), y: getY(landmarks[5]) };
+          const pinkyMCP = { x: getX(landmarks[17]), y: getY(landmarks[17]) };
 
-        const vx = x_wrist - x_mcp;
-        const vy = y_wrist - y_mcp;
-        const handLength = Math.sqrt(vx * vx + vy * vy);
+          const knuckleCenter = {
+            x: (indexMCP.x + pinkyMCP.x) / 2,
+            y: (indexMCP.y + pinkyMCP.y) / 2
+          };
 
-        const ux = vx / handLength;
-        const uy = vy / handLength;
+          const dx_width = indexMCP.x - pinkyMCP.x;
+          const dy_width = indexMCP.y - pinkyMCP.y;
+          const handWidth = Math.sqrt(dx_width * dx_width + dy_width * dy_width);
+          const dx_depth = knuckleCenter.x - wrist.x;
+          const dy_depth = knuckleCenter.y - wrist.y;
+          const handDepth = Math.sqrt(dx_depth * dx_depth + dy_depth * dy_depth);
 
-        const x_watch = x_wrist + ux * (handLength * 0.18);
-        const y_watch = y_wrist + uy * (handLength * 0.18);
+          const wristWidth = handWidth * 0.85;
+          const forearmWidth = handWidth * 0.90;
+          const baseSize = wristWidth * 0.5 + forearmWidth * 0.2 + handDepth * 0.3;
 
-        const watchWidth = handLength * 0.42;
-        const angle = Math.atan2(vy, vx) + Math.PI / 2;
-        const isRightHand = handedness.label === 'Right';
+          const watchScaleMultiplier = 0.95 * liveScaleRef.current;
+          const targetWidth = baseSize * 1.12 * watchScaleMultiplier * 1.05; // Reduced default watch scale by ~9% to sit perfectly on the wrist
 
-        if (overlayImageRef.current) {
-          const img = overlayImageRef.current;
-          const aspectRatio = img.naturalHeight / img.naturalWidth;
-          const watchHeight = watchWidth * aspectRatio;
-
-          ctx.save();
-          ctx.translate(x_watch, y_watch);
-          ctx.rotate(angle);
-          if (isRightHand) {
-            ctx.scale(-1, 1);
+          if (smoothedWidthRef.current === null) {
+            smoothedWidthRef.current = targetWidth;
+          } else {
+            smoothedWidthRef.current = smoothedWidthRef.current * 0.88 + targetWidth * 0.12;
           }
-          ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
-          ctx.restore();
+          const watchWidth = smoothedWidthRef.current;
+
+          const forearmDirectionX = dx_depth / (handDepth || 1);
+          const forearmDirectionY = dy_depth / (handDepth || 1);
+
+          const targetX = wrist.x - forearmDirectionX * (watchWidth * 0.45) + liveXOffsetRef.current;
+          const targetY = wrist.y - forearmDirectionY * (watchWidth * 0.45) + liveYOffsetRef.current;
+
+          const isRightHand = handedness.label === 'Right';
+          const knuckleVector = isRightHand
+            ? { x: pinkyMCP.x - indexMCP.x, y: pinkyMCP.y - indexMCP.y }
+            : { x: indexMCP.x - pinkyMCP.x, y: indexMCP.y - pinkyMCP.y };
+
+          const targetAngle = Math.atan2(knuckleVector.y, knuckleVector.x) + (liveRotationOffsetRef.current * Math.PI) / 180;
+
+          const baseCompress = Math.min(1.0, Math.max(0.70, handWidth / (handDepth || 1)));
+
+          if (!smoothedPositionRef.current) {
+            smoothedPositionRef.current = { x: targetX, y: targetY };
+            smoothedAngleRef.current = targetAngle;
+          } else {
+            const prevPos = smoothedPositionRef.current;
+            const prevAngle = smoothedAngleRef.current ?? targetAngle;
+
+            const smoothedX = prevPos.x * 0.85 + targetX * 0.15;
+            const smoothedY = prevPos.y * 0.85 + targetY * 0.15;
+
+            let angleDiff = targetAngle - prevAngle;
+            while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+            while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+            const smoothedAngle = prevAngle + angleDiff * 0.12;
+
+            smoothedPositionRef.current = { x: smoothedX, y: smoothedY };
+            smoothedAngleRef.current = smoothedAngle;
+          }
+
+          const drawX = smoothedPositionRef.current.x;
+          const drawY = smoothedPositionRef.current.y;
+          const drawAngle = smoothedAngleRef.current;
+
+          const sampleX = Math.min(width - 5, Math.max(0, Math.round(drawX)));
+          const sampleY = Math.min(height - 5, Math.max(0, Math.round(drawY)));
+          let avgBrightness = 127;
+          try {
+            const imgData = ctx.getImageData(sampleX - 2, sampleY - 2, 5, 5);
+            const data = imgData.data;
+            let totalLuma = 0;
+            for (let i = 0; i < data.length; i += 4) {
+              totalLuma += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            }
+            avgBrightness = totalLuma / (data.length / 4);
+          } catch {
+            avgBrightness = 128;
+          }
+          // Narrowed brightness and contrast adjustments to preserve faithful asset appearance
+          const brightnessRatio = Math.min(1.05, Math.max(0.95, avgBrightness / 128));
+          const contrastRatio = Math.min(1.03, Math.max(0.97, 0.98 + (avgBrightness / 128) * 0.02));
+
+
+
+
+          if (overlayImageRef.current) {
+            const img = overlayImageRef.current;
+            const bbox = assetBBoxRef.current || { left: 0, top: 0, width: img.naturalWidth || 1, height: img.naturalHeight || 1 };
+            const watchHeight = watchWidth * (bbox.height / bbox.width);
+
+
+            ctx.save();
+            ctx.translate(drawX, drawY);
+            ctx.rotate(drawAngle);
+            
+            if (isRightHand) {
+              ctx.scale(-1, 1);
+            }
+
+            // Apply forearm mask clipping to visible wrist boundaries (Occlusion) ONLY in segmentation mode
+            if (renderMode === 'segmentation') {
+              const wristClipWidth = handWidth * 0.88;
+              const forearmClipWidth = handWidth * 0.93;
+              ctx.beginPath();
+              ctx.moveTo(-wristClipWidth / 2, watchWidth * 0.45);
+              ctx.lineTo(wristClipWidth / 2, watchWidth * 0.45);
+              ctx.lineTo(forearmClipWidth / 2, -watchHeight * 4);
+              ctx.lineTo(-forearmClipWidth / 2, -watchHeight * 4);
+              ctx.closePath();
+              ctx.clip();
+            }
+
+            // 1. Draw dynamic soft contact shadow (Soft Ambient Layer)
+            ctx.save();
+            ctx.scale(baseCompress, 1);
+            if (ctx.filter !== undefined) {
+              ctx.filter = 'blur(10px)';
+            }
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.22 * baseCompress})`;
+            ctx.beginPath();
+            ctx.moveTo(-watchWidth / 2, -watchHeight * 0.25 + 3);
+            ctx.lineTo(-watchWidth * 0.175, -watchHeight * 0.5 + 3);
+            ctx.lineTo(watchWidth * 0.175, -watchHeight * 0.5 + 3);
+            ctx.lineTo(watchWidth / 2, -watchHeight * 0.25 + 3);
+            ctx.lineTo(watchWidth / 2, watchHeight * 0.25 + 3);
+            ctx.lineTo(watchWidth * 0.175, watchHeight * 0.5 + 3);
+            ctx.lineTo(-watchWidth * 0.175, watchHeight * 0.5 + 3);
+            ctx.lineTo(-watchWidth / 2, watchHeight * 0.25 + 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            // 2. Draw dynamic tight contact shadow (Anchoring Layer - prevents floating effect)
+            ctx.save();
+            ctx.scale(baseCompress, 1);
+            if (ctx.filter !== undefined) {
+              ctx.filter = 'blur(3px)';
+            }
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * baseCompress})`;
+            ctx.beginPath();
+            ctx.moveTo(-watchWidth / 2 + 1, -watchHeight * 0.25 + 1.5);
+            ctx.lineTo(-watchWidth * 0.175 + 1, -watchHeight * 0.5 + 1.5);
+            ctx.lineTo(watchWidth * 0.175 - 1, -watchHeight * 0.5 + 1.5);
+            ctx.lineTo(watchWidth / 2 - 1, -watchHeight * 0.25 + 1.5);
+            ctx.lineTo(watchWidth / 2 - 1, watchHeight * 0.25 + 1.5);
+            ctx.lineTo(watchWidth * 0.175 - 1, watchHeight * 0.5 + 1.5);
+            ctx.lineTo(-watchWidth * 0.175 + 1, watchHeight * 0.5 + 1.5);
+            ctx.lineTo(-watchWidth / 2 + 1, watchHeight * 0.25 + 1.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            // Apply blur and lighting matching filters to context (subtle blur matches soft webcam resolution)
+            if (ctx.filter !== undefined) {
+              ctx.filter = `blur(0.6px) brightness(${brightnessRatio}) contrast(${contrastRatio})`;
+            }
+
+            // Draw the entire watch image as a single continuous piece
+            ctx.save();
+            ctx.scale(baseCompress, 1);
+            ctx.drawImage(img, bbox.left, bbox.top, bbox.width, bbox.height, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
+            ctx.restore();
+
+            ctx.restore();
+          } else if (currentCameraState === 'active') {
+            const watchHeight = watchWidth;
+            ctx.save();
+            ctx.translate(drawX, drawY);
+            ctx.rotate(drawAngle);
+            ctx.scale(baseCompress, 1);
+
+            // Apply wrist occlusion clipping for fallback circle ONLY in segmentation mode
+            if (renderMode === 'segmentation') {
+              const wristClipWidth = handWidth * 0.88;
+              const forearmClipWidth = handWidth * 0.93;
+              ctx.beginPath();
+              ctx.moveTo(-wristClipWidth / 2, watchWidth * 0.45);
+              ctx.lineTo(wristClipWidth / 2, watchWidth * 0.45);
+              ctx.lineTo(forearmClipWidth / 2, -watchHeight * 4);
+              ctx.lineTo(-forearmClipWidth / 2, -watchHeight * 4);
+              ctx.closePath();
+              ctx.clip();
+            }
+
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
         }
       } else {
+
+
+
+        // Reset smoothed tracking state when hand tracking is inactive
+        smoothedPositionRef.current = null;
+        smoothedAngleRef.current = null;
+
         // Manual dragging mode (fallback / denied / no hand found)
         const x = manualPositionRef.current.x === 0 ? width / 2 : manualPositionRef.current.x;
         const y = manualPositionRef.current.y === 0 ? height / 2 : manualPositionRef.current.y;
@@ -426,6 +743,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           ctx.restore();
         }
       }
+
 
 
     } catch (e) {
@@ -672,7 +990,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           )}
 
           {/* Canvas Wrapper */}
-          <div className="relative aspect-[4/3] w-full bg-[#0b132b] rounded-lg overflow-hidden border border-[#d4af37]/20 shadow-2xl">
+          <div className="relative aspect-[4/3] w-full bg-[#0b132b] rounded-lg overflow-hidden shadow-2xl">
             {/* Loading Cover */}
             {cameraState === 'loading' && (
               <div className="absolute inset-0 z-30 bg-[#060b13] flex flex-col items-center justify-center p-6 text-center space-y-4">
@@ -707,8 +1025,6 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               </div>
             )}
 
-            {/* Scanline overlay for mirror effect */}
-            {cameraState === 'active' && <div className="scanline" />}
 
             {/* Hidden video element */}
             <video
@@ -753,7 +1069,231 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             )}
           </div>
 
+          {/* Admin Live Calibration HUD */}
+          {showCalibrator && (
+            <div className="p-6 glass-panel rounded-lg border border-[#d4af37]/45 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider flex items-center">
+                  <Sliders className="w-4 h-4 mr-2" />
+                  Admin Live Calibration Panel
+                </h4>
+                <span className="text-[9px] px-2 py-0.5 bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] font-semibold rounded uppercase tracking-wider">
+                  Live Mode
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs text-white">
+                {/* Scale factor */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Scale factor (Width)</span>
+                    <div className="flex items-center space-x-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveScale(prev => Math.max(0.5, Number((prev - 0.01).toFixed(2))))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        -
+                      </button>
+                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveScale.toFixed(2)}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveScale(prev => Math.min(2.0, Number((prev + 0.01).toFixed(2))))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.01"
+                    value={liveScale}
+                    onChange={(e) => setLiveScale(parseFloat(e.target.value))}
+                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                  />
+                </div>
+
+                {/* Rotation Bias */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Rotation Bias (degrees)</span>
+                    <div className="flex items-center space-x-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveRotationOffset(prev => Math.max(-180, prev - 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        -
+                      </button>
+                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveRotationOffset}°</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveRotationOffset(prev => Math.min(180, prev + 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="-180"
+                    max="180"
+                    step="1"
+                    value={liveRotationOffset}
+                    onChange={(e) => setLiveRotationOffset(parseInt(e.target.value))}
+                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                  />
+                </div>
+
+                {/* X Offset */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Horizontal Shift (X Axis)</span>
+                    <div className="flex items-center space-x-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveXOffset(prev => Math.max(-150, prev - 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        -
+                      </button>
+                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveXOffset}px</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveXOffset(prev => Math.min(150, prev + 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="-150"
+                    max="150"
+                    step="1"
+                    value={liveXOffset}
+                    onChange={(e) => setLiveXOffset(parseInt(e.target.value))}
+                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                  />
+                </div>
+
+                {/* Y Offset */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Vertical Shift (Y Axis)</span>
+                    <div className="flex items-center space-x-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveYOffset(prev => Math.max(-150, prev - 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        -
+                      </button>
+                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveYOffset}px</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setLiveYOffset(prev => Math.min(150, prev + 1))}
+                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="-150"
+                    max="150"
+                    step="1"
+                    value={liveYOffset}
+                    onChange={(e) => setLiveYOffset(parseInt(e.target.value))}
+                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Render Mode Selection */}
+              <div className="space-y-1.5 border-t border-gray-800 pt-3 mt-1">
+                <span className="text-gray-400">AR Render Mode Comparison (Feature Flag)</span>
+                <div className="flex flex-wrap gap-2.5 mt-1.5">
+                  {(['original', 'new', 'segmentation'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setRenderMode(mode)}
+                      className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                        renderMode === mode
+                          ? 'bg-[#d4af37] text-[#060b13] border-[#d4af37]'
+                          : 'bg-[#1c2541] text-gray-300 border-gray-700 hover:border-gray-500'
+                      }`}
+                    >
+                      {mode === 'original' ? 'Original (Flat)' : mode === 'new' ? 'New (Curved & Smoothed)' : 'Segmentation (Occluded)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2 space-x-3">
+
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
+                    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
+                    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
+                    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+                  }}
+                  className="text-xs"
+                >
+                  Reset Settings
+                </Button>
+                <Button 
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/products/${product.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          name: product.name,
+                          category: product.category,
+                          price: product.price,
+                          description: product.description,
+                          image_url: product.image_url,
+                          overlay_image_url: product.overlay_image_url,
+                          stock: product.stock,
+                          lens_image_url: product.lens_image_url || null,
+                          reflection_image_url: product.reflection_image_url || null,
+                          overlay_scale: liveScale,
+                          overlay_x_offset: liveXOffset,
+                          overlay_y_offset: liveYOffset,
+                          overlay_rotation_offset: liveRotationOffset
+                        })
+                      });
+                      if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(data.error || 'Failed to save calibration settings.');
+                      }
+                      alert('Calibration settings successfully saved to database!');
+                    } catch (err: any) {
+                      alert(err.message || 'Error saving calibration settings.');
+                    }
+                  }}
+                  className="text-xs text-[#060b13] bg-[#d4af37] hover:bg-[#d4af37]/90"
+                >
+                  Save Settings
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Calibration / Upload Help panel */}
+
           <div className="p-5 glass-panel rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <h4 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start">
@@ -848,6 +1388,54 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                 </div>
               </div>
 
+              {/* Conversion-Boosting Widgets */}
+              <div className="border-t border-gray-800/65 pt-4 space-y-3">
+                {/* Live Viewers count */}
+                <div className="flex items-center space-x-2 text-xs text-gray-300">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  <p>
+                    <span className="text-[#f3e5ab] font-bold">{liveViewers} fashion enthusiasts</span> are viewing this watch now
+                  </p>
+                </div>
+
+                {/* Deterministic recent sales count */}
+                <div className="flex items-center space-x-2 text-xs text-gray-300">
+                  <Flame className="w-4 h-4 text-amber-500 shrink-0" />
+                  <p>
+                    <span className="text-[#d4af37] font-bold">{salesCount} orders</span> placed in the last {salesHours} hours
+                  </p>
+                </div>
+
+                {/* Visual Urgency Stock Progress Bar */}
+                {product.stock > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
+                      <span className="text-amber-500">
+                        {product.stock <= 15 ? `Hurry! Only ${product.stock} items left` : 'Stock Availability'}
+                      </span>
+                      <span className="text-gray-400">
+                        {product.stock <= 15 ? `${Math.round((product.stock / 15) * 100)}% remaining` : 'Selling fast'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-850 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          product.stock <= 5 
+                            ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' 
+                            : product.stock <= 15 
+                            ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' 
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${product.stock <= 15 ? Math.max(10, (product.stock / 15) * 100) : 85}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="border-t border-gray-800 pt-4">
                 <h4 className="text-xs font-semibold uppercase text-gray-400 tracking-wider mb-2">Description</h4>
                 <p className="text-xs text-gray-300 leading-relaxed">
@@ -860,7 +1448,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                   <span className="text-gray-400">Availability</span>
                   {product.stock > 0 ? (
                     <span className="text-emerald-400 font-semibold flex items-center">
-                      <Check className="w-3.5 h-3.5 mr-1" /> In Stock ({product.stock} items left)
+                      <Check className="w-3.5 h-3.5 mr-1" /> In Stock ({product.stock} left)
                     </span>
                   ) : (
                     <span className="text-red-400 font-semibold flex items-center">
@@ -873,7 +1461,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               <div className="pt-2">
                 <Button
                   onClick={takeSnapshot}
-                  className="w-full flex items-center justify-center"
+                  className="w-full flex items-center justify-center py-2.5 font-bold uppercase tracking-wider text-xs"
                   disabled={product.stock <= 0}
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
@@ -957,6 +1545,46 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           </div>
         </form>
       </Modal>
+
+      {/* Sticky Bottom Buy Bar (Hongo conversion layout choice) */}
+      <div 
+        className={`fixed bottom-0 left-0 right-0 z-40 bg-[#0b132b]/95 backdrop-blur-md border-t border-[#d4af37]/35 shadow-[0_-10px_25px_rgba(0,0,0,0.6)] py-3 px-4 sm:px-6 transition-all duration-500 ease-in-out transform ${
+          showStickyBar ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="relative w-10 h-10 rounded overflow-hidden border border-gray-800 bg-black/20 shrink-0">
+              <NextImage 
+                src={product.image_url} 
+                alt={product.name} 
+                fill 
+                sizes="40px"
+                className="object-cover"
+              />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white line-clamp-1 font-luxury">{product.name}</h4>
+              <p className="text-[10px] text-[#d4af37] font-bold uppercase tracking-wider capitalize">{product.category}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-xs text-gray-500">Luxury price</p>
+              <p className="text-sm font-bold text-[#d4af37]">₹{product.price.toLocaleString('en-IN')}</p>
+            </div>
+            <Button
+              onClick={takeSnapshot}
+              disabled={product.stock <= 0}
+              className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#060b13] bg-[#d4af37] hover:bg-[#d4af37]/90 shadow-[0_0_15px_rgba(212,175,55,0.25)] flex items-center"
+            >
+              <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
+              Instant Order
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

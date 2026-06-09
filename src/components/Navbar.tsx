@@ -12,12 +12,6 @@ export default function Navbar() {
   const { data: session } = useSession();
 
   const toggleMenu = () => setIsOpen(!isOpen);
-
-  const navLinks = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Products', href: '/products', icon: Glasses },
-  ];
-
   const isActive = (path: string) => pathname === path;
 
   return (
@@ -36,43 +30,144 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center space-x-6">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                    isActive(link.href)
-                      ? 'text-[#d4af37] bg-white/5 border border-[#d4af37]/20'
-                      : 'text-gray-300 hover:text-[#d4af37] hover:bg-white/5'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{link.name}</span>
-                </Link>
-              );
-            })}
+          {/* Desktop Nav Links (Hongo style Mega Menu) */}
+          <div className="hidden md:flex items-center space-x-8">
+            <Link
+              href="/"
+              className={`flex items-center space-x-1.5 px-1 py-2 text-sm font-medium transition-colors duration-200 border-b-2 ${
+                isActive('/')
+                  ? 'text-[#d4af37] border-[#d4af37]'
+                  : 'text-gray-300 border-transparent hover:text-[#d4af37] hover:border-[#d4af37]/30'
+              }`}
+            >
+              <Home className="w-4 h-4 mr-1" />
+              <span>Home</span>
+            </Link>
 
-            {/* Try-on Quick Access Dropdown / Links */}
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-gray-500 uppercase tracking-widest px-2">Try On:</span>
+            {/* Shop Catalog Mega Menu Trigger */}
+            <div className="group static">
               <Link
-                href="/products?category=glasses"
-                className="flex items-center space-x-1 text-xs px-2 py-1 rounded bg-[#1c2541] hover:bg-[#d4af37]/20 hover:text-[#d4af37] transition-all border border-gray-700 hover:border-[#d4af37]/30"
+                href="/products"
+                className={`flex items-center space-x-1.5 px-1 py-2 text-sm font-medium transition-colors duration-200 border-b-2 ${
+                  pathname.startsWith('/products')
+                    ? 'text-[#d4af37] border-[#d4af37]'
+                    : 'text-gray-300 border-transparent hover:text-[#d4af37] hover:border-[#d4af37]/30'
+                }`}
               >
-                <Glasses className="w-3.5 h-3.5" />
-                <span>Glasses</span>
+                <Glasses className="w-4 h-4 mr-1" />
+                <span>Shop Catalog</span>
+                <span className="text-[8px] transition-transform duration-300 group-hover:rotate-180 ml-0.5">▼</span>
               </Link>
-              <Link
-                href="/products?category=watches"
-                className="flex items-center space-x-1 text-xs px-2 py-1 rounded bg-[#1c2541] hover:bg-[#d4af37]/20 hover:text-[#d4af37] transition-all border border-gray-700 hover:border-[#d4af37]/30"
-              >
-                <Watch className="w-3.5 h-3.5" />
-                <span>Watches</span>
-              </Link>
+
+              {/* Mega Menu Dropdown */}
+              <div className="absolute top-16 left-0 right-0 w-full bg-[#0b132b]/95 backdrop-blur-md border-b border-[#d4af37]/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 shadow-2xl z-50">
+                <div className="max-w-7xl mx-auto px-8 py-8 grid grid-cols-4 gap-8">
+                  {/* Column 1: Eyeglasses */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider border-b border-gray-800 pb-2 flex items-center">
+                      <Glasses className="w-4 h-4 mr-2" /> Eyeglasses
+                    </h4>
+                    <ul className="space-y-2 text-xs">
+                      <li>
+                        <Link href="/products?category=glasses" className="text-gray-300 hover:text-white transition-colors block py-1">
+                          All Eyeglasses
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=glasses" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          Acetate Designer Frames
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=glasses" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          Titanium & Metal Frames
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=glasses" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          Classic Round Styles
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Column 2: Sunglasses */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider border-b border-gray-800 pb-2 flex items-center">
+                      <Glasses className="w-4 h-4 mr-2 text-amber-500" /> Sunglasses
+                    </h4>
+                    <ul className="space-y-2 text-xs">
+                      <li>
+                        <Link href="/products?category=sunglasses" className="text-gray-300 hover:text-white transition-colors block py-1">
+                          All Sunglasses
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=sunglasses" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          Polarized Lenses
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=sunglasses" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          100% UV Protection
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=sunglasses" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          Modern Aviators
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Column 3: Watches */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider border-b border-gray-800 pb-2 flex items-center">
+                      <Watch className="w-4 h-4 mr-2" /> Premium Watches
+                    </h4>
+                    <ul className="space-y-2 text-xs">
+                      <li>
+                        <Link href="/products?category=watches" className="text-gray-300 hover:text-white transition-colors block py-1">
+                          All Watches
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=watches" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          Chronograph Series
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=watches" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          Quartz Elegance
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/products?category=watches" className="text-gray-400 hover:text-white transition-colors block py-1">
+                          Sports & Rugged Wear
+                        </Link>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Column 4: Promo Visual Card */}
+                  <div className="relative rounded-lg overflow-hidden border border-[#d4af37]/20 bg-[#1c2541]/40 p-4 flex flex-col justify-between h-full">
+                    <div>
+                      <span className="text-[9px] px-2 py-0.5 bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] font-semibold rounded uppercase tracking-wider">
+                        Virtual Try-On
+                      </span>
+                      <h5 className="text-xs font-bold text-white mt-2 font-luxury">Experience Live AR mirror</h5>
+                      <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                        Try on optical glasses and designer watch models instantly using WebGL tracking.
+                      </p>
+                    </div>
+                    <Link href="/products" className="mt-4">
+                      <button className="w-full py-1.5 bg-[#d4af37] text-[#060b13] hover:bg-[#d4af37]/90 text-[10px] font-bold uppercase tracking-wider rounded transition-colors">
+                        Launch Try-On
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -140,45 +235,69 @@ export default function Navbar() {
       {/* Mobile Menu Drawer */}
       {isOpen && (
         <div className="md:hidden glass-panel border-t border-[#d4af37]/20 px-2 pt-2 pb-4 space-y-1">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            return (
-              <Link
-                key={link.name}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors ${
-                  isActive(link.href)
-                    ? 'text-[#d4af37] bg-white/5 border-l-2 border-[#d4af37]'
-                    : 'text-gray-300 hover:text-[#d4af37] hover:bg-white/5'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span>{link.name}</span>
-              </Link>
-            );
-          })}
+          <Link
+            href="/"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors ${
+              isActive('/')
+                ? 'text-[#d4af37] bg-white/5 border-l-2 border-[#d4af37]'
+                : 'text-gray-300 hover:text-[#d4af37] hover:bg-white/5'
+            }`}
+          >
+            <Home className="w-5 h-5" />
+            <span>Home</span>
+          </Link>
+
+          <Link
+            href="/products"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors ${
+              pathname === '/products'
+                ? 'text-[#d4af37] bg-white/5 border-l-2 border-[#d4af37]'
+                : 'text-gray-300 hover:text-[#d4af37] hover:bg-white/5'
+            }`}
+          >
+            <Glasses className="w-5 h-5" />
+            <span>Shop All Products</span>
+          </Link>
 
           <div className="border-t border-gray-800 my-2 pt-2">
             <span className="block px-4 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Virtual Try-On
+              Shop By Department
             </span>
-            <div className="grid grid-cols-2 gap-2 p-2">
+            <div className="grid grid-cols-1 gap-1 p-2">
               <Link
                 href="/products?category=glasses"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center space-x-2 p-2 rounded bg-[#1c2541] text-sm font-medium hover:text-[#d4af37] border border-gray-700"
+                className="flex items-center justify-between p-3 rounded bg-[#1c2541]/40 text-sm font-medium hover:text-[#d4af37] border border-gray-800"
               >
-                <Glasses className="w-4 h-4" />
-                <span>Glasses</span>
+                <span className="flex items-center space-x-2">
+                  <Glasses className="w-4.5 h-4.5" />
+                  <span>Eyeglasses</span>
+                </span>
+                <span className="text-[10px] text-gray-500">→</span>
+              </Link>
+              <Link
+                href="/products?category=sunglasses"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between p-3 rounded bg-[#1c2541]/40 text-sm font-medium hover:text-[#d4af37] border border-gray-800"
+              >
+                <span className="flex items-center space-x-2">
+                  <Glasses className="w-4.5 h-4.5 text-amber-500" />
+                  <span>Sunglasses</span>
+                </span>
+                <span className="text-[10px] text-gray-500">→</span>
               </Link>
               <Link
                 href="/products?category=watches"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center space-x-2 p-2 rounded bg-[#1c2541] text-sm font-medium hover:text-[#d4af37] border border-gray-700"
+                className="flex items-center justify-between p-3 rounded bg-[#1c2541]/40 text-sm font-medium hover:text-[#d4af37] border border-gray-800"
               >
-                <Watch className="w-4 h-4" />
-                <span>Watches</span>
+                <span className="flex items-center space-x-2">
+                  <Watch className="w-4.5 h-4.5" />
+                  <span>Premium Watches</span>
+                </span>
+                <span className="text-[10px] text-gray-500">→</span>
               </Link>
             </div>
           </div>
