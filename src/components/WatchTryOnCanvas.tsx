@@ -443,7 +443,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
       } else {
         // Background fallback
-        ctx.fillStyle = '#0b132b';
+        ctx.fillStyle = '#0F1B30';
         ctx.fillRect(0, 0, width, height);
       }
       ctx.restore();
@@ -500,7 +500,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             ctx.save();
             ctx.translate(x_watch, y_watch);
             ctx.rotate(angle);
-            ctx.strokeStyle = '#d4af37';
+            ctx.strokeStyle = '#C9A84C';
             ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
@@ -703,7 +703,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               ctx.clip();
             }
 
-            ctx.strokeStyle = '#d4af37';
+            ctx.strokeStyle = '#C9A84C';
             ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
@@ -960,7 +960,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Back to catalog */}
       <div className="mb-6">
-        <Link href="/products" className="text-sm text-gray-400 hover:text-[#d4af37] transition-colors">
+        <Link href="/products" className="text-sm text-gray-400 hover:text-[#C9A84C] transition-colors">
           &larr; Back to Catalog
         </Link>
       </div>
@@ -971,14 +971,14 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           
           {/* Active Camera Device Selector (Premium feature) */}
           {cameraState === 'active' && devices.length > 1 && (
-            <div className="flex items-center justify-between bg-[#0b132b]/80 p-3 rounded-lg border border-[#d4af37]/20 text-xs">
+            <div className="flex items-center justify-between bg-[#0F1B30]/80 p-3 rounded-lg border border-[#C9A84C]/20 text-xs">
               <span className="text-gray-300 font-semibold uppercase tracking-wider flex items-center">
-                <Camera className="w-4 h-4 text-[#d4af37] mr-1.5" /> Select Camera:
+                <Camera className="w-4 h-4 text-[#C9A84C] mr-1.5" /> Select Camera:
               </span>
               <select
                 value={selectedDeviceId}
                 onChange={handleDeviceChange}
-                className="bg-[#1c2541] border border-gray-700 text-white rounded px-2.5 py-1 focus:outline-none focus:border-[#d4af37]"
+                className="bg-[#1A2742] border border-gray-700 text-white rounded px-2.5 py-1 focus:outline-none focus:border-[#C9A84C]"
               >
                 {devices.map((device) => (
                   <option key={device.deviceId} value={device.deviceId}>
@@ -990,18 +990,18 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           )}
 
           {/* Canvas Wrapper */}
-          <div className="relative aspect-[4/3] w-full bg-[#0b132b] rounded-lg overflow-hidden shadow-2xl">
+          <div className="relative aspect-[4/3] w-full bg-[#0F1B30] rounded-lg overflow-hidden shadow-2xl">
             {/* Loading Cover */}
             {cameraState === 'loading' && (
-              <div className="absolute inset-0 z-30 bg-[#060b13] flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <RefreshCw className="w-10 h-10 text-[#d4af37] animate-spin" />
+              <div className="absolute inset-0 z-30 bg-[#0B1422] flex flex-col items-center justify-center p-6 text-center space-y-4">
+                <RefreshCw className="w-10 h-10 text-[#C9A84C] animate-spin" />
                 <p className="text-sm font-semibold text-gray-300">{loadingMessage}</p>
               </div>
             )}
 
             {/* Permission Denied UI (Graceful degradation) */}
             {cameraState === 'denied' && (
-              <div className="absolute inset-0 z-30 bg-[#0b132b] flex flex-col items-center justify-center p-8 text-center space-y-5">
+              <div className="absolute inset-0 z-30 bg-[#0F1B30] flex flex-col items-center justify-center p-8 text-center space-y-5">
                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full">
                   <AlertCircle className="w-8 h-8" />
                 </div>
@@ -1012,7 +1012,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     Please click the camera icon in your browser&apos;s address bar to allow permission and reload, or upload a photo below to try on.
                   </p>
                 </div>
-                <label className="flex items-center space-x-2 px-4 py-2 bg-[#d4af37] text-[#060b13] hover:bg-[#d4af37]/95 rounded-md text-xs font-bold cursor-pointer transition-all">
+                <label className="flex items-center space-x-2 px-4 py-2 bg-[#C9A84C] text-[#0B1422] hover:bg-[#C9A84C]/95 rounded-md text-xs font-bold cursor-pointer transition-all">
                   <Upload className="w-4 h-4" />
                   <span>Upload Photo to Try On</span>
                   <input
@@ -1062,7 +1062,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
             {/* Top HUD overlay status */}
             {cameraState === 'active' && (
-              <div className="absolute top-4 left-4 z-20 bg-black/60 px-3 py-1.5 rounded border border-[#d4af37]/20 text-[10px] uppercase font-bold tracking-wider text-[#d4af37] flex items-center space-x-1.5">
+              <div className="absolute top-4 left-4 z-20 bg-black/60 px-3 py-1.5 rounded border border-[#C9A84C]/20 text-[10px] uppercase font-bold tracking-wider text-[#C9A84C] flex items-center space-x-1.5">
                 <span className={`w-2 h-2 rounded-full ${handDetected ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
                 <span>{handDetected ? 'Wrist Locked' : 'Searching Hand/Wrist...'}</span>
               </div>
@@ -1071,13 +1071,13 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
           {/* Admin Live Calibration HUD */}
           {showCalibrator && (
-            <div className="p-6 glass-panel rounded-lg border border-[#d4af37]/45 space-y-4 shadow-xl">
+            <div className="p-6 glass-panel rounded-lg border border-[#C9A84C]/45 space-y-4 shadow-xl">
               <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-                <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider flex items-center">
+                <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider flex items-center">
                   <Sliders className="w-4 h-4 mr-2" />
                   Admin Live Calibration Panel
                 </h4>
-                <span className="text-[9px] px-2 py-0.5 bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] font-semibold rounded uppercase tracking-wider">
+                <span className="text-[9px] px-2 py-0.5 bg-[#C9A84C]/10 border border-[#C9A84C]/20 text-[#C9A84C] font-semibold rounded uppercase tracking-wider">
                   Live Mode
                 </span>
               </div>
@@ -1091,15 +1091,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                       <button 
                         type="button" 
                         onClick={() => setLiveScale(prev => Math.max(0.5, Number((prev - 0.01).toFixed(2))))}
-                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
                       >
                         -
                       </button>
-                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveScale.toFixed(2)}</span>
+                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveScale.toFixed(2)}</span>
                       <button 
                         type="button" 
                         onClick={() => setLiveScale(prev => Math.min(2.0, Number((prev + 0.01).toFixed(2))))}
-                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
                       >
                         +
                       </button>
@@ -1112,7 +1112,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     step="0.01"
                     value={liveScale}
                     onChange={(e) => setLiveScale(parseFloat(e.target.value))}
-                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
                   />
                 </div>
 
@@ -1124,15 +1124,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                       <button 
                         type="button" 
                         onClick={() => setLiveRotationOffset(prev => Math.max(-180, prev - 1))}
-                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
                       >
                         -
                       </button>
-                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveRotationOffset}°</span>
+                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveRotationOffset}°</span>
                       <button 
                         type="button" 
                         onClick={() => setLiveRotationOffset(prev => Math.min(180, prev + 1))}
-                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
                       >
                         +
                       </button>
@@ -1145,7 +1145,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     step="1"
                     value={liveRotationOffset}
                     onChange={(e) => setLiveRotationOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
                   />
                 </div>
 
@@ -1157,15 +1157,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                       <button 
                         type="button" 
                         onClick={() => setLiveXOffset(prev => Math.max(-150, prev - 1))}
-                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
                       >
                         -
                       </button>
-                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveXOffset}px</span>
+                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveXOffset}px</span>
                       <button 
                         type="button" 
                         onClick={() => setLiveXOffset(prev => Math.min(150, prev + 1))}
-                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
                       >
                         +
                       </button>
@@ -1178,7 +1178,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     step="1"
                     value={liveXOffset}
                     onChange={(e) => setLiveXOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
                   />
                 </div>
 
@@ -1190,15 +1190,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                       <button 
                         type="button" 
                         onClick={() => setLiveYOffset(prev => Math.max(-150, prev - 1))}
-                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
                       >
                         -
                       </button>
-                      <span className="text-[#d4af37] font-mono min-w-[28px] text-center">{liveYOffset}px</span>
+                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveYOffset}px</span>
                       <button 
                         type="button" 
                         onClick={() => setLiveYOffset(prev => Math.min(150, prev + 1))}
-                        className="w-5 h-5 bg-[#1c2541] border border-gray-700 hover:border-[#d4af37] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
                       >
                         +
                       </button>
@@ -1211,7 +1211,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     step="1"
                     value={liveYOffset}
                     onChange={(e) => setLiveYOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#d4af37] bg-[#1c2541] h-1 rounded cursor-pointer"
+                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
                   />
                 </div>
               </div>
@@ -1227,8 +1227,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                       onClick={() => setRenderMode(mode)}
                       className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
                         renderMode === mode
-                          ? 'bg-[#d4af37] text-[#060b13] border-[#d4af37]'
-                          : 'bg-[#1c2541] text-gray-300 border-gray-700 hover:border-gray-500'
+                          ? 'bg-[#C9A84C] text-[#0B1422] border-[#C9A84C]'
+                          : 'bg-[#1A2742] text-gray-300 border-gray-700 hover:border-gray-500'
                       }`}
                     >
                       {mode === 'original' ? 'Original (Flat)' : mode === 'new' ? 'New (Curved & Smoothed)' : 'Segmentation (Occluded)'}
@@ -1284,7 +1284,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                       alert(err.message || 'Error saving calibration settings.');
                     }
                   }}
-                  className="text-xs text-[#060b13] bg-[#d4af37] hover:bg-[#d4af37]/90"
+                  className="text-xs text-[#0B1422] bg-[#C9A84C] hover:bg-[#C9A84C]/90"
                 >
                   Save Settings
                 </Button>
@@ -1297,7 +1297,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           <div className="p-5 glass-panel rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <h4 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start">
-                <HelpCircle className="w-4 h-4 text-[#d4af37] mr-1.5" />
+                <HelpCircle className="w-4 h-4 text-[#C9A84C] mr-1.5" />
                 Need calibration?
               </h4>
               <p className="text-xs text-gray-400 mt-1">
@@ -1305,7 +1305,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               </p>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
-              <label className="flex-grow sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10 rounded-md text-xs font-semibold cursor-pointer transition-all">
+              <label className="flex-grow sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 border border-[#C9A84C] text-[#C9A84C] hover:bg-[#C9A84C]/10 rounded-md text-xs font-semibold cursor-pointer transition-all">
                 <Upload className="w-4 h-4" />
                 <span>Upload Selfie/Hand</span>
                 <input
@@ -1327,8 +1327,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           {/* Manual adjustment HUD */}
           {(cameraState === 'fallback' || cameraState === 'denied' || !handDetected) && (
             <div className="p-6 glass-panel rounded-lg space-y-4">
-              <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider flex items-center">
-                <Sliders className="w-4 h-4 text-[#d4af37] mr-2" />
+              <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider flex items-center">
+                <Sliders className="w-4 h-4 text-[#C9A84C] mr-2" />
                 Manual Adjustments (Drag watch on canvas or use sliders)
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -1336,7 +1336,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Watch Size</span>
-                    <span className="text-[#d4af37] font-mono">{(manualScale * 100).toFixed(0)}%</span>
+                    <span className="text-[#C9A84C] font-mono">{(manualScale * 100).toFixed(0)}%</span>
                   </div>
                   <input
                     type="range"
@@ -1345,14 +1345,14 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     step="0.05"
                     value={manualScale}
                     onChange={(e) => setManualScale(parseFloat(e.target.value))}
-                    className="w-full accent-[#d4af37] bg-gray-700 h-1 rounded"
+                    className="w-full accent-[#C9A84C] bg-gray-700 h-1 rounded"
                   />
                 </div>
                 {/* Rotation slider */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Angle Rotation</span>
-                    <span className="text-[#d4af37] font-mono">{manualRotation}°</span>
+                    <span className="text-[#C9A84C] font-mono">{manualRotation}°</span>
                   </div>
                   <input
                     type="range"
@@ -1361,7 +1361,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     step="5"
                     value={manualRotation}
                     onChange={(e) => setManualRotation(parseInt(e.target.value))}
-                    className="w-full accent-[#d4af37] bg-gray-700 h-1 rounded"
+                    className="w-full accent-[#C9A84C] bg-gray-700 h-1 rounded"
                   />
                 </div>
               </div>
@@ -1371,17 +1371,17 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         {/* Product Details Panel (Right column) */}
         <div className="lg:col-span-4 space-y-6">
-          <Card className="border-gray-800 bg-[#0b132b]/50">
+          <Card className="border-gray-800 bg-[#0F1B30]/50">
             <CardContent className="p-6 space-y-6">
               <div>
-                <span className="px-2 py-0.5 bg-[#1c2541] border border-[#d4af37]/20 text-[#d4af37] text-[10px] font-bold uppercase tracking-widest rounded">
+                <span className="px-2 py-0.5 bg-[#1A2742] border border-[#C9A84C]/20 text-[#C9A84C] text-[10px] font-bold uppercase tracking-widest rounded">
                   {product.category}
                 </span>
                 <h2 className="font-luxury text-2xl font-bold text-white mt-3 leading-snug">
                   {product.name}
                 </h2>
                 <div className="mt-3 flex items-baseline">
-                  <span className="text-2xl font-bold text-[#d4af37]">
+                  <span className="text-2xl font-bold text-[#C9A84C]">
                     ₹{product.price.toLocaleString('en-IN')}
                   </span>
                   <span className="text-xs text-gray-500 ml-2">incl. all taxes</span>
@@ -1397,7 +1397,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                   </span>
                   <p>
-                    <span className="text-[#f3e5ab] font-bold">{liveViewers} fashion enthusiasts</span> are viewing this watch now
+                    <span className="text-[#E8D9A0] font-bold">{liveViewers} fashion enthusiasts</span> are viewing this watch now
                   </p>
                 </div>
 
@@ -1405,7 +1405,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                 <div className="flex items-center space-x-2 text-xs text-gray-300">
                   <Flame className="w-4 h-4 text-amber-500 shrink-0" />
                   <p>
-                    <span className="text-[#d4af37] font-bold">{salesCount} orders</span> placed in the last {salesHours} hours
+                    <span className="text-[#C9A84C] font-bold">{salesCount} orders</span> placed in the last {salesHours} hours
                   </p>
                 </div>
 
@@ -1476,7 +1476,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       {/* Checkout Modal */}
       <Modal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} title="Order Request Details">
         <form onSubmit={handleCheckoutSubmit} className="space-y-4">
-          <div className="flex flex-col items-center justify-center p-4 bg-black/20 rounded border border-[#d4af37]/10 mb-2">
+          <div className="flex flex-col items-center justify-center p-4 bg-black/20 rounded border border-[#C9A84C]/10 mb-2">
             {snapshot && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -1548,7 +1548,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
       {/* Sticky Bottom Buy Bar (Hongo conversion layout choice) */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 z-40 bg-[#0b132b]/95 backdrop-blur-md border-t border-[#d4af37]/35 shadow-[0_-10px_25px_rgba(0,0,0,0.6)] py-3 px-4 sm:px-6 transition-all duration-500 ease-in-out transform ${
+        className={`fixed bottom-0 left-0 right-0 z-40 bg-[#0F1B30]/95 backdrop-blur-md border-t border-[#C9A84C]/35 shadow-[0_-10px_25px_rgba(0,0,0,0.6)] py-3 px-4 sm:px-6 transition-all duration-500 ease-in-out transform ${
           showStickyBar ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
         }`}
       >
@@ -1565,19 +1565,19 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             </div>
             <div>
               <h4 className="text-sm font-bold text-white line-clamp-1 font-luxury">{product.name}</h4>
-              <p className="text-[10px] text-[#d4af37] font-bold uppercase tracking-wider capitalize">{product.category}</p>
+              <p className="text-[10px] text-[#C9A84C] font-bold uppercase tracking-wider capitalize">{product.category}</p>
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
             <div className="text-right hidden sm:block">
               <p className="text-xs text-gray-500">Luxury price</p>
-              <p className="text-sm font-bold text-[#d4af37]">₹{product.price.toLocaleString('en-IN')}</p>
+              <p className="text-sm font-bold text-[#C9A84C]">₹{product.price.toLocaleString('en-IN')}</p>
             </div>
             <Button
               onClick={takeSnapshot}
               disabled={product.stock <= 0}
-              className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#060b13] bg-[#d4af37] hover:bg-[#d4af37]/90 shadow-[0_0_15px_rgba(212,175,55,0.25)] flex items-center"
+              className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#0B1422] bg-[#C9A84C] hover:bg-[#C9A84C]/90 shadow-[0_0_15px_rgba(212,175,55,0.25)] flex items-center"
             >
               <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
               Instant Order

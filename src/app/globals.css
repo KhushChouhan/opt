@@ -3,12 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --charcoal: #0D0D0F;
-  --surface: #141418;
+  --charcoal: #0A0F18;
+  --surface: #111826;
   --gold: #C9A84C;
-  --muted: #2A2A30;
+  --gold-deep: #A07A2A;
+  --gold-light: #E8D9A0;
+  --navy: #1A2742;
+  --navy-deep: #0F1B30;
+  --muted: #26365C;
   --foreground: #f3f4f6;
-  --background: #0D0D0F;
+  --background: #0A0F18;
   --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -71,7 +75,7 @@ h1, h2, h3, .font-luxury {
   top: -1px; right: -1px; bottom: -1px; left: -1px;
   z-index: -1;
   border-radius: inherit;
-  background: linear-gradient(90deg, #C9A84C, #2A2A30, #C9A84C, #FFFFFF);
+  background: linear-gradient(90deg, #C9A84C, #1A2742, #C9A84C, #E8D9A0);
   background-size: 300% 100%;
   animation: border-flow 4s linear infinite;
   opacity: 0.8;

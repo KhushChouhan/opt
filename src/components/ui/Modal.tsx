@@ -39,10 +39,10 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-lg glass-panel rounded-lg overflow-hidden shadow-2xl border border-[#d4af37]/30 transform transition-all animate-in fade-in zoom-in-95 duration-200 z-10 flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-lg glass-panel rounded-lg overflow-hidden shadow-2xl border border-[#C9A84C]/30 transform transition-all animate-in fade-in zoom-in-95 duration-200 z-10 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#d4af37]/15">
-          <h3 className="font-luxury text-base sm:text-lg font-bold text-[#d4af37] tracking-wider uppercase">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#C9A84C]/15">
+          <h3 className="font-luxury text-base sm:text-lg font-bold text-[#C9A84C] tracking-wider uppercase">
             {title}
           </h3>
           <button

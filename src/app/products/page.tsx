@@ -88,7 +88,7 @@ function CatalogContent() {
   // Color Swatches definition with styled hex values
   const colorSwatches: ColorSwatch[] = [
     { id: 'black', label: 'Black', hex: '#000000', terms: ['black', 'onyx', 'charcoal', 'dark', 'coal', 'nero'] },
-    { id: 'gold', label: 'Gold', hex: '#d4af37', terms: ['gold', 'gilded', 'golden', 'rose gold', 'champagne'] },
+    { id: 'gold', label: 'Gold', hex: '#C9A84C', terms: ['gold', 'gilded', 'golden', 'rose gold', 'champagne'] },
     { id: 'silver', label: 'Silver', hex: '#c0c0c0', terms: ['silver', 'chrome', 'steel', 'metal', 'platinum', 'argent'] },
     { id: 'blue', label: 'Blue', hex: '#1e3a8a', terms: ['blue', 'navy', 'indigo', 'cobalt', 'sapphire', 'azure'] },
     { id: 'brown', label: 'Brown', hex: '#78350f', terms: ['brown', 'tortoise', 'havana', 'demi', 'wood', 'amber', 'bronze', 'tan'] },
@@ -227,7 +227,7 @@ function CatalogContent() {
       </div>
 
       {/* Grid, Tab, & Search Controls Header (Hongo Layout Style) */}
-      <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center justify-between gap-4 mb-8 bg-[#0b132b]/40 p-4 rounded-xl border border-gray-800 backdrop-blur-md">
+      <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center justify-between gap-4 mb-8 bg-[#0F1B30]/40 p-4 rounded-xl border border-gray-800 backdrop-blur-md">
         
         {/* Quick Tabs */}
         <div className="flex flex-wrap gap-2 order-2 md:order-1">
@@ -245,8 +245,8 @@ function CatalogContent() {
                 onClick={() => handleCategoryChange(cat.value)}
                 className={`flex items-center space-x-1.5 px-4 py-2 rounded-md text-xs font-semibold uppercase tracking-wider transition-all border ${
                   isSelected
-                    ? 'bg-[#d4af37] text-[#060b13] border-transparent shadow-[0_0_10px_rgba(212,175,55,0.2)]'
-                    : 'bg-[#1c2541]/40 border-gray-700 text-gray-300 hover:text-white hover:bg-[#1c2541]/70'
+                    ? 'bg-[#C9A84C] text-[#0B1422] border-transparent shadow-[0_0_10px_rgba(212,175,55,0.2)]'
+                    : 'bg-[#1A2742]/40 border-gray-700 text-gray-300 hover:text-white hover:bg-[#1A2742]/70'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -262,24 +262,24 @@ function CatalogContent() {
           {/* Advanced Filter Drawer Trigger */}
           <button
             onClick={() => setIsFilterOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-[#1c2541]/80 hover:bg-[#253258] border border-gray-700 text-gray-200 rounded-md text-xs font-semibold tracking-wider uppercase transition-all"
+            className="flex items-center space-x-2 px-4 py-2 bg-[#1A2742]/80 hover:bg-[#253258] border border-gray-700 text-gray-200 rounded-md text-xs font-semibold tracking-wider uppercase transition-all"
           >
-            <SlidersHorizontal className="w-4 h-4 text-[#d4af37]" />
+            <SlidersHorizontal className="w-4 h-4 text-[#C9A84C]" />
             <span>Filters</span>
             {activeFiltersCount > 0 && (
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#d4af37] text-[#060b13] text-[10px] font-extrabold">
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#C9A84C] text-[#0B1422] text-[10px] font-extrabold">
                 {activeFiltersCount}
               </span>
             )}
           </button>
 
           {/* Desktop Grid Layout Selector */}
-          <div className="hidden lg:flex items-center space-x-1 border border-gray-700 rounded-md p-1 bg-[#060b13]/55">
+          <div className="hidden lg:flex items-center space-x-1 border border-gray-700 rounded-md p-1 bg-[#0B1422]/55">
             <button
               onClick={() => setGridCols(2)}
               className={`p-1.5 rounded transition-all ${
                 gridCols === 2
-                  ? 'bg-[#d4af37] text-[#060b13]'
+                  ? 'bg-[#C9A84C] text-[#0B1422]'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
               title="2 Columns Grid"
@@ -293,7 +293,7 @@ function CatalogContent() {
               onClick={() => setGridCols(3)}
               className={`p-1.5 rounded transition-all ${
                 gridCols === 3
-                  ? 'bg-[#d4af37] text-[#060b13]'
+                  ? 'bg-[#C9A84C] text-[#0B1422]'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
               title="3 Columns Grid"
@@ -308,7 +308,7 @@ function CatalogContent() {
               onClick={() => setGridCols(4)}
               className={`p-1.5 rounded transition-all ${
                 gridCols === 4
-                  ? 'bg-[#d4af37] text-[#060b13]'
+                  ? 'bg-[#C9A84C] text-[#0B1422]'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
               title="4 Columns Grid"
@@ -329,7 +329,7 @@ function CatalogContent() {
               placeholder="Search catalog..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#0b132b]/80 border border-gray-700 rounded-md pl-10 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all"
+              className="w-full bg-[#0F1B30]/80 border border-gray-700 rounded-md pl-10 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#C9A84C] focus:ring-1 focus:ring-[#C9A84C]/30 transition-all"
             />
             <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-gray-500" />
           </div>
@@ -343,21 +343,21 @@ function CatalogContent() {
           <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider mr-1">Active Filters:</span>
           
           {selectedCategories.map((cat) => (
-            <span key={cat} className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 px-2.5 py-1 rounded">
+            <span key={cat} className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30 px-2.5 py-1 rounded">
               <span>Category: {cat}</span>
               <button onClick={() => handleCategoryToggle(cat)} className="hover:text-white"><X className="w-3 h-3" /></button>
             </span>
           ))}
 
           {inStockOnly && (
-            <span className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 px-2.5 py-1 rounded">
+            <span className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30 px-2.5 py-1 rounded">
               <span>In Stock Only</span>
               <button onClick={() => setInStockOnly(false)} className="hover:text-white"><X className="w-3 h-3" /></button>
             </span>
           )}
 
           {selectedPrices.map((range) => (
-            <span key={range} className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 px-2.5 py-1 rounded">
+            <span key={range} className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30 px-2.5 py-1 rounded">
               <span>
                 {range === 'under_3000' ? 'Under ₹3,000' : range === '3000_10000' ? '₹3,000 - ₹10,000' : 'Over ₹10,000'}
               </span>
@@ -368,7 +368,7 @@ function CatalogContent() {
           {selectedColors.map((colorId) => {
             const swatch = colorSwatches.find(s => s.id === colorId);
             return (
-              <span key={colorId} className="flex items-center space-x-1.5 text-[10px] font-bold uppercase tracking-wider bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 px-2.5 py-1 rounded">
+              <span key={colorId} className="flex items-center space-x-1.5 text-[10px] font-bold uppercase tracking-wider bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30 px-2.5 py-1 rounded">
                 <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: swatch?.hex }} />
                 <span>{swatch?.label}</span>
                 <button onClick={() => handleColorToggle(colorId)} className="hover:text-white"><X className="w-3 h-3" /></button>
@@ -379,7 +379,7 @@ function CatalogContent() {
           {selectedMaterials.map((materialId) => {
             const mat = materialsList.find(m => m.id === materialId);
             return (
-              <span key={materialId} className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 px-2.5 py-1 rounded">
+              <span key={materialId} className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30 px-2.5 py-1 rounded">
                 <span>{mat?.label}</span>
                 <button onClick={() => handleMaterialToggle(materialId)} className="hover:text-white"><X className="w-3 h-3" /></button>
               </span>
@@ -388,7 +388,7 @@ function CatalogContent() {
 
           <button
             onClick={resetAllFilters}
-            className="text-[10px] text-[#d4af37] hover:text-[#f3e5ab] font-bold uppercase tracking-wider underline transition-colors pl-2"
+            className="text-[10px] text-[#C9A84C] hover:text-[#E8D9A0] font-bold uppercase tracking-wider underline transition-colors pl-2"
           >
             Clear All
           </button>
@@ -398,7 +398,7 @@ function CatalogContent() {
       {/* Loading State */}
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <RefreshCw className="w-8 h-8 text-[#d4af37] animate-spin" />
+          <RefreshCw className="w-8 h-8 text-[#C9A84C] animate-spin" />
           <p className="text-sm text-gray-400">Loading catalog items...</p>
         </div>
       )}
@@ -409,7 +409,7 @@ function CatalogContent() {
           <p className="text-red-400 font-semibold">Failed to load products.</p>
           <button
             onClick={() => mutate()}
-            className="mt-4 px-4 py-2 bg-[#1c2541] hover:bg-[#253258] text-xs font-semibold rounded text-white"
+            className="mt-4 px-4 py-2 bg-[#1A2742] hover:bg-[#253258] text-xs font-semibold rounded text-white"
           >
             Retry Loading
           </button>
@@ -418,7 +418,7 @@ function CatalogContent() {
 
       {/* Empty State */}
       {!isLoading && !error && filteredProducts.length === 0 && (
-        <div className="text-center py-20 border border-dashed border-gray-800 rounded-lg bg-[#0b132b]/20">
+        <div className="text-center py-20 border border-dashed border-gray-800 rounded-lg bg-[#0F1B30]/20">
           <SlidersHorizontal className="w-10 h-10 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-white mb-1">No products match filters</h3>
           <p className="text-sm text-gray-400 max-w-sm mx-auto mt-2">
@@ -447,7 +447,7 @@ function CatalogContent() {
                 : `/try-on/glasses/${product.id}`;
 
             return (
-              <Card key={product.id} hoverable className="flex flex-col h-full bg-[#0b132b]/40 border border-gray-800/80 group overflow-hidden">
+              <Card key={product.id} hoverable className="flex flex-col h-full bg-[#0F1B30]/40 border border-gray-800/80 group overflow-hidden">
                 {/* Product Image Panel */}
                 <div className="relative aspect-square w-full bg-black/10 overflow-hidden">
                   <Image
@@ -468,7 +468,7 @@ function CatalogContent() {
                   )}
                   
                   {/* Category Tag badge */}
-                  <span className="absolute top-3 right-3 px-2 py-1 bg-black/55 backdrop-blur-md text-[#f3e5ab] text-[10px] font-bold uppercase tracking-wider rounded border border-[#d4af37]/20 z-10">
+                  <span className="absolute top-3 right-3 px-2 py-1 bg-black/55 backdrop-blur-md text-[#E8D9A0] text-[10px] font-bold uppercase tracking-wider rounded border border-[#C9A84C]/20 z-10">
                     {product.category}
                   </span>
 
@@ -476,7 +476,7 @@ function CatalogContent() {
                   <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                     <button
                       onClick={() => router.push(tryOnLink)}
-                      className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 px-5 py-2.5 bg-[#d4af37] hover:bg-[#d4af37]/90 text-[#060b13] font-bold text-xs uppercase tracking-wider rounded-md shadow-lg"
+                      className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 px-5 py-2.5 bg-[#C9A84C] hover:bg-[#C9A84C]/90 text-[#0B1422] font-bold text-xs uppercase tracking-wider rounded-md shadow-lg"
                     >
                       Instant Mirror Try-On
                     </button>
@@ -486,7 +486,7 @@ function CatalogContent() {
                 {/* Details */}
                 <CardContent className="p-5 flex-grow flex flex-col justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-white mb-2 leading-snug font-luxury group-hover:text-[#d4af37] transition-colors line-clamp-1">
+                    <h3 className="text-lg font-bold text-white mb-2 leading-snug font-luxury group-hover:text-[#C9A84C] transition-colors line-clamp-1">
                       {product.name}
                     </h3>
                     <p className="text-xs text-gray-400 line-clamp-3 leading-relaxed mb-4 min-h-[4.5em]">
@@ -496,7 +496,7 @@ function CatalogContent() {
                   
                   <div className="flex items-baseline justify-between mt-2 pt-3 border-t border-gray-800/80">
                     <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Luxury Price</span>
-                    <span className="text-lg font-bold text-[#d4af37]">
+                    <span className="text-lg font-bold text-[#C9A84C]">
                       ₹{product.price.toLocaleString('en-IN')}
                     </span>
                   </div>
@@ -537,14 +537,14 @@ function CatalogContent() {
 
         {/* Drawer container */}
         <div 
-          className={`absolute top-0 right-0 h-full w-80 sm:w-96 bg-[#060b13] border-l border-[#d4af37]/25 shadow-2xl flex flex-col justify-between transition-transform duration-300 ease-out transform ${
+          className={`absolute top-0 right-0 h-full w-80 sm:w-96 bg-[#0B1422] border-l border-[#C9A84C]/25 shadow-2xl flex flex-col justify-between transition-transform duration-300 ease-out transform ${
             isFilterOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
           {/* Header */}
           <div className="p-5 border-b border-gray-800 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <SlidersHorizontal className="w-4 h-4 text-[#d4af37]" />
+              <SlidersHorizontal className="w-4 h-4 text-[#C9A84C]" />
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Filter & Sort</h3>
             </div>
             <button 
@@ -560,7 +560,7 @@ function CatalogContent() {
             
             {/* 1. Category Facet */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#d4af37] border-b border-gray-800 pb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] border-b border-gray-800 pb-2">
                 Departments
               </h4>
               <div className="space-y-2">
@@ -570,7 +570,7 @@ function CatalogContent() {
                       type="checkbox"
                       checked={selectedCategories.includes(cat)}
                       onChange={() => handleCategoryToggle(cat)}
-                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#d4af37] focus:ring-[#d4af37]/20 focus:ring-offset-0 focus:outline-none"
+                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#C9A84C] focus:ring-[#C9A84C]/20 focus:ring-offset-0 focus:outline-none"
                     />
                     <span className="capitalize">{cat === 'glasses' ? 'Eyeglasses' : cat === 'sunglasses' ? 'Sunglasses' : 'Premium Watches'}</span>
                   </label>
@@ -580,7 +580,7 @@ function CatalogContent() {
 
             {/* 2. Stock Availability Facet */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#d4af37] border-b border-gray-800 pb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] border-b border-gray-800 pb-2">
                 Availability
               </h4>
               <div className="space-y-2">
@@ -589,7 +589,7 @@ function CatalogContent() {
                     type="checkbox"
                     checked={inStockOnly}
                     onChange={(e) => setInStockOnly(e.target.checked)}
-                    className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#d4af37] focus:ring-[#d4af37]/20 focus:ring-offset-0 focus:outline-none"
+                    className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#C9A84C] focus:ring-[#C9A84C]/20 focus:ring-offset-0 focus:outline-none"
                   />
                   <span>Show In-Stock Only</span>
                 </label>
@@ -598,7 +598,7 @@ function CatalogContent() {
 
             {/* 3. Price Range Facet */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#d4af37] border-b border-gray-800 pb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] border-b border-gray-800 pb-2">
                 Price Range
               </h4>
               <div className="space-y-2">
@@ -612,7 +612,7 @@ function CatalogContent() {
                       type="checkbox"
                       checked={selectedPrices.includes(range.id)}
                       onChange={() => handlePriceToggle(range.id)}
-                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#d4af37] focus:ring-[#d4af37]/20 focus:ring-offset-0 focus:outline-none"
+                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#C9A84C] focus:ring-[#C9A84C]/20 focus:ring-offset-0 focus:outline-none"
                     />
                     <span>{range.label}</span>
                   </label>
@@ -622,7 +622,7 @@ function CatalogContent() {
 
             {/* 4. Luxury Color Swatches Facet */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#d4af37] border-b border-gray-800 pb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] border-b border-gray-800 pb-2">
                 Luxury Color Swatches
               </h4>
               <div className="grid grid-cols-2 gap-2">
@@ -634,8 +634,8 @@ function CatalogContent() {
                       onClick={() => handleColorToggle(color.id)}
                       className={`flex items-center space-x-2 p-2 rounded-md border text-left text-xs transition-all ${
                         isChecked 
-                          ? 'border-[#d4af37] bg-[#d4af37]/5 text-white' 
-                          : 'border-gray-800 bg-[#1c2541]/20 text-gray-400 hover:border-gray-700'
+                          ? 'border-[#C9A84C] bg-[#C9A84C]/5 text-white' 
+                          : 'border-gray-800 bg-[#1A2742]/20 text-gray-400 hover:border-gray-700'
                       }`}
                     >
                       <span 
@@ -653,7 +653,7 @@ function CatalogContent() {
 
             {/* 5. Frame & Strap Material Facet */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#d4af37] border-b border-gray-800 pb-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] border-b border-gray-800 pb-2">
                 Material Composition
               </h4>
               <div className="space-y-2">
@@ -663,7 +663,7 @@ function CatalogContent() {
                       type="checkbox"
                       checked={selectedMaterials.includes(material.id)}
                       onChange={() => handleMaterialToggle(material.id)}
-                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#d4af37] focus:ring-[#d4af37]/20 focus:ring-offset-0 focus:outline-none"
+                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#C9A84C] focus:ring-[#C9A84C]/20 focus:ring-offset-0 focus:outline-none"
                     />
                     <span>{material.label}</span>
                   </label>
@@ -674,7 +674,7 @@ function CatalogContent() {
           </div>
 
           {/* Footer controls inside drawer */}
-          <div className="p-5 border-t border-gray-800 bg-[#0b132b]/40 flex space-x-3">
+          <div className="p-5 border-t border-gray-800 bg-[#0F1B30]/40 flex space-x-3">
             <Button
               variant="outline"
               onClick={resetAllFilters}
@@ -684,7 +684,7 @@ function CatalogContent() {
             </Button>
             <Button
               onClick={() => setIsFilterOpen(false)}
-              className="flex-1 text-xs py-2 uppercase font-bold tracking-wider text-[#060b13] bg-[#d4af37]"
+              className="flex-1 text-xs py-2 uppercase font-bold tracking-wider text-[#0B1422] bg-[#C9A84C]"
             >
               Apply Filter ({filteredProducts.length})
             </Button>
@@ -700,8 +700,8 @@ function CatalogContent() {
 export default function ProductsPage() {
   return (
     <Suspense fallback={
-      <div className="flex flex-col items-center justify-center py-20 space-y-4 min-h-screen bg-[#060b13]">
-        <RefreshCw className="w-8 h-8 text-[#d4af37] animate-spin" />
+      <div className="flex flex-col items-center justify-center py-20 space-y-4 min-h-screen bg-[#0B1422]">
+        <RefreshCw className="w-8 h-8 text-[#C9A84C] animate-spin" />
         <p className="text-sm text-gray-400">Loading catalog...</p>
       </div>
     }>

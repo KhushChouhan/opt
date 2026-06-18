@@ -19,8 +19,8 @@ export const Input = React.forwardRef(function Input(
       <input
         id={id}
         ref={ref}
-        className={`w-full bg-[#0b132b]/80 border ${
-          error ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-700 focus:border-[#d4af37] focus:ring-[#d4af37]/30'
+        className={`w-full bg-[#0F1B30]/80 border ${
+          error ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-700 focus:border-[#C9A84C] focus:ring-[#C9A84C]/30'
         } rounded-md px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 ${className}`}
         {...props}
       />
@@ -49,8 +49,8 @@ export const Textarea = React.forwardRef(function Textarea(
         id={id}
         ref={ref}
         rows={4}
-        className={`w-full bg-[#0b132b]/80 border ${
-          error ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-700 focus:border-[#d4af37] focus:ring-[#d4af37]/30'
+        className={`w-full bg-[#0F1B30]/80 border ${
+          error ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-700 focus:border-[#C9A84C] focus:ring-[#C9A84C]/30'
         } rounded-md px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 ${className}`}
         {...props}
       />
@@ -84,13 +84,13 @@ export const Select = React.forwardRef(function Select(
       <select
         id={id}
         ref={ref}
-        className={`w-full bg-[#0b132b]/80 border ${
-          error ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-700 focus:border-[#d4af37] focus:ring-[#d4af37]/30'
+        className={`w-full bg-[#0F1B30]/80 border ${
+          error ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-700 focus:border-[#C9A84C] focus:ring-[#C9A84C]/30'
         } rounded-md px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3Cpath%20d%3D%22M7%209l3%203%203-3%22%20stroke%3D%22%239CA3AF%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat ${className}`}
         {...props}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-[#0b132b] text-white">
+          <option key={opt.value} value={opt.value} className="bg-[#0F1B30] text-white">
             {opt.label}
           </option>
         ))}

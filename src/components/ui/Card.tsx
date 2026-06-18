@@ -19,7 +19,7 @@ export function Card({ children, className = '', hoverable = false, ...props }: 
 
 export function CardHeader({ children, className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`px-6 py-4 border-b border-[#d4af37]/10 ${className}`} {...props}>
+    <div className={`px-6 py-4 border-b border-[#C9A84C]/10 ${className}`} {...props}>
       {children}
     </div>
   );
@@ -27,7 +27,7 @@ export function CardHeader({ children, className = '', ...props }: HTMLAttribute
 
 export function CardTitle({ children, className = '', ...props }: HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 className={`text-lg font-bold text-[#d4af37] leading-none ${className}`} {...props}>
+    <h3 className={`text-lg font-bold text-[#C9A84C] leading-none ${className}`} {...props}>
       {children}
     </h3>
   );
@@ -43,7 +43,7 @@ export function CardContent({ children, className = '', ...props }: HTMLAttribut
 
 export function CardFooter({ children, className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`px-6 py-4 border-t border-[#d4af37]/10 bg-black/10 ${className}`} {...props}>
+    <div className={`px-6 py-4 border-t border-[#C9A84C]/10 bg-black/10 ${className}`} {...props}>
       {children}
     </div>
   );

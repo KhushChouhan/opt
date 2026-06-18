@@ -15,12 +15,12 @@ export default function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseStyles = 'inline-flex items-center justify-center rounded-md font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#d4af37]/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none';
+  const baseStyles = 'inline-flex items-center justify-center rounded-md font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none';
 
   const variants = {
-    gold: 'bg-gradient-to-r from-[#d4af37] to-[#aa7c11] text-[#060b13] hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:brightness-110 border border-transparent',
-    outline: 'border border-[#d4af37] text-[#d4af37] bg-transparent hover:bg-[#d4af37]/10 hover:shadow-[0_0_10px_rgba(212,175,55,0.2)]',
-    secondary: 'bg-[#1c2541] text-[#f3f4f6] hover:bg-[#2e3b5e] border border-gray-700',
+    gold: 'bg-gradient-to-r from-[#C9A84C] to-[#A07A2A] text-[#0B1422] hover:shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:brightness-110 border border-transparent',
+    outline: 'border border-[#C9A84C] text-[#C9A84C] bg-transparent hover:bg-[#C9A84C]/10 hover:shadow-[0_0_10px_rgba(212,175,55,0.2)]',
+    secondary: 'bg-[#1A2742] text-[#f3f4f6] hover:bg-[#26365C] border border-gray-700',
     danger: 'bg-red-600 text-white hover:bg-red-700 border border-transparent',
     ghost: 'bg-transparent text-gray-300 hover:text-white hover:bg-white/5 border border-transparent',
   };

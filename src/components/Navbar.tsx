@@ -2,341 +2,215 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { Glasses, Watch, Home, Shield, LogOut, Menu, X } from 'lucide-react';
+import {
+  Phone, Star, Eye, ShieldCheck, Search, Menu, X,
+  ChevronDown, Watch, Glasses, LogOut, Shield,
+} from 'lucide-react';
+
+interface NavItem {
+  label: string;
+  href: string;
+  children?: { label: string; href: string }[];
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Home', href: '/' },
+  {
+    label: 'Watches',
+    href: '/products?category=watches',
+    children: [
+      { label: 'All Watches', href: '/products?category=watches' },
+      { label: 'Chronographs', href: '/products?category=watches' },
+      { label: 'Automatic', href: '/products?category=watches' },
+      { label: 'Smart Watches', href: '/products?category=watches' },
+    ],
+  },
+  {
+    label: 'Opticals',
+    href: '/products?category=glasses',
+    children: [
+      { label: 'Eyeglasses', href: '/products?category=glasses' },
+      { label: 'Sunglasses', href: '/products?category=sunglasses' },
+      { label: 'Optical Frames', href: '/products?category=glasses' },
+      { label: 'Lenses', href: '/products?category=glasses' },
+    ],
+  },
+  { label: 'Brands', href: '/#brands' },
+  { label: 'Collections', href: '/#categories' },
+  { label: 'About Us', href: '/#about' },
+  { label: 'Contact', href: '/#contact' },
+];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
-
-  const toggleMenu = () => setIsOpen(!isOpen);
-  const isActive = (path: string) => pathname === path;
+  const isActive = (href: string) => pathname === href;
 
   return (
-    <nav className="sticky top-0 z-40 w-full glass-panel border-b border-[#d4af37]/20 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo / Brand */}
-          <div className="flex-shrink-0 flex items-center">
-            <Link href="/" className="flex flex-col">
-              <span className="font-luxury text-lg sm:text-xl font-bold tracking-wider text-[#d4af37]">
-                HARIYANA
-              </span>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-[#f3e5ab] font-sans -mt-1">
-                Watch & Opticals
-              </span>
-            </Link>
-          </div>
-
-          {/* Desktop Nav Links (Hongo style Mega Menu) */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link
-              href="/"
-              className={`flex items-center space-x-1.5 px-1 py-2 text-sm font-medium transition-colors duration-200 border-b-2 ${
-                isActive('/')
-                  ? 'text-[#d4af37] border-[#d4af37]'
-                  : 'text-gray-300 border-transparent hover:text-[#d4af37] hover:border-[#d4af37]/30'
-              }`}
-            >
-              <Home className="w-4 h-4 mr-1" />
-              <span>Home</span>
-            </Link>
-
-            {/* Shop Catalog Mega Menu Trigger */}
-            <div className="group static">
-              <Link
-                href="/products"
-                className={`flex items-center space-x-1.5 px-1 py-2 text-sm font-medium transition-colors duration-200 border-b-2 ${
-                  pathname.startsWith('/products')
-                    ? 'text-[#d4af37] border-[#d4af37]'
-                    : 'text-gray-300 border-transparent hover:text-[#d4af37] hover:border-[#d4af37]/30'
-                }`}
-              >
-                <Glasses className="w-4 h-4 mr-1" />
-                <span>Shop Catalog</span>
-                <span className="text-[8px] transition-transform duration-300 group-hover:rotate-180 ml-0.5">▼</span>
-              </Link>
-
-              {/* Mega Menu Dropdown */}
-              <div className="absolute top-16 left-0 right-0 w-full bg-[#0b132b]/95 backdrop-blur-md border-b border-[#d4af37]/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 shadow-2xl z-50">
-                <div className="max-w-7xl mx-auto px-8 py-8 grid grid-cols-4 gap-8">
-                  {/* Column 1: Eyeglasses */}
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider border-b border-gray-800 pb-2 flex items-center">
-                      <Glasses className="w-4 h-4 mr-2" /> Eyeglasses
-                    </h4>
-                    <ul className="space-y-2 text-xs">
-                      <li>
-                        <Link href="/products?category=glasses" className="text-gray-300 hover:text-white transition-colors block py-1">
-                          All Eyeglasses
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=glasses" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          Acetate Designer Frames
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=glasses" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          Titanium & Metal Frames
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=glasses" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          Classic Round Styles
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Column 2: Sunglasses */}
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider border-b border-gray-800 pb-2 flex items-center">
-                      <Glasses className="w-4 h-4 mr-2 text-amber-500" /> Sunglasses
-                    </h4>
-                    <ul className="space-y-2 text-xs">
-                      <li>
-                        <Link href="/products?category=sunglasses" className="text-gray-300 hover:text-white transition-colors block py-1">
-                          All Sunglasses
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=sunglasses" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          Polarized Lenses
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=sunglasses" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          100% UV Protection
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=sunglasses" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          Modern Aviators
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Column 3: Watches */}
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-wider border-b border-gray-800 pb-2 flex items-center">
-                      <Watch className="w-4 h-4 mr-2" /> Premium Watches
-                    </h4>
-                    <ul className="space-y-2 text-xs">
-                      <li>
-                        <Link href="/products?category=watches" className="text-gray-300 hover:text-white transition-colors block py-1">
-                          All Watches
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=watches" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          Chronograph Series
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=watches" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          Quartz Elegance
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/products?category=watches" className="text-gray-400 hover:text-white transition-colors block py-1">
-                          Sports & Rugged Wear
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Column 4: Promo Visual Card */}
-                  <div className="relative rounded-lg overflow-hidden border border-[#d4af37]/20 bg-[#1c2541]/40 p-4 flex flex-col justify-between h-full">
-                    <div>
-                      <span className="text-[9px] px-2 py-0.5 bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#d4af37] font-semibold rounded uppercase tracking-wider">
-                        Virtual Try-On
-                      </span>
-                      <h5 className="text-xs font-bold text-white mt-2 font-luxury">Experience Live AR mirror</h5>
-                      <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
-                        Try on optical glasses and designer watch models instantly using WebGL tracking.
-                      </p>
-                    </div>
-                    <Link href="/products" className="mt-4">
-                      <button className="w-full py-1.5 bg-[#d4af37] text-[#060b13] hover:bg-[#d4af37]/90 text-[10px] font-bold uppercase tracking-wider rounded transition-colors">
-                        Launch Try-On
-                      </button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
+    <header className="sticky top-0 z-40 w-full">
+      {/* Announcement Bar */}
+      <div className="bg-gradient-to-r from-[#A07A2A] via-[#C9A84C] to-[#A07A2A] text-[#0A0F18]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-9 text-[10px] sm:text-[11px] font-semibold tracking-wide">
+            <a href="tel:+919876543210" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+              <Phone className="w-3.5 h-3.5" />
+              <span>+91 98765 43210</span>
+            </a>
+            <div className="hidden md:flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 fill-current" />
+              <span>Premium Watches &amp; Eyewear Since 1998</span>
             </div>
-          </div>
-
-          {/* Admin / Actions */}
-          <div className="hidden md:flex items-center space-x-4">
-            {session ? (
-              <div className="flex items-center space-x-3">
-                <Link
-                  href="/admin"
-                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold border ${
-                    isActive('/admin')
-                      ? 'border-[#d4af37] bg-[#d4af37]/10 text-[#d4af37]'
-                      : 'border-amber-500/30 text-amber-500 hover:bg-amber-500/10'
-                  }`}
-                >
-                  <Shield className="w-3.5 h-3.5 text-[#d4af37] animate-pulse" />
-                  <span>Admin Panel</span>
-                </Link>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                  className="flex items-center space-x-1.5 text-xs text-red-400 hover:text-red-300 font-medium px-2 py-1.5 hover:bg-red-500/10 rounded-md transition-colors"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Logout</span>
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/admin/login"
-                className={`flex items-center space-x-1 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-700 transition-colors ${
-                  isActive('/admin/login')
-                    ? 'text-[#d4af37] border-[#d4af37]'
-                    : 'text-gray-400 hover:text-[#d4af37] hover:border-[#d4af37]'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Store Admin</span>
-              </Link>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
-            {session && (
-              <Link
-                href="/admin"
-                className="mr-3 p-1 text-amber-500 hover:text-amber-400"
-                title="Admin Dashboard"
-              >
-                <Shield className="w-5 h-5 animate-pulse" />
-              </Link>
-            )}
-            <button
-              onClick={toggleMenu}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-[#d4af37] hover:bg-white/5 focus:outline-none transition-colors"
-              aria-expanded={isOpen}
-            >
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <span className="hidden sm:flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5" />
+                <span>Free Eye Test Booking</span>
+              </span>
+              <span className="hidden lg:flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>100% Authentic Products</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu Drawer */}
-      {isOpen && (
-        <div className="md:hidden glass-panel border-t border-[#d4af37]/20 px-2 pt-2 pb-4 space-y-1">
-          <Link
-            href="/"
-            onClick={() => setIsOpen(false)}
-            className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors ${
-              isActive('/')
-                ? 'text-[#d4af37] bg-white/5 border-l-2 border-[#d4af37]'
-                : 'text-gray-300 hover:text-[#d4af37] hover:bg-white/5'
-            }`}
-          >
-            <Home className="w-5 h-5" />
-            <span>Home</span>
-          </Link>
+      {/* Main Nav */}
+      <nav className="bg-[#0A0F18]/95 backdrop-blur-md border-b border-[#C9A84C]/15">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-24">
+            {/* Logo */}
+            <Link href="/" aria-label="Hariyana Watch & Opticals - Home" className="flex-shrink-0">
+              <Image
+                src="/images/logo.png"
+                alt="Hariyana Watch & Opticals"
+                width={565}
+                height={441}
+                priority
+                className="h-20 w-auto"
+              />
+            </Link>
 
-          <Link
-            href="/products"
-            onClick={() => setIsOpen(false)}
-            className={`flex items-center space-x-3 px-4 py-3 rounded-md text-base font-medium transition-colors ${
-              pathname === '/products'
-                ? 'text-[#d4af37] bg-white/5 border-l-2 border-[#d4af37]'
-                : 'text-gray-300 hover:text-[#d4af37] hover:bg-white/5'
-            }`}
-          >
-            <Glasses className="w-5 h-5" />
-            <span>Shop All Products</span>
-          </Link>
+            {/* Desktop Nav */}
+            <div className="hidden lg:flex items-center gap-7">
+              {NAV_ITEMS.map((item) => (
+                <div key={item.label} className="relative group">
+                  <Link
+                    href={item.href}
+                    className={`flex items-center gap-1 py-2 text-[13px] font-semibold uppercase tracking-wider transition-colors ${
+                      isActive(item.href)
+                        ? 'text-[#C9A84C]'
+                        : 'text-gray-200 hover:text-[#C9A84C]'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {item.children && <ChevronDown className="w-3 h-3 transition-transform group-hover:rotate-180" />}
+                  </Link>
+                  {/* underline */}
+                  <span className={`absolute -bottom-px left-0 h-0.5 bg-[#C9A84C] transition-all duration-300 ${isActive(item.href) ? 'w-full' : 'w-0 group-hover:w-full'}`} />
 
-          <div className="border-t border-gray-800 my-2 pt-2">
-            <span className="block px-4 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Shop By Department
-            </span>
-            <div className="grid grid-cols-1 gap-1 p-2">
-              <Link
-                href="/products?category=glasses"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-between p-3 rounded bg-[#1c2541]/40 text-sm font-medium hover:text-[#d4af37] border border-gray-800"
-              >
-                <span className="flex items-center space-x-2">
-                  <Glasses className="w-4.5 h-4.5" />
-                  <span>Eyeglasses</span>
-                </span>
-                <span className="text-[10px] text-gray-500">→</span>
-              </Link>
-              <Link
-                href="/products?category=sunglasses"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-between p-3 rounded bg-[#1c2541]/40 text-sm font-medium hover:text-[#d4af37] border border-gray-800"
-              >
-                <span className="flex items-center space-x-2">
-                  <Glasses className="w-4.5 h-4.5 text-amber-500" />
-                  <span>Sunglasses</span>
-                </span>
-                <span className="text-[10px] text-gray-500">→</span>
-              </Link>
-              <Link
-                href="/products?category=watches"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-between p-3 rounded bg-[#1c2541]/40 text-sm font-medium hover:text-[#d4af37] border border-gray-800"
-              >
-                <span className="flex items-center space-x-2">
-                  <Watch className="w-4.5 h-4.5" />
-                  <span>Premium Watches</span>
-                </span>
-                <span className="text-[10px] text-gray-500">→</span>
-              </Link>
+                  {/* Dropdown */}
+                  {item.children && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                      <div className="w-52 rounded-xl bg-[#0F1B30] border border-[#C9A84C]/20 shadow-2xl py-2">
+                        {item.children.map((child) => (
+                          <Link
+                            key={child.label}
+                            href={child.href}
+                            className="flex items-center gap-2 px-4 py-2.5 text-xs text-gray-300 hover:text-[#C9A84C] hover:bg-white/5 transition-colors"
+                          >
+                            {item.label === 'Watches' ? <Watch className="w-3.5 h-3.5" /> : <Glasses className="w-3.5 h-3.5" />}
+                            {child.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          </div>
 
-          <div className="border-t border-gray-800 my-2 pt-2">
-            {session ? (
-              <div className="px-2 space-y-2">
-                <Link
-                  href="/admin"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center space-x-2 w-full justify-center px-4 py-2 rounded-md text-sm font-semibold border border-[#d4af37] bg-[#d4af37]/10 text-[#d4af37]"
-                >
-                  <Shield className="w-4 h-4" />
-                  <span>Admin Dashboard</span>
-                </Link>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    signOut({ callbackUrl: '/' });
-                  }}
-                  className="flex items-center space-x-2 w-full justify-center px-4 py-2 rounded-md text-sm font-medium border border-red-500/30 bg-red-500/10 text-red-400"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Log Out</span>
-                </button>
-              </div>
-            ) : (
+            {/* Right actions */}
+            <div className="hidden lg:flex items-center gap-6">
+              <span className="w-px h-9 bg-[#C9A84C]/20" aria-hidden="true" />
               <Link
-                href="/admin/login"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center space-x-2 justify-center px-4 py-2 rounded-md text-sm font-medium border border-gray-700 text-gray-400 hover:text-[#d4af37]"
+                href="/products"
+                aria-label="Search products"
+                className="flex flex-col items-center gap-0.5 text-[#C9A84C] hover:text-[#E8D9A0] transition-colors"
               >
-                <Shield className="w-4 h-4" />
-                <span>Store Admin Access</span>
+                <Search className="w-5 h-5" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider">Search</span>
               </Link>
-            )}
+              {session && (
+                <>
+                  <Link
+                    href="/admin"
+                    aria-label="Admin panel"
+                    className="flex flex-col items-center gap-0.5 text-[#C9A84C] hover:text-[#E8D9A0] transition-colors"
+                  >
+                    <Shield className="w-5 h-5" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider">Admin</span>
+                  </Link>
+                  <button
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    aria-label="Sign out"
+                    className="flex flex-col items-center gap-0.5 text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider">Logout</span>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Mobile toggle */}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="lg:hidden p-2 text-gray-200 hover:text-[#C9A84C] transition-colors"
+              aria-expanded={isOpen}
+              aria-label="Toggle menu"
+            >
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
-      )}
-    </nav>
+
+        {/* Mobile menu */}
+        {isOpen && (
+          <div className="lg:hidden border-t border-[#C9A84C]/15 bg-[#0A0F18] px-4 py-3 space-y-1">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-2.5 rounded-md text-sm font-semibold uppercase tracking-wider text-gray-200 hover:text-[#C9A84C] hover:bg-white/5 transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link
+              href="/products"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-semibold uppercase tracking-wider text-[#C9A84C] hover:bg-white/5"
+            >
+              <Search className="w-4 h-4" /> Search
+            </Link>
+            {session && (
+              <div className="flex gap-2 pt-2 border-t border-white/10 mt-2">
+                <Link href="/admin" onClick={() => setIsOpen(false)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold border border-[#C9A84C]/40 text-[#C9A84C]">
+                  <Shield className="w-3.5 h-3.5" /> Admin
+                </Link>
+                <button onClick={() => { setIsOpen(false); signOut({ callbackUrl: '/' }); }} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold border border-red-500/30 text-red-400">
+                  <LogOut className="w-3.5 h-3.5" /> Logout
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </nav>
+    </header>
   );
 }

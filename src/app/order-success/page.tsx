@@ -21,7 +21,7 @@ function SuccessPageContent() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-16 sm:py-24">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#d4af37]/10 border border-[#d4af37]/30 text-[#d4af37] mb-6 animate-bounce">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/30 text-[#C9A84C] mb-6 animate-bounce">
           <CheckCircle2 className="w-10 h-10" />
         </div>
         <h1 className="font-luxury text-3xl sm:text-4xl font-bold tracking-wider text-white mb-2">
@@ -32,7 +32,7 @@ function SuccessPageContent() {
         </p>
       </div>
 
-      <Card className="border-[#d4af37]/20 bg-[#0b132b]/60 mb-8">
+      <Card className="border-[#C9A84C]/20 bg-[#0F1B30]/60 mb-8">
         <CardContent className="p-6 sm:p-8 space-y-6">
           {/* Order Details Summary */}
           <div className="space-y-3 pb-4 border-b border-gray-800">
@@ -68,14 +68,14 @@ function SuccessPageContent() {
             <h4 className="text-white font-semibold uppercase tracking-wider text-xs">Shop Details & Contact</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="flex items-start space-x-2.5">
-                <MapPin className="w-4 h-4 text-[#d4af37] flex-shrink-0 mt-0.5" />
+                <MapPin className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
                 <span className="text-gray-300">
                   52 Main Bus Stand,<br />
                   Hanumangarh Town, Rajasthan
                 </span>
               </div>
               <div className="flex items-start space-x-2.5">
-                <Phone className="w-4 h-4 text-[#d4af37] flex-shrink-0 mt-0.5" />
+                <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
                 <div className="flex flex-col text-gray-300">
                   <span>98282-07999 (Vinod Kumar)</span>
                   <span>85262-00444 (Shop)</span>
@@ -107,7 +107,7 @@ export default function OrderSuccessPage() {
   return (
     <Suspense fallback={
       <div className="flex flex-col items-center justify-center py-20 space-y-4 min-h-screen">
-        <div className="w-8 h-8 border-4 border-t-[#d4af37] border-r-[#d4af37]/30 border-b-[#d4af37]/30 border-l-[#d4af37]/30 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-t-[#C9A84C] border-r-[#C9A84C]/30 border-b-[#C9A84C]/30 border-l-[#C9A84C]/30 rounded-full animate-spin" />
         <p className="text-sm text-gray-400">Loading details...</p>
       </div>
     }>

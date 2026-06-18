@@ -328,9 +328,9 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       {/* Stats Cards Dashboard HUD */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <Card className="bg-[#0b132b]/40 border-gray-800">
+        <Card className="bg-[#0F1B30]/40 border-gray-800">
           <CardContent className="p-5 flex items-center space-x-4">
-            <div className="p-3 bg-[#1c2541] rounded-md border border-[#d4af37]/20 text-[#d4af37]">
+            <div className="p-3 bg-[#1A2742] rounded-md border border-[#C9A84C]/20 text-[#C9A84C]">
               <ClipboardList className="w-5 h-5" />
             </div>
             <div>
@@ -340,7 +340,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0b132b]/40 border-gray-800">
+        <Card className="bg-[#0F1B30]/40 border-gray-800">
           <CardContent className="p-5 flex items-center space-x-4">
             <div className="p-3 bg-amber-500/10 rounded-md border border-amber-500/20 text-amber-500">
               <Clock className="w-5 h-5" />
@@ -352,7 +352,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0b132b]/40 border-gray-800">
+        <Card className="bg-[#0F1B30]/40 border-gray-800">
           <CardContent className="p-5 flex items-center space-x-4">
             <div className="p-3 bg-emerald-500/10 rounded-md border border-emerald-500/20 text-emerald-500">
               <TrendingUp className="w-5 h-5" />
@@ -364,7 +364,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0b132b]/40 border-gray-800">
+        <Card className="bg-[#0F1B30]/40 border-gray-800">
           <CardContent className="p-5 flex items-center space-x-4">
             <div className="p-3 bg-blue-500/10 rounded-md border border-blue-500/20 text-blue-500">
               <Package className="w-5 h-5" />
@@ -383,7 +383,7 @@ export default function AdminDashboard() {
           onClick={() => setActiveTab('orders')}
           className={`flex items-center space-x-2 px-6 py-3 border-b-2 text-sm font-semibold uppercase tracking-wider transition-all ${
             activeTab === 'orders'
-              ? 'border-[#d4af37] text-[#d4af37]'
+              ? 'border-[#C9A84C] text-[#C9A84C]'
               : 'border-transparent text-gray-400 hover:text-white'
           }`}
         >
@@ -394,7 +394,7 @@ export default function AdminDashboard() {
           onClick={() => setActiveTab('products')}
           className={`flex items-center space-x-2 px-6 py-3 border-b-2 text-sm font-semibold uppercase tracking-wider transition-all ${
             activeTab === 'products'
-              ? 'border-[#d4af37] text-[#d4af37]'
+              ? 'border-[#C9A84C] text-[#C9A84C]'
               : 'border-transparent text-gray-400 hover:text-white'
           }`}
         >
@@ -416,7 +416,7 @@ export default function AdminDashboard() {
 
             {ordersLoading && (
               <div className="flex justify-center items-center py-12">
-                <RefreshCw className="w-6 h-6 text-[#d4af37] animate-spin" />
+                <RefreshCw className="w-6 h-6 text-[#C9A84C] animate-spin" />
               </div>
             )}
 
@@ -457,7 +457,7 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="p-4">
-                          <a href={`tel:+91${order.phone}`} className="flex items-center text-xs text-[#d4af37] hover:underline">
+                          <a href={`tel:+91${order.phone}`} className="flex items-center text-xs text-[#C9A84C] hover:underline">
                             <Phone className="w-3.5 h-3.5 mr-1" />
                             {order.phone}
                           </a>
@@ -516,7 +516,7 @@ export default function AdminDashboard() {
 
             {productsLoading && (
               <div className="flex justify-center items-center py-12">
-                <RefreshCw className="w-6 h-6 text-[#d4af37] animate-spin" />
+                <RefreshCw className="w-6 h-6 text-[#C9A84C] animate-spin" />
               </div>
             )}
 
@@ -535,11 +535,11 @@ export default function AdminDashboard() {
             {!productsLoading && !productsError && products && products.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {products.map((product) => (
-                  <Card key={product.id} className="bg-[#0b132b]/40 border-gray-800 relative">
+                  <Card key={product.id} className="bg-[#0F1B30]/40 border-gray-800 relative">
                     <div className="absolute top-2 right-2 z-10 flex space-x-1">
                       <button
                         onClick={() => openEditProductModal(product)}
-                        className="p-1.5 rounded bg-black/60 hover:bg-black text-[#d4af37] border border-[#d4af37]/20 transition-all"
+                        className="p-1.5 rounded bg-black/60 hover:bg-black text-[#C9A84C] border border-[#C9A84C]/20 transition-all"
                         title="Edit Product"
                       >
                         <Edit className="w-3.5 h-3.5" />
@@ -574,7 +574,7 @@ export default function AdminDashboard() {
                       </h3>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-gray-400">Price:</span>
-                        <span className="font-bold text-[#d4af37]">₹{product.price}</span>
+                        <span className="font-bold text-[#C9A84C]">₹{product.price}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-gray-400">Current Stock:</span>
@@ -674,9 +674,9 @@ export default function AdminDashboard() {
                 onChange={(e) => setProductForm(prev => ({ ...prev, image_url: e.target.value }))}
                 className="flex-grow"
               />
-              <label className="flex items-center justify-center px-4 bg-[#1c2541] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+              <label className="flex items-center justify-center px-4 bg-[#1A2742] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
                 {uploadingField === 'main' ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#d4af37]" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#C9A84C]" />
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-1.5 shrink-0" />
@@ -713,9 +713,9 @@ export default function AdminDashboard() {
                 onChange={(e) => setProductForm(prev => ({ ...prev, overlay_image_url: e.target.value }))}
                 className="flex-grow"
               />
-              <label className="flex items-center justify-center px-4 bg-[#1c2541] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+              <label className="flex items-center justify-center px-4 bg-[#1A2742] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
                 {uploadingField === 'overlay' ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#d4af37]" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#C9A84C]" />
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-1.5 shrink-0" />
@@ -753,9 +753,9 @@ export default function AdminDashboard() {
                     onChange={(e) => setProductForm(prev => ({ ...prev, lens_image_url: e.target.value }))}
                     className="flex-grow"
                   />
-                  <label className="flex items-center justify-center px-4 bg-[#1c2541] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+                  <label className="flex items-center justify-center px-4 bg-[#1A2742] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
                     {uploadingField === 'lens' ? (
-                      <RefreshCw className="w-4 h-4 animate-spin text-[#d4af37]" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#C9A84C]" />
                     ) : (
                       <>
                         <Upload className="w-4 h-4 mr-1.5 shrink-0" />
@@ -791,9 +791,9 @@ export default function AdminDashboard() {
                     onChange={(e) => setProductForm(prev => ({ ...prev, reflection_image_url: e.target.value }))}
                     className="flex-grow"
                   />
-                  <label className="flex items-center justify-center px-4 bg-[#1c2541] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+                  <label className="flex items-center justify-center px-4 bg-[#1A2742] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
                     {uploadingField === 'reflection' ? (
-                      <RefreshCw className="w-4 h-4 animate-spin text-[#d4af37]" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#C9A84C]" />
                     ) : (
                       <>
                         <Upload className="w-4 h-4 mr-1.5 shrink-0" />

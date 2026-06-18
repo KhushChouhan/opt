@@ -119,8 +119,8 @@ function BrandRow({ brand, index }: { brand: Brand; index: number }) {
                     <span className="text-[11px] font-extrabold text-[#C9A84C]">
                       ₹{sku.price.toLocaleString('en-IN')}
                     </span>
-                    <span className="text-[9px] text-gray-500">
-                      Inquire
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C]/80 group-hover:text-[#C9A84C] transition-colors flex items-center gap-0.5">
+                      Inquire <ExternalLink className="w-2.5 h-2.5" />
                     </span>
                   </div>
                 </div>
@@ -132,7 +132,7 @@ function BrandRow({ brand, index }: { brand: Brand; index: number }) {
         <div className="pt-2 flex flex-wrap gap-3">
           <button
             onClick={() => handleWhatsAppInquiry(`Complete ${brand.name} catalog`)}
-            className="btn-premium-gradient text-[#0D0D0F] hover:text-white px-5 py-2.5 rounded-md text-xs font-bold uppercase tracking-wider flex items-center space-x-2 transition-colors border border-[#C9A84C]/25"
+            className="btn-premium-gradient text-[#C9A84C] hover:text-white px-5 py-2.5 rounded-md text-xs font-bold uppercase tracking-wider flex items-center space-x-2 transition-colors border border-[#C9A84C]/25"
           >
             <span>Inquire Catalog</span>
             <ExternalLink className="w-3.5 h-3.5" />

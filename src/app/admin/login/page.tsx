@@ -65,10 +65,10 @@ function LoginFormContent() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md border-[#d4af37]/20 bg-[#0b132b]/80 shadow-2xl">
+      <Card className="w-full max-w-md border-[#C9A84C]/20 bg-[#0F1B30]/80 shadow-2xl">
         <CardHeader className="text-center pb-2">
-          <div className="w-12 h-12 rounded-full bg-[#1c2541] border border-[#d4af37]/30 flex items-center justify-center mx-auto mb-3">
-            <Shield className="w-6 h-6 text-[#d4af37]" />
+          <div className="w-12 h-12 rounded-full bg-[#1A2742] border border-[#C9A84C]/30 flex items-center justify-center mx-auto mb-3">
+            <Shield className="w-6 h-6 text-[#C9A84C]" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-wider font-luxury text-white">
             Store Administration
@@ -128,7 +128,7 @@ export default function AdminLoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-t-[#d4af37] border-[#d4af37]/30 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-t-[#C9A84C] border-[#C9A84C]/30 rounded-full animate-spin" />
       </div>
     }>
       <LoginFormContent />

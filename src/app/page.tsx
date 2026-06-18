@@ -1,718 +1,439 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import useSWR from 'swr';
-import { 
-  Shield, Camera, ChevronLeft, ChevronRight, X, 
-  AlertCircle, RefreshCw, CheckCircle 
+import {
+  ShieldCheck, BadgeCheck, CreditCard, RefreshCw, Truck,
+  Watch, Glasses, Eye, ArrowRight, ChevronLeft, ChevronRight,
+  Camera, ScanFace, Sparkles, Heart, Star, MapPin, Navigation, Gem,
 } from 'lucide-react';
-import Button from '@/components/ui/Button';
-import Modal from '@/components/ui/Modal';
-import { Input, Textarea } from '@/components/ui/Input';
-import { CompareProvider, useCompare } from '@/context/CompareContext';
+import { Instagram } from '@/components/icons/Social';
+import { buildWhatsAppUrl, WHATSAPP_PRIMARY } from '@/utils/whatsapp';
 
-// Import our new luxury design components
-import SectionWrapper from '@/components/SectionWrapper';
-import ProductCard from '@/components/ProductCard';
-import ComparisonBar from '@/components/ComparisonBar';
-import SpotlightSection from '@/components/SpotlightSection';
-import BrandShowcase from '@/components/BrandShowcase';
-import TryOnSteps from '@/components/TryOnSteps';
-import StoreLocator from '@/components/StoreLocator';
-import Testimonials from '@/components/Testimonials';
-import UGCStrip from '@/components/UGCStrip';
-import LoyaltyTeaser from '@/components/LoyaltyTeaser';
+const STORE_ADDRESS = 'Hariyana Watch & Opticals, SCO 25, Sector 14, Hisar, Haryana 125001';
+const MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(STORE_ADDRESS)}`;
 
-import { Product } from '@/types';
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
-const fallbackProducts: Product[] = [
-  {
-    id: 'titan-classic',
-    name: 'Titan Classic Rectangular',
-    category: 'glasses',
-    price: 1499.00,
-    mrp: 1899.00,
-    description: 'Elegant rectangular eyeglasses with a matte black metal frame. Perfect for daily office wear.',
-    image_url: '/images/hero_glasses.png',
-    overlay_image_url: '/images/overlays/glasses_classic.png',
-    stock: 15,
-    specs: { frameWidth: '140 mm', material: 'Stainless Steel', warranty: '1 Year Warranty' }
-  },
-  {
-    id: 'rayban-aviator',
-    name: 'Ray-Ban Aviator Optical',
-    category: 'glasses',
-    price: 4500.00,
-    mrp: 5800.00,
-    description: 'Timeless gold metal wireframe aviator eyeglasses. Light, comfortable, and durable.',
-    image_url: '/images/hero_glasses.png',
-    overlay_image_url: '/images/overlays/glasses_gold.png',
-    stock: 8,
-    specs: { frameWidth: '142 mm', material: 'Monel Metal', warranty: '1 Year Warranty' }
-  },
-  {
-    id: 'fastrack-sporty',
-    name: 'Fastrack Sporty Sunglasses',
-    category: 'sunglasses',
-    price: 2199.00,
-    mrp: 2999.00,
-    description: 'Aero-dynamic sports sunglasses with UV protection and a sleek wrap-around profile.',
-    image_url: '/images/hero_sunglasses.png',
-    overlay_image_url: '/images/overlays/sunglasses_sports.png',
-    stock: 20,
-    specs: { frameWidth: '145 mm', material: 'Acetate', warranty: '6 Months Warranty' }
-  },
-  {
-    id: 'rayban-wayfarer',
-    name: 'Ray-Ban Wayfarer Classic',
-    category: 'sunglasses',
-    price: 8999.00,
-    mrp: 11000.00,
-    description: 'The iconic wayfarer sunglasses with green classic G-15 tinted lenses. Absolute style statement.',
-    image_url: '/images/hero_sunglasses.png',
-    overlay_image_url: '/images/overlays/sunglasses_wayfarer.png',
-    stock: 5,
-    specs: { frameWidth: '144 mm', material: 'Hypoallergenic Acetate', warranty: '2 Years Warranty' }
-  },
-  {
-    id: 'titan-neo',
-    name: 'Titan Neo Classic Quartz',
-    category: 'watches',
-    price: 3299.00,
-    mrp: 4200.00,
-    description: 'Classic analog watch with a brown leather strap and deep navy blue dial. Perfect for formal wear.',
-    image_url: '/images/hero_watch.png',
-    overlay_image_url: '/images/overlays/watch_classic.png',
-    stock: 12,
-    specs: { lugWidth: '22 mm', material: 'Genuine Leather & Brass', warranty: '1 Year Warranty' }
-  },
-  {
-    id: 'fastrack-chrono',
-    name: 'Fastrack Chronograph Watch',
-    category: 'watches',
-    price: 4495.00,
-    mrp: 5495.00,
-    description: 'Active black steel chronograph watch with multi-dial display and dynamic red accents.',
-    image_url: '/images/hero_watch.png',
-    overlay_image_url: '/images/overlays/watch_sporty.png',
-    stock: 10,
-    specs: { lugWidth: '22 mm', material: 'Stainless Steel', warranty: '1 Year Warranty' }
-  }
-];
-
-export default function Home() {
+/* ---------------- Section heading ---------------- */
+function Heading({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
-    <CompareProvider>
-      <HomeContent />
-    </CompareProvider>
+    <div className="text-center mb-12">
+      <span className="text-[11px] font-bold text-[#C9A84C] tracking-[0.3em] uppercase">{eyebrow}</span>
+      <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mt-2">{title}</h2>
+      <div className="w-16 h-[2px] bg-gradient-to-r from-transparent via-[#C9A84C] to-transparent mx-auto mt-5" />
+    </div>
   );
 }
 
-function HomeContent() {
-  // 1. API Fetch SWR
-  const { data: dbProducts, isLoading } = useSWR<Product[]>('/api/products', fetcher);
-  const products = dbProducts || fallbackProducts;
+/* ---------------- Data ---------------- */
+const TRUST = [
+  { icon: ShieldCheck, title: '100% Authentic', sub: 'Original Products' },
+  { icon: BadgeCheck, title: '1 Year Warranty', sub: 'On All Watches' },
+  { icon: CreditCard, title: 'Secure Payment', sub: 'Protected Checkout' },
+  { icon: RefreshCw, title: 'Easy Returns', sub: '7 Days Return Policy' },
+  { icon: Truck, title: 'Free Shipping', sub: 'Above ₹1999' },
+];
 
-  // 2. Compare State Context
-  const { compareList, removeFromCompare, clearCompare } = useCompare();
+const CATEGORIES = [
+  { title: 'Watches', image: '/images/watches.png', href: '/products?category=watches' },
+  { title: 'Smart Watches', image: '/images/smart-watche.png', href: '/products?category=watches' },
+  { title: 'Sunglasses', image: '/images/sunglasses.png', href: '/products?category=sunglasses' },
+  { title: 'Optical Frames', image: '/images/optical-frames.png', href: '/products?category=glasses' },
+];
 
-  // 3. Hero Slider States
-  const [activeSlide, setActiveSlide] = useState(0);
-  const [heroHover, setHeroHover] = useState(false);
-  const heroSlides = [
-    {
-      subtitle: 'ITALIAN LUXURY EYEWEAR DESIGN',
-      title: 'Looking cool by doing good',
-      badgeText: 'START FROM ₹2,199',
-      image: '/images/hero_sunglasses.png',
-      link: '/products?category=sunglasses',
-      bgWord: 'SUNGLASSES',
-      ctaText: 'Shop Sunglasses',
-      urgency: 'Strictly limited retail slots available this week in Hanumangarh.'
-    },
-    {
-      subtitle: 'PREMIUM AUTOMATIC CRAFTSMANSHIP',
-      title: 'Timepieces for the bold wrist',
-      badgeText: 'GENUINE WARRANTY',
-      image: '/images/hero_watch.png',
-      link: '/products?category=watches',
-      bgWord: 'WATCHES',
-      ctaText: 'Shop Watches',
-      urgency: 'Authorized retail watches catalog. In-store certification provided.'
-    },
-    {
-      subtitle: 'REFINED HANDMADE TITANIUM',
-      title: 'Clarify your sight in style',
-      badgeText: 'TRY-ON IN MIRROR',
-      image: '/images/hero_glasses.png',
-      link: '/products?category=glasses',
-      bgWord: 'EYEGLASSES',
-      ctaText: 'Shop Eyeglasses',
-      urgency: 'Virtual camera mirror try-on active. Test frames instantly.'
-    }
-  ];
+const BEST_SELLERS = [
+  { brand: 'Titan', name: 'Chronograph Green Dial', price: 14995, image: '/images/hero_watch.png', category: 'watches' },
+  { brand: 'Ray-Ban', name: 'Aviator Classic', price: 10990, image: '/images/hero_sunglasses.png', category: 'sunglasses' },
+  { brand: 'Fossil', name: 'Grant Chronograph', price: 12995, image: '/images/hero_watch.png', category: 'watches' },
+  { brand: 'Oakley', name: 'Rectangular Frame', price: 7490, image: '/images/hero_glasses.png', category: 'glasses' },
+  { brand: 'Seiko', name: 'Presage Automatic', price: 43500, image: '/images/hero_watch.png', category: 'watches' },
+  { brand: 'Fastrack', name: 'Wayfarer Frame', price: 3995, image: '/images/hero_sunglasses.png', category: 'sunglasses' },
+];
 
-  // Auto-advance hero slides
-  useEffect(() => {
-    if (heroHover) return;
-    const timer = setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [heroSlides.length, heroHover]);
+const BRANDS = ['Titan', 'Ray-Ban', 'Fossil', 'Fastrack', 'Seiko', 'Casio', 'Police'];
 
-  const handlePrevSlide = () => {
-    setActiveSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+const TRYON_STEPS = [
+  { n: '1', icon: Camera, title: 'Upload Photo', sub: 'Upload or take a clear photo' },
+  { n: '2', icon: ScanFace, title: 'AI Detects Face', sub: 'Our AI detects your face instantly' },
+  { n: '3', icon: Sparkles, title: 'See Real-Time Preview', sub: 'Try frames in real-time before you buy' },
+];
+
+const STATS = [
+  { value: '25+', label: 'Years of Trust' },
+  { value: '10,000+', label: 'Happy Customers' },
+  { value: '50+', label: 'Top Brands' },
+  { value: '100%', label: 'Authenticity' },
+];
+
+const STORE_FEATURES = [
+  { icon: Eye, title: 'Free Eye Test', sub: 'By Expert Optometrists' },
+  { icon: Gem, title: 'Personalized Styling', sub: 'Find Your Perfect Look' },
+  { icon: Sparkles, title: 'Premium Experience', sub: 'Luxury Redefined' },
+];
+
+const REVIEWS = [
+  { quote: 'Excellent collection and genuine products. The staff is very helpful and knowledgeable.', name: 'Rajeev Verma' },
+  { quote: 'Best place for premium watches and branded eyewear in Hisar. Highly recommended!', name: 'Neha Katkar' },
+  { quote: 'Great experience! Got my perfect pair with their free eye test and expert guidance.', name: 'Amit Saini' },
+];
+
+const inquire = (item: string) => {
+  const url = buildWhatsAppUrl(
+    `Hi Hariyana Watch & Opticals, I'm interested in "${item}". Please share availability and best price.`,
+    WHATSAPP_PRIMARY,
+  );
+  window.open(url, '_blank');
+};
+
+export default function Home() {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollCarousel = (dir: number) => {
+    carouselRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
   };
-
-  const handleNextSlide = () => {
-    setActiveSlide((prev) => (prev + 1) % heroSlides.length);
-  };
-
-  // 4. Shop Category Selection
-  const [selectedShopCategory, setSelectedShopCategory] = useState<string>('all');
-  
-  // 5. Quick Checkout Modal States
-  const [selectedProductForOrder, setSelectedProductForOrder] = useState<Product | null>(null);
-  const [customerName, setCustomerName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [checkoutError, setCheckoutError] = useState('');
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-  const [orderSuccessData, setOrderSuccessData] = useState<{ orderId: string; productName: string } | null>(null);
-
-  const openQuickOrder = (product: Product) => {
-    setSelectedProductForOrder(product);
-    setCheckoutError('');
-    setOrderSuccessData(null);
-  };
-
-  const handleQuickOrderSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCheckoutError('');
-    setIsSubmittingOrder(true);
-
-    if (!selectedProductForOrder) return;
-
-    if (customerName.trim().length < 2) {
-      setCheckoutError('Please enter a valid name (at least 2 characters).');
-      setIsSubmittingOrder(false);
-      return;
-    }
-
-    const phoneRegex = /^[6-9]\d{9}$/;
-    if (!phoneRegex.test(phone.trim())) {
-      setCheckoutError('Please enter a valid 10-digit Indian phone number.');
-      setIsSubmittingOrder(false);
-      return;
-    }
-
-    if (address.trim().length < 10) {
-      setCheckoutError('Please enter a detailed physical address (min 10 chars).');
-      setIsSubmittingOrder(false);
-      return;
-    }
-
-    const pinRegex = /^\d{6}$/;
-    if (!pinRegex.test(pincode.trim())) {
-      setCheckoutError('Please enter a valid 6-digit Indian PIN code.');
-      setIsSubmittingOrder(false);
-      return;
-    }
-
-    const orderId = crypto.randomUUID();
-
-    try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: orderId,
-          product_id: selectedProductForOrder.id,
-          customer_name: customerName,
-          phone,
-          address,
-          pincode,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to place order.');
-      }
-
-      setOrderSuccessData({
-        orderId,
-        productName: selectedProductForOrder.name
-      });
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : 'An unexpected database error occurred. Please try again.';
-      setCheckoutError(errMsg);
-    } finally {
-      setIsSubmittingOrder(false);
-    }
-  };
-
-  // Generate WhatsApp Order Confirmation Link
-  const getWhatsAppOrderLink = () => {
-    if (!orderSuccessData) return '#';
-    const text = `Hello Hariyana Watch & Opticals,\n\nI just placed an order on your website! Here are my details:\n\n*Order ID:* ${orderSuccessData.orderId.substring(0, 8)}\n*Product:* ${orderSuccessData.productName}\n*Customer:* ${customerName}\n*Phone:* ${phone}\n*Address:* ${address}, PIN: ${pincode}\n\nPlease verify and dispatch. Thank you!`;
-    return `https://wa.me/919882070999?text=${encodeURIComponent(text)}`;
-  };
-
-  // 6. "Someone recently bought..." Conversion Popup States
-  const [showRecentPopup, setShowRecentPopup] = useState(false);
-  const [recentPopupIdx, setRecentPopupIdx] = useState(0);
-  const recentPurchases = [
-    { name: 'Ray-Ban Wayfarer Classic', time: '12 minutes ago', location: 'Hanumangarh Town' },
-    { name: 'Titan Neo Classic Quartz', time: '42 minutes ago', location: 'Sangaria' },
-    { name: 'Fastrack Chronograph Watch', time: '8 minutes ago', location: 'Pilibanga' },
-    { name: 'Ray-Ban Aviator Optical', time: '2 hours ago', location: 'Rawatsar' },
-    { name: 'Titan Classic Rectangular', time: '35 minutes ago', location: 'Nohar' }
-  ];
-
-  useEffect(() => {
-    const initialTimer = setTimeout(() => {
-      setShowRecentPopup(true);
-    }, 4000);
-
-    const interval = setInterval(() => {
-      setShowRecentPopup(false);
-      setTimeout(() => {
-        setRecentPopupIdx((prev) => (prev + 1) % recentPurchases.length);
-        setShowRecentPopup(true);
-      }, 500);
-    }, 14000);
-
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(interval);
-    };
-  }, [recentPurchases.length]);
-
-  // Filter products for shop grid section
-  const filteredShopProducts = products.filter(product => {
-    if (selectedShopCategory === 'all') return true;
-    return product.category === selectedShopCategory;
-  });
 
   return (
-    <div className="relative overflow-hidden bg-charcoal min-h-screen text-white">
-      {/* Background Glows */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#C9A84C]/5 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-[140px] pointer-events-none" />
+    <div className="bg-[#0A0F18] text-white overflow-hidden">
+      {/* ============ HERO ============ */}
+      <section className="relative overflow-hidden min-h-[540px] md:min-h-[660px] flex items-center">
+        {/* Background banner (combined watch + sunglasses + gears) */}
+        <Image
+          src="/images/banner-background-direct.png"
+          alt="Luxury chronograph watch and premium sunglasses"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-right"
+        />
+        {/* Left fade for text legibility */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0F18] via-[#0A0F18]/75 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F18]/60 via-transparent to-transparent" />
 
-      {/* Floating Store Shield Status */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 text-center">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/5 border border-[#C9A84C]/20 text-[10px] sm:text-xs font-semibold text-[#C9A84C] tracking-wider uppercase">
-          <Shield className="w-3.5 h-3.5" />
-          <span>GSTIN: 08AZYPK6147M2ZC &bull; AUTHORISED RETAILER</span>
-        </div>
-      </div>
-
-      {/* 1. HERO SLIDER SECTION */}
-      <section 
-        className="relative w-full overflow-hidden py-10 md:py-16"
-        onMouseEnter={() => setHeroHover(true)}
-        onMouseLeave={() => setHeroHover(false)}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
-          <div className="relative aspect-[16/10] md:aspect-[21/9] w-full bg-surface/50 border border-white/10 rounded-2xl overflow-hidden flex items-center justify-between p-6 md:p-12 shadow-2xl">
-            
-            {/* Watermark */}
-            <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none opacity-[0.02] z-0 overflow-hidden">
-              <span className="font-display text-[15vw] font-black tracking-[0.1em] text-white">
-                {heroSlides[activeSlide].bgWord}
-              </span>
+        {/* Content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-16 md:py-24">
+          <div className="max-w-xl">
+            <div className="flex items-center gap-3">
+              <span className="w-10 h-px bg-[#C9A84C]" />
+              <span className="text-[11px] font-bold text-[#C9A84C] tracking-[0.35em] uppercase">Welcome to Hariyana</span>
             </div>
-
-            {/* Left Column details */}
-            <div className="w-full md:w-1/2 space-y-4 md:space-y-6 z-10 text-left">
-              <span className="text-[10px] md:text-xs font-extrabold text-[#C9A84C] tracking-[0.2em] uppercase block">
-                {heroSlides[activeSlide].subtitle}
-              </span>
-              
-              <h2 className="font-display text-2xl sm:text-4xl md:text-5xl font-bold leading-tight tracking-wider text-white">
-                {heroSlides[activeSlide].title}
-              </h2>
-              
-              <p className="text-[10px] md:text-xs text-gray-400 italic font-medium">
-                {heroSlides[activeSlide].urgency}
-              </p>
-
-              <div className="flex items-center space-x-4 pt-2">
-                <Link href={heroSlides[activeSlide].link}>
-                  <Button size="sm" className="bg-[#C9A84C] hover:bg-white text-charcoal font-bold uppercase tracking-wider text-[10px] md:text-xs px-5 py-2.5 rounded-md transition-colors">
-                    {heroSlides[activeSlide].ctaText}
-                  </Button>
-                </Link>
-                
-                <Link href="/products">
-                  <Button variant="outline" size="sm" className="hidden sm:inline-flex border-white/20 hover:border-[#C9A84C] text-[10px] md:text-xs uppercase tracking-wider font-bold">
-                    <Camera className="w-3.5 h-3.5 mr-1.5 text-[#C9A84C]" />
-                    Virtual Mirror
-                  </Button>
-                </Link>
-              </div>
+            <h1 className="font-display font-bold leading-[1.02] mt-6 text-5xl sm:text-6xl md:text-7xl">
+              <span className="block text-white">Timeless Elegance.</span>
+              <span className="block text-[#C9A84C]">Perfect Vision.</span>
+            </h1>
+            <div className="w-32 h-px bg-gradient-to-r from-[#C9A84C] to-transparent mt-7" />
+            <p className="text-gray-300 mt-6 max-w-md leading-relaxed">
+              Curated luxury timepieces and premium eyewear for those who value time, style and trust.
+            </p>
+            <div className="flex flex-wrap gap-4 mt-9">
+              <Link
+                href="/products?category=watches"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#C9A84C] to-[#A07A2A] text-[#0A0F18] px-7 py-3.5 rounded-md text-xs font-bold uppercase tracking-wider hover:brightness-110 hover:shadow-[0_0_25px_rgba(201,168,76,0.35)] transition-all"
+              >
+                <Watch className="w-4 h-4" /> Shop Watches
+              </Link>
+              <Link
+                href="/products?category=glasses"
+                className="inline-flex items-center gap-2 border border-[#C9A84C]/50 text-[#C9A84C] px-7 py-3.5 rounded-md text-xs font-bold uppercase tracking-wider hover:bg-[#C9A84C]/10 transition-all"
+              >
+                <Glasses className="w-4 h-4" /> Explore Frames
+              </Link>
             </div>
-
-            {/* Right Column Parallax Visual */}
-            <div className="hidden md:flex w-1/2 h-full items-center justify-center relative z-10">
-              <div className="relative w-64 h-64 lg:w-80 lg:h-80 group">
-                <div className="absolute inset-4 bg-[#C9A84C]/5 rounded-full blur-2xl group-hover:bg-[#C9A84C]/15 transition-all duration-700" />
-                
-                <Image
-                  src={heroSlides[activeSlide].image}
-                  alt={heroSlides[activeSlide].title}
-                  fill
-                  priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-contain transform rotate-[-3deg] group-hover:rotate-[1deg] scale-95 group-hover:scale-100 transition-all duration-700 ease-out"
-                />
-
-                {/* Hongo sticker badge */}
-                <div className="absolute bottom-4 right-4 w-24 h-24 rounded-full bg-[#C9A84C] border border-white/80 flex flex-col items-center justify-center text-charcoal shadow-lg animate-bounce-gentle">
-                  <span className="text-[7px] font-extrabold uppercase tracking-widest text-charcoal/80">EXCLUSIVE</span>
-                  <span className="text-[10px] font-black text-center px-1 leading-none mt-1">
-                    {heroSlides[activeSlide].badgeText}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation Controls */}
-            <button
-              onClick={handlePrevSlide}
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full border border-white/10 bg-charcoal/70 hover:bg-[#C9A84C] text-gray-400 hover:text-charcoal flex items-center justify-center transition-all z-20"
-              aria-label="Previous Slide"
-            >
-              <ChevronLeft className="w-4 h-4 md:w-5 h-5" />
-            </button>
-            <button
-              onClick={handleNextSlide}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 rounded-full border border-white/10 bg-charcoal/70 hover:bg-[#C9A84C] text-gray-400 hover:text-charcoal flex items-center justify-center transition-all z-20"
-              aria-label="Next Slide"
-            >
-              <ChevronRight className="w-4 h-4 md:w-5 h-5" />
-            </button>
-
-            {/* Indicators Dots */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center space-x-2.5 z-20">
-              {heroSlides.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveSlide(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    idx === activeSlide ? 'w-6 bg-[#C9A84C]' : 'w-1.5 bg-gray-500'
-                  }`}
-                  aria-label={`Go to slide ${idx + 1}`}
-                />
-              ))}
-            </div>
-
           </div>
         </div>
       </section>
 
-      {/* 2. DIRECT ORDER / SHOP SECTION */}
-      <SectionWrapper
-        title="Trending Catalog & Instant checkout"
-        subtitle="SHOP COLLECTION"
-        size="md"
-        id="shop-grid"
-      >
-        {/* Tab category selectors */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10 border-b border-white/5 pb-6">
-          <p className="text-xs text-gray-400 text-left">
-            Select items. Place orders instantly. Skip cart steps with instant WhatsApp confirmation.
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: 'all', label: 'All Products' },
-              { id: 'glasses', label: 'Eyeglasses' },
-              { id: 'sunglasses', label: 'Sunglasses' },
-              { id: 'watches', label: 'Watches' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedShopCategory(tab.id)}
-                className={`px-3.5 py-2 rounded-md text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all border ${
-                  selectedShopCategory === tab.id
-                    ? 'bg-[#C9A84C] text-charcoal border-transparent font-extrabold shadow-[0_0_12px_rgba(201,168,76,0.25)]'
-                    : 'bg-surface border-white/10 text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {tab.label}
-              </button>
+      {/* ============ TRUST BAR ============ */}
+      <section className="border-y border-[#C9A84C]/15 bg-[#0F1B30]/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+            {TRUST.map((t) => (
+              <div key={t.title} className="flex items-center gap-3 justify-center md:justify-start">
+                <t.icon className="w-7 h-7 text-[#C9A84C] flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-white leading-tight">{t.title}</p>
+                  <p className="text-[10px] text-gray-400">{t.sub}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* Catalog loader */}
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-3">
-            <RefreshCw className="w-8 h-8 text-[#C9A84C] animate-spin" />
-            <p className="text-xs text-gray-450">Loading store collection...</p>
-          </div>
-        )}
-
-        {/* Empty catalog */}
-        {!isLoading && filteredShopProducts.length === 0 && (
-          <div className="text-center py-16 border border-dashed border-white/10 rounded-xl">
-            <p className="text-xs text-gray-400">No products listed in this collection.</p>
-          </div>
-        )}
-
-        {/* Product Grid Mapping */}
-        {!isLoading && filteredShopProducts.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredShopProducts.slice(0, 8).map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onQuickBuy={openQuickOrder}
+      {/* ============ SHOP BY CATEGORY ============ */}
+      <section id="categories" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <Heading eyebrow="Shop by Category" title="Find Your Perfect Style" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {CATEGORIES.map((c) => (
+            <Link
+              key={c.title}
+              href={c.href}
+              className="group relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 hover:border-[#C9A84C]/50 transition-all duration-300"
+            >
+              <Image
+                src={c.image}
+                alt={c.title}
+                fill
+                sizes="(max-width:1024px) 50vw, 25vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
               />
-            ))}
-          </div>
-        )}
-      </SectionWrapper>
-
-      {/* 3. PRODUCT COMPARISON BAR */}
-      <ComparisonBar
-        items={compareList}
-        onRemove={removeFromCompare}
-        onClear={clearCompare}
-      />
-
-      {/* 4. BRAND EDITORIAL SPOTLIGHT */}
-      <SectionWrapper
-        title="Authorized Brand Spotlights"
-        subtitle="DESIGNER LABELS"
-        size="lg"
-        id="spotlights"
-      >
-        <SpotlightSection />
-      </SectionWrapper>
-
-      {/* 5. BACKLIT BRANDS LOGO SHOWCASE */}
-      <SectionWrapper
-        title="Authorized Wear Showcase"
-        subtitle="OFFICIAL BRANDS"
-        size="md"
-        id="brand-logos"
-      >
-        <BrandShowcase />
-      </SectionWrapper>
-
-      {/* 6. TIMELINE AR TRY ON STEPS */}
-      <SectionWrapper
-        title="How Virtual Try-On Works"
-        subtitle="SMART FIT MIRROR"
-        size="lg"
-        id="tryon-timeline"
-      >
-        <TryOnSteps />
-      </SectionWrapper>
-
-      {/* 7. STORE VISIT LOCATOR SECTION */}
-      <SectionWrapper
-        title="Flagship Retail Outlet"
-        subtitle="STORE LOCATOR"
-        size="md"
-        id="store-visit"
-      >
-        <StoreLocator />
-      </SectionWrapper>
-
-      {/* 8. AUTO SCROLL CAROUSEL TESTIMONIALS */}
-      <SectionWrapper
-        title="Client Testimonials"
-        subtitle="CLIENT FEEDBACK"
-        size="md"
-        id="testimonials-slider"
-      >
-        <Testimonials />
-      </SectionWrapper>
-
-      {/* 9. INSTAGRAM UGC FEED STRIP */}
-      <SectionWrapper
-        title="Shop Customer Looks"
-        subtitle="INSTAGRAM STYLE"
-        size="md"
-        id="ugc-strip"
-      >
-        <UGCStrip />
-      </SectionWrapper>
-
-      {/* 10. REFERRAL LOYALTY TEASER */}
-      <SectionWrapper
-        size="sm"
-        id="referral-teaser"
-        className="mb-16"
-      >
-        <LoyaltyTeaser />
-      </SectionWrapper>
-
-      {/* 11. QUICK ORDER FORM MODAL */}
-      {selectedProductForOrder && (
-        <Modal 
-          isOpen={!!selectedProductForOrder} 
-          onClose={() => setSelectedProductForOrder(null)} 
-          title="Instant Checkout Form"
-        >
-          {!orderSuccessData ? (
-            <form onSubmit={handleQuickOrderSubmit} className="space-y-4">
-              
-              <div className="flex items-center space-x-3.5 p-3.5 bg-charcoal rounded border border-white/10 mb-2">
-                <div className="relative w-12 h-12 rounded overflow-hidden border border-white/5 shrink-0 bg-white/5">
-                  <Image
-                    src={selectedProductForOrder.image_url}
-                    alt={selectedProductForOrder.name}
-                    fill
-                    sizes="48px"
-                    className="object-contain p-1"
-                  />
-                </div>
-                <div className="text-left">
-                  <h4 className="text-[9px] font-extrabold text-[#C9A84C] uppercase tracking-wider capitalize">{selectedProductForOrder.category}</h4>
-                  <h3 className="text-xs font-bold text-white leading-tight font-display line-clamp-1">{selectedProductForOrder.name}</h3>
-                  <p className="text-xs text-[#C9A84C] font-extrabold mt-0.5">₹{selectedProductForOrder.price.toLocaleString('en-IN')}</p>
-                </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F18] via-[#0A0F18]/30 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-6">
+                <h3 className="font-display text-2xl font-bold text-white">{c.title}</h3>
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#C9A84C] mt-1.5 group-hover:gap-2.5 transition-all">
+                  Explore Collection <ArrowRight className="w-4 h-4" />
+                </span>
               </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-              {checkoutError && (
-                <div className="p-3 rounded bg-red-950/40 border border-red-500/20 text-red-400 text-xs font-medium flex items-center">
-                  <AlertCircle className="w-4 h-4 mr-2 shrink-0" />
-                  <span>{checkoutError}</span>
-                </div>
-              )}
+      {/* ============ VIRTUAL TRY-ON ============ */}
+      <section className="bg-[#0F1B30]/50 border-y border-[#C9A84C]/15">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="grid lg:grid-cols-2 gap-14 items-center">
+            <div>
+              <span className="text-[11px] font-bold text-[#C9A84C] tracking-[0.3em] uppercase">Try Before You Buy</span>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-white mt-3">Virtual Try-On</h2>
+              <p className="text-gray-400 mt-4 max-w-md leading-relaxed">
+                See how frames look on you in real-time with our advanced AI technology.
+              </p>
+              <Link
+                href="/products?category=glasses"
+                className="inline-flex items-center gap-2 mt-7 bg-gradient-to-r from-[#C9A84C] to-[#A07A2A] text-[#0A0F18] px-7 py-3.5 rounded-md text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all"
+              >
+                <Camera className="w-4 h-4" /> Try On Now
+              </Link>
 
-              <Input
-                label="Full Name"
-                type="text"
-                placeholder="Enter your name"
-                required
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-              />
-
-              <Input
-                label="10-Digit Phone Number"
-                type="tel"
-                placeholder="Indian mobile number (e.g. 9882070999)"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-
-              <Textarea
-                label="Detailed Shipping Address"
-                placeholder="Street address, house number, landmarks..."
-                required
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
-
-              <Input
-                label="6-Digit PIN Code"
-                type="text"
-                placeholder="e.g. 335513"
-                required
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
-              />
-
-              <div className="pt-2 flex space-x-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 text-xs uppercase tracking-wider font-bold py-2.5 rounded-md border-white/10"
-                  onClick={() => setSelectedProductForOrder(null)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  className="flex-1 text-xs uppercase tracking-wider font-bold text-charcoal bg-[#C9A84C] py-2.5 rounded-md hover:bg-white transition-colors" 
-                  isLoading={isSubmittingOrder}
-                >
-                  Instant Order
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <div className="text-center p-6 space-y-6">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/35 flex items-center justify-center text-emerald-400 mx-auto">
-                <CheckCircle className="w-10 h-10" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-bold text-white font-display">Instant Order Logged!</h3>
-                <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
-                  Your purchase request for <strong>{orderSuccessData.productName}</strong> has been logged with Order ID <strong>{orderSuccessData.orderId.substring(0, 8)}...</strong>
-                </p>
-                <p className="text-[11px] text-[#C9A84C] font-semibold">
-                  Send details via WhatsApp to verify shipping dispatch immediately.
-                </p>
-              </div>
-              
-              <div className="pt-4 flex flex-col sm:flex-row gap-3">
-                <a href={getWhatsAppOrderLink()} target="_blank" rel="noopener noreferrer" className="flex-1">
-                  <Button className="w-full text-xs font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white border-transparent py-2.5 rounded-md">
-                    Send WhatsApp Dispatch
-                  </Button>
-                </a>
-                <Button
-                  variant="outline"
-                  className="text-xs font-bold uppercase tracking-wider border-white/10 py-2.5 rounded-md"
-                  onClick={() => setSelectedProductForOrder(null)}
-                >
-                  Close
-                </Button>
+              <div className="grid sm:grid-cols-3 gap-6 mt-10">
+                {TRYON_STEPS.map((s) => (
+                  <div key={s.n}>
+                    <div className="w-12 h-12 rounded-full border border-[#C9A84C]/30 flex items-center justify-center text-[#C9A84C] mb-3">
+                      <s.icon className="w-5 h-5" />
+                    </div>
+                    <p className="text-[11px] font-bold text-[#C9A84C] uppercase tracking-wider">{s.n}. {s.title}</p>
+                    <p className="text-[11px] text-gray-400 mt-1 leading-snug">{s.sub}</p>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
-        </Modal>
-      )}
 
-      {/* 12. "Someone recently bought..." REPLICA POPUP */}
-      <div 
-        className={`fixed bottom-4 left-4 z-40 max-w-[280px] md:max-w-[320px] bg-surface/95 border border-[#C9A84C]/45 shadow-2xl p-3 md:p-4 rounded-xl flex items-start space-x-3 backdrop-blur-md transition-all duration-700 ease-in-out transform ${
-          showRecentPopup ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'
-        }`}
-      >
-        <span className="p-2 bg-charcoal rounded-lg border border-[#C9A84C]/25 text-[#C9A84C] shrink-0 mt-0.5 animate-pulse">
-          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-          </svg>
-        </span>
-        <div className="text-left flex-grow">
-          <h4 className="text-[10px] md:text-xs font-bold text-white font-display line-clamp-1">
-            {recentPurchases[recentPopupIdx].name}
-          </h4>
-          <p className="text-[9px] md:text-[10px] text-gray-400 mt-0.5 leading-tight">
-            Bought recently in <strong>{recentPurchases[recentPopupIdx].location}</strong>
-          </p>
-          <p className="text-[8px] text-[#C9A84C] font-semibold uppercase tracking-wider mt-1">
-            {recentPurchases[recentPopupIdx].time}
-          </p>
+            {/* phone mock */}
+            <div className="flex justify-center">
+              <div className="relative w-60 h-[460px] rounded-[2.5rem] border-4 border-[#1A2742] bg-[#0A0F18] shadow-2xl overflow-hidden">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-[#1A2742] rounded-b-2xl z-20" />
+                <div className="relative h-full w-full bg-gradient-to-b from-[#1A2742] to-[#0A0F18] flex flex-col items-center justify-center">
+                  <div className="scanline" />
+                  <div className="w-28 h-28 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/30 flex items-center justify-center">
+                    <ScanFace className="w-14 h-14 text-[#C9A84C]/70" />
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-4 uppercase tracking-widest">Face detected</p>
+                  <div className="flex gap-2 mt-6">
+                    {['hero_glasses', 'hero_sunglasses', 'hero_glasses'].map((g, i) => (
+                      <div key={i} className="relative w-14 h-10 rounded-md bg-white/5 border border-white/10">
+                        <Image src={`/images/${g}.png`} alt="frame option" fill sizes="56px" className="object-contain p-1" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <button 
-          onClick={() => setShowRecentPopup(false)}
-          className="text-gray-500 hover:text-white transition-colors p-0.5 rounded-full"
-          aria-label="Close Notification"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
+      </section>
 
+      {/* ============ BEST SELLERS ============ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <Heading eyebrow="Best Sellers" title="Our Most Loved Picks" />
+        <div className="relative">
+          <button
+            onClick={() => scrollCarousel(-1)}
+            aria-label="Scroll left"
+            className="hidden md:flex absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-[#0F1B30] border border-[#C9A84C]/30 items-center justify-center text-[#C9A84C] hover:bg-[#C9A84C] hover:text-[#0A0F18] transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div
+            ref={carouselRef}
+            className="flex gap-5 overflow-x-auto scroll-smooth pb-4 snap-x"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {BEST_SELLERS.map((p) => (
+              <div
+                key={p.name}
+                className="snap-start flex-shrink-0 w-[230px] rounded-2xl border border-white/10 bg-[#0F1B30] hover:border-[#C9A84C]/50 transition-all duration-300 group"
+              >
+                <div className="relative aspect-square bg-[#0A0F18] rounded-t-2xl overflow-hidden">
+                  <Image src={p.image} alt={p.name} fill sizes="230px" className="object-contain p-6 group-hover:scale-105 transition-transform duration-500" />
+                  <button aria-label="Add to wishlist" className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[#0A0F18]/70 border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#C9A84C] transition-colors">
+                    <Heart className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-4">
+                  <p className="text-[10px] font-bold text-[#C9A84C] uppercase tracking-widest">{p.brand}</p>
+                  <h3 className="text-sm font-semibold text-white mt-1 leading-snug">{p.name}</h3>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-base font-bold text-white">₹{p.price.toLocaleString('en-IN')}</span>
+                    <button
+                      onClick={() => inquire(`${p.brand} ${p.name}`)}
+                      className="text-[10px] font-bold text-[#C9A84C] uppercase tracking-wider hover:text-white transition-colors"
+                    >
+                      Inquire
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => scrollCarousel(1)}
+            aria-label="Scroll right"
+            className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-[#0F1B30] border border-[#C9A84C]/30 items-center justify-center text-[#C9A84C] hover:bg-[#C9A84C] hover:text-[#0A0F18] transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </section>
+
+      {/* ============ BRAND STRIP ============ */}
+      <section id="brands" className="border-y border-[#C9A84C]/15 bg-[#0F1B30]/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
+            {BRANDS.map((b) => (
+              <span key={b} className="font-display text-xl md:text-2xl font-bold text-gray-400 hover:text-[#C9A84C] tracking-wider transition-colors cursor-default">
+                {b}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ LEGACY OF TRUST ============ */}
+      <section id="about" className="relative">
+        <div className="absolute inset-0 opacity-[0.06]">
+          <Image src="/images/store_map.png" alt="" fill className="object-cover" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-[#C9A84C]/20 bg-gradient-to-br from-[#1A2742] to-[#0A0F18] flex items-center justify-center">
+              <Image src="/images/logo-dark.png" alt="Hariyana flagship store" width={565} height={441} className="h-40 w-auto opacity-90" />
+              <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded bg-[#0A0F18]/80 border border-[#C9A84C]/20 text-[10px] font-bold text-[#C9A84C] uppercase tracking-wider">
+                Flagship Store · Hisar
+              </div>
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-[#C9A84C] tracking-[0.3em] uppercase">Since 1998</span>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-white mt-3 leading-tight">
+                A Legacy of Trust<br />Crafted Over Time
+              </h2>
+              <p className="text-gray-400 mt-4 leading-relaxed max-w-lg">
+                For over 25 years, Hariyana Watch &amp; Opticals has been Haryana&apos;s most trusted destination for luxury watches and premium eyewear.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mt-9">
+                {STATS.map((s) => (
+                  <div key={s.label}>
+                    <p className="font-display text-2xl md:text-3xl font-bold text-[#C9A84C]">{s.value}</p>
+                    <p className="text-[11px] text-gray-400 mt-1">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <Link href="/#contact" className="inline-flex items-center gap-1.5 mt-8 text-xs font-bold text-[#C9A84C] uppercase tracking-wider hover:gap-2.5 transition-all">
+                Know More About Us <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ VISIT STORE ============ */}
+      <section id="contact" className="relative bg-[#0F1B30] border-y border-[#C9A84C]/15">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <span className="text-[11px] font-bold text-[#C9A84C] tracking-[0.3em] uppercase">Visit Our Flagship Store</span>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-white mt-3">Experience Luxury In Person</h2>
+          <div className="grid md:grid-cols-3 gap-6 mt-10">
+            {STORE_FEATURES.map((f) => (
+              <div key={f.title} className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#C9A84C]/10 border border-[#C9A84C]/25 flex items-center justify-center text-[#C9A84C] flex-shrink-0">
+                  <f.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">{f.title}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{f.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 mt-10 pt-8 border-t border-white/10">
+            <div className="flex items-start gap-2.5">
+              <MapPin className="w-5 h-5 text-[#C9A84C] flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-gray-300">
+                Hariyana Watch &amp; Opticals<br />
+                <span className="text-gray-400">SCO 25, Sector 14, Hisar, Haryana 125001</span>
+              </p>
+            </div>
+            <a
+              href={MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#C9A84C] to-[#A07A2A] text-[#0A0F18] px-7 py-3.5 rounded-md text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-all w-full sm:w-auto"
+            >
+              <Navigation className="w-4 h-4" /> Get Directions
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ TESTIMONIALS ============ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <Heading eyebrow="What Our Customers Say" title="Trusted By Thousands" />
+        <div className="grid md:grid-cols-3 gap-6">
+          {REVIEWS.map((r) => (
+            <div key={r.name} className="rounded-2xl border border-white/10 bg-[#0F1B30] p-7">
+              <div className="flex gap-0.5 mb-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-[#C9A84C] text-[#C9A84C]" />
+                ))}
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">&ldquo;{r.quote}&rdquo;</p>
+              <div className="flex items-center gap-3 mt-6 pt-5 border-t border-white/10">
+                <div className="w-10 h-10 rounded-full bg-[#C9A84C]/15 border border-[#C9A84C]/30 flex items-center justify-center text-[#C9A84C] font-bold text-sm">
+                  {r.name.charAt(0)}
+                </div>
+                <p className="text-sm font-semibold text-white">— {r.name}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ INSTAGRAM STRIP ============ */}
+      <section className="border-t border-[#C9A84C]/15 bg-[#0F1B30]/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex items-center gap-2 text-gray-300 mb-6">
+            <Instagram className="w-5 h-5 text-[#C9A84C]" />
+            <span className="text-sm">Follow us on Instagram</span>
+            <span className="font-display text-lg font-bold text-[#C9A84C]">@hariyana.watch.opticals</span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {[
+              '/images/hero_watch.png', '/images/hero_sunglasses.png', '/images/hero_glasses.png',
+              '/images/hero_watch.png', '/images/hero_sunglasses.png', '/images/hero_glasses.png',
+            ].map((src, i) => (
+              <a
+                key={i}
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#0A0F18] group"
+              >
+                <Image src={src} alt="Instagram post" fill sizes="(max-width:640px) 33vw, 16vw" className="object-contain p-3 group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-[#C9A84C]/0 group-hover:bg-[#C9A84C]/10 transition-colors flex items-center justify-center">
+                  <Instagram className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

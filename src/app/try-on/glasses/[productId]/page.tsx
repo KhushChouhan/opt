@@ -58,7 +58,7 @@ export default async function GlassesTryOnPage({ params }: PageProps) {
   }
 
   return (
-    <div className="bg-[#060b13] min-h-screen py-6">
+    <div className="bg-[#0B1422] min-h-screen py-6">
       <GlassesTryOnCanvas product={product} />
     </div>
   );

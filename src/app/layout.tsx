@@ -5,7 +5,6 @@ import Providers from '@/components/Providers';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
-import FlashDealBanner from '@/components/FlashDealBanner';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -34,9 +33,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
-      <body className="antialiased min-h-screen flex flex-col bg-[#0D0D0F] text-[#f3f4f6] font-sans">
+      <body className="antialiased min-h-screen flex flex-col bg-[#0A0F18] text-[#f3f4f6] font-sans">
         <Providers>
-          <FlashDealBanner />
           <Navbar />
           <main className="flex-grow">
             {children}
