@@ -4,14 +4,16 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import Image from 'next/image';
-import { Glasses, Watch, Search, SlidersHorizontal, RefreshCw, X, Check } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Glasses, Watch, Search, SlidersHorizontal, RefreshCw, X, Check, Wallet, Gem, Sparkles, ShoppingBag } from 'lucide-react';
+import { buildWhatsAppUrl, WHATSAPP_PRIMARY } from '@/utils/whatsapp';
 import Button from '@/components/ui/Button';
 import { Card, CardContent, CardFooter } from '@/components/ui/Card';
 
 interface Product {
   id: string;
   name: string;
-  category: 'glasses' | 'sunglasses' | 'watches';
+  category: 'glasses' | 'sunglasses' | 'watches' | 'belts' | 'perfumes' | 'wallets' | 'accessories';
   price: number;
   description: string;
   image_url: string;
@@ -33,6 +35,16 @@ interface MaterialFilter {
   label: string;
   terms: string[];
 }
+
+const getActualCategory = (product: Product): string => {
+  if (product.description) {
+    if (product.description.includes('[Category: perfumes]')) return 'perfumes';
+    if (product.description.includes('[Category: belts]')) return 'belts';
+    if (product.description.includes('[Category: wallets]')) return 'wallets';
+    if (product.description.includes('[Category: accessories]')) return 'accessories';
+  }
+  return product.category;
+};
 
 function CatalogContent() {
   const router = useRouter();
@@ -58,7 +70,7 @@ function CatalogContent() {
   // Handle category initial state from URL query
   useEffect(() => {
     const cat = searchParams.get('category');
-    if (cat && ['glasses', 'sunglasses', 'watches'].includes(cat)) {
+    if (cat && ['glasses', 'sunglasses', 'watches', 'belts', 'perfumes', 'wallets', 'accessories'].includes(cat)) {
       setSelectedCategories([cat]);
     } else {
       setSelectedCategories([]);
@@ -147,7 +159,7 @@ function CatalogContent() {
 
         // 2. Category Filter
         const matchesCategory =
-          selectedCategories.length === 0 || selectedCategories.includes(product.category);
+          selectedCategories.length === 0 || selectedCategories.includes(getActualCategory(product));
 
         // 3. Stock Availability Filter
         const matchesStock = !inStockOnly || product.stock > 0;
@@ -203,6 +215,10 @@ function CatalogContent() {
     { value: 'glasses', label: 'Eyeglasses', icon: Glasses },
     { value: 'sunglasses', label: 'Sunglasses', icon: Glasses },
     { value: 'watches', label: 'Watches', icon: Watch },
+    { value: 'belts', label: 'Belts', icon: ShoppingBag },
+    { value: 'perfumes', label: 'Perfumes', icon: Sparkles },
+    { value: 'wallets', label: 'Wallets', icon: Wallet },
+    { value: 'accessories', label: 'Accessories', icon: Gem },
   ];
 
   // Number of active filters count
@@ -432,95 +448,140 @@ function CatalogContent() {
 
       {/* Products Grid */}
       {!isLoading && !error && filteredProducts.length > 0 && (
-        <div className={`grid gap-8 transition-all duration-300 ${
-          gridCols === 2
-            ? 'grid-cols-1 md:grid-cols-2'
-            : gridCols === 4
-            ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-        }`}>
+        <motion.div
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.06,
+              },
+            },
+          }}
+          initial="hidden"
+          animate="show"
+          className={`grid gap-8 transition-all duration-300 ${
+            gridCols === 2
+              ? 'grid-cols-1 md:grid-cols-2'
+              : gridCols === 4
+              ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          }`}
+        >
           {filteredProducts.map((product) => {
             const isOutofStock = product.stock <= 0;
+            const actualCategory = getActualCategory(product);
+            const hasTryOn = ['glasses', 'sunglasses', 'watches'].includes(actualCategory);
             const tryOnLink =
-              product.category === 'watches'
+              actualCategory === 'watches'
                 ? `/try-on/watches/${product.id}`
                 : `/try-on/glasses/${product.id}`;
 
+            const handleAction = () => {
+              if (hasTryOn) {
+                router.push(tryOnLink);
+              } else {
+                const url = buildWhatsAppUrl(
+                  `Hi Hariyana Watch & Opticals, I am interested in purchasing "${product.name}". Please provide availability and details.`,
+                  WHATSAPP_PRIMARY
+                );
+                window.open(url, '_blank');
+              }
+            };
+
             return (
-              <Card key={product.id} hoverable className="flex flex-col h-full bg-[#0F1B30]/40 border border-gray-800/80 group overflow-hidden">
-                {/* Product Image Panel */}
-                <div className="relative aspect-square w-full bg-black/10 overflow-hidden">
-                  <Image
-                    src={getOptimizedImageUrl(product.image_url)}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                    priority={false}
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+              <motion.div
+                key={product.id}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+                }}
+                whileHover={{ y: -5, scale: 1.01 }}
+                className="h-full"
+              >
+                <Card hoverable className="flex flex-col h-full bg-[#0b131e]/55 border border-white/5 group overflow-hidden relative">
+                  {/* Soft subtle glow backlight inside item cards */}
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-0" 
+                    style={{
+                      backgroundImage: 'radial-gradient(circle at center, rgba(199, 161, 78, 0.03) 0%, transparent 70%)',
+                    }}
                   />
-                  
-                  {isOutofStock && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-10">
-                      <span className="px-3 py-1.5 bg-red-600/90 text-white text-xs font-bold uppercase tracking-wider rounded">
-                        Out of Stock
+
+                  {/* Product Image Panel */}
+                  <div className="relative aspect-square w-full bg-black/10 overflow-hidden z-10">
+                    <Image
+                      src={getOptimizedImageUrl(product.image_url)}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                      priority={false}
+                      className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    
+                    {isOutofStock && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-10">
+                        <span className="px-3 py-1.5 bg-red-600/90 text-white text-xs font-bold uppercase tracking-wider rounded">
+                          Out of Stock
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Category Tag badge */}
+                    <span className="absolute top-3 right-3 px-2 py-1 bg-black/55 backdrop-blur-md text-[#E8D9A0] text-[10px] font-bold uppercase tracking-wider rounded border border-[#C9A84C]/20 z-10">
+                      {actualCategory === 'glasses' ? 'Eyeglasses' : actualCategory}
+                    </span>
+
+                    {/* Micro-Interaction Overlay: View Button on Hover */}
+                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <button
+                        onClick={handleAction}
+                        className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 px-5 py-2.5 bg-[#C9A84C] hover:bg-[#C9A84C]/90 text-[#0B1422] font-bold text-xs uppercase tracking-wider rounded-md shadow-lg"
+                      >
+                        {hasTryOn ? 'Instant Mirror Try-On' : 'Inquire on WhatsApp'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <CardContent className="p-5 flex-grow flex flex-col justify-between z-10 relative bg-transparent">
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-2 leading-snug font-luxury group-hover:text-[#C9A84C] transition-colors line-clamp-1">
+                        {product.name}
+                      </h3>
+                      <p className="text-xs text-gray-400 line-clamp-3 leading-relaxed mb-4 min-h-[4.5em]">
+                        {product.description || 'No description available for this luxury collection piece.'}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-baseline justify-between mt-2 pt-3 border-t border-white/5">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Luxury Price</span>
+                      <span className="text-lg font-bold text-[#C9A84C]">
+                        ₹{product.price.toLocaleString('en-IN')}
                       </span>
                     </div>
-                  )}
-                  
-                  {/* Category Tag badge */}
-                  <span className="absolute top-3 right-3 px-2 py-1 bg-black/55 backdrop-blur-md text-[#E8D9A0] text-[10px] font-bold uppercase tracking-wider rounded border border-[#C9A84C]/20 z-10">
-                    {product.category}
-                  </span>
+                  </CardContent>
 
-                  {/* Micro-Interaction Overlay: View Button on Hover */}
-                  <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <button
-                      onClick={() => router.push(tryOnLink)}
-                      className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 px-5 py-2.5 bg-[#C9A84C] hover:bg-[#C9A84C]/90 text-[#0B1422] font-bold text-xs uppercase tracking-wider rounded-md shadow-lg"
-                    >
-                      Instant Mirror Try-On
-                    </button>
-                  </div>
-                </div>
-
-                {/* Details */}
-                <CardContent className="p-5 flex-grow flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-2 leading-snug font-luxury group-hover:text-[#C9A84C] transition-colors line-clamp-1">
-                      {product.name}
-                    </h3>
-                    <p className="text-xs text-gray-400 line-clamp-3 leading-relaxed mb-4 min-h-[4.5em]">
-                      {product.description || 'No description available for this luxury collection piece.'}
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-baseline justify-between mt-2 pt-3 border-t border-gray-800/80">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Luxury Price</span>
-                    <span className="text-lg font-bold text-[#C9A84C]">
-                      ₹{product.price.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                </CardContent>
-
-                {/* Footer Actions */}
-                <CardFooter className="p-5 pt-0 bg-transparent flex flex-col space-y-2">
-                  {isOutofStock ? (
-                    <Button disabled className="w-full bg-gray-800 text-gray-500 cursor-not-allowed border-transparent">
-                      Out of Stock
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => router.push(tryOnLink)}
-                      className="w-full font-bold uppercase tracking-wider text-xs"
-                    >
-                      Virtual Try On &rarr;
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
+                  {/* Footer Actions */}
+                  <CardFooter className="p-5 pt-0 bg-transparent flex flex-col space-y-2 z-10 relative">
+                    {isOutofStock ? (
+                      <Button disabled className="w-full bg-gray-800 text-gray-500 cursor-not-allowed border-transparent">
+                        Out of Stock
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleAction}
+                        className="w-full font-bold uppercase tracking-wider text-xs"
+                      >
+                        {hasTryOn ? 'Virtual Try On →' : 'Inquire Now →'}
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* Advanced Faceted Filter Drawer (Hongo Shopify Theme Replica) */}
@@ -564,7 +625,7 @@ function CatalogContent() {
                 Departments
               </h4>
               <div className="space-y-2">
-                {['glasses', 'sunglasses', 'watches'].map((cat) => (
+                {['glasses', 'sunglasses', 'watches', 'belts', 'perfumes', 'wallets', 'accessories'].map((cat) => (
                   <label key={cat} className="flex items-center space-x-2.5 text-xs text-gray-300 hover:text-white cursor-pointer select-none">
                     <input 
                       type="checkbox"
@@ -572,7 +633,15 @@ function CatalogContent() {
                       onChange={() => handleCategoryToggle(cat)}
                       className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-[#C9A84C] focus:ring-[#C9A84C]/20 focus:ring-offset-0 focus:outline-none"
                     />
-                    <span className="capitalize">{cat === 'glasses' ? 'Eyeglasses' : cat === 'sunglasses' ? 'Sunglasses' : 'Premium Watches'}</span>
+                    <span className="capitalize">
+                      {cat === 'glasses' ? 'Eyeglasses' : 
+                       cat === 'sunglasses' ? 'Sunglasses' : 
+                       cat === 'watches' ? 'Premium Watches' : 
+                       cat === 'belts' ? 'Luxury Belts' : 
+                       cat === 'perfumes' ? 'Perfumes' : 
+                       cat === 'wallets' ? 'Wallets' : 
+                       'Accessories'}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -700,8 +769,8 @@ function CatalogContent() {
 export default function ProductsPage() {
   return (
     <Suspense fallback={
-      <div className="flex flex-col items-center justify-center py-20 space-y-4 min-h-screen bg-[#0B1422]">
-        <RefreshCw className="w-8 h-8 text-[#C9A84C] animate-spin" />
+      <div className="flex flex-col items-center justify-center py-20 space-y-4 min-h-screen bg-[#050c14]">
+        <RefreshCw className="w-8 h-8 text-[#c7a14e] animate-spin" />
         <p className="text-sm text-gray-400">Loading catalog...</p>
       </div>
     }>

@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { ShoppingCart, Camera } from 'lucide-react';
 import { Card, CardContent } from './ui/Card';
 import { Product } from '../types';
@@ -36,10 +37,23 @@ export default function ProductCard({ product, onQuickBuy }: ProductCardProps) {
     : `/try-on/glasses/${product.id}`;
 
   return (
-    <Card className="bg-surface border border-white/10 hover:border-[#C9A84C]/45 transition-all duration-300 flex flex-col justify-between group h-full relative overflow-hidden">
-      
-      {/* 4:5 Aspect Ratio Image Wrapper */}
-      <div className="relative aspect-[4/5] w-full bg-black/20 overflow-hidden">
+    <motion.div
+      whileHover={{ y: -6, scale: 1.015 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="h-full"
+    >
+      <Card className="bg-surface border border-white/5 hover:border-[#C9A84C]/45 transition-all duration-500 flex flex-col justify-between group h-full relative overflow-hidden">
+        
+        {/* Soft Golden Backlit Glow on hover */}
+        <div 
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-0" 
+          style={{
+            backgroundImage: 'radial-gradient(circle at 50% 40%, rgba(201, 168, 76, 0.05) 0%, transparent 65%)',
+          }}
+        />
+
+        {/* 4:5 Aspect Ratio Image Wrapper */}
+        <div className="relative aspect-[4/5] w-full bg-black/10 overflow-hidden z-10 border-b border-white/5">
         
         {/* Compare Checkbox (appears top-left on hover, focus-visible) */}
         <label 
@@ -161,6 +175,7 @@ export default function ProductCard({ product, onQuickBuy }: ProductCardProps) {
         </Link>
       </div>
 
-    </Card>
+      </Card>
+    </motion.div>
   );
 }

@@ -2,6 +2,8 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -12,12 +14,20 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        const logPath = path.resolve(process.cwd(), 'auth_debug.log');
+        
+        const log = (msg: string) => {
+          fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
+        };
+
         if (!credentials?.email || !credentials?.password) {
+          log('Authorize failed: Email or password missing');
           throw new Error('Please enter both email and password.');
         }
 
         try {
-          // Select using supabaseAdmin to bypass normal read RLS policies onadmins table
+          log(`Attempting login for: ${credentials.email}`);
+          
           const { data: admin, error } = await supabaseAdmin
             .from('admins')
             .select('*')
@@ -25,27 +35,34 @@ export const authOptions: NextAuthOptions = {
             .maybeSingle();
 
           if (error) {
+            log(`DB Error: ${error.message}`);
             console.error('Error query admin table:', error);
             throw new Error('Database connection issue.');
           }
 
           if (!admin) {
+            log(`Admin not found for email: ${credentials.email}`);
             throw new Error('Invalid email or password.');
           }
 
+          log(`Admin found. Comparing password...`);
           const isPasswordValid = await bcrypt.compare(credentials.password, admin.password_hash);
+          
           if (!isPasswordValid) {
+            log(`Password invalid for: ${credentials.email}`);
             throw new Error('Invalid email or password.');
           }
 
+          log(`Login successful for: ${credentials.email}`);
           return {
             id: admin.id,
             email: admin.email,
             name: 'Store Administrator',
           };
         } catch (error: unknown) {
-          console.error('Authentication authorize error:', error);
           const errMsg = error instanceof Error ? error.message : 'Authentication failed.';
+          log(`Authorize caught exception: ${errMsg}`);
+          console.error('Authentication authorize error:', error);
           throw new Error(errMsg);
         }
       },

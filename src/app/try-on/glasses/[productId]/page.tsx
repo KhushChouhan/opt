@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import GlassesTryOnCanvas from '@/components/GlassesTryOnCanvas';
 
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   params: {
     productId: string;
@@ -58,7 +60,7 @@ export default async function GlassesTryOnPage({ params }: PageProps) {
   }
 
   return (
-    <div className="bg-[#0B1422] min-h-screen py-6">
+    <div className="bg-[#050c14] min-h-screen py-6">
       <GlassesTryOnCanvas product={product} />
     </div>
   );

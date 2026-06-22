@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Phone, Mail, Clock, ArrowRight } from 'lucide-react';
-import { Facebook, Instagram, Twitter, Youtube } from '@/components/icons/Social';
+import { Facebook, Instagram, WhatsApp, Youtube } from '@/components/icons/Social';
 
 const SHOP = [
   { label: 'Watches', href: '/products?category=watches' },
@@ -35,8 +35,8 @@ const CARE = [
 
 const SOCIALS = [
   { icon: Facebook, href: 'https://facebook.com', label: 'Facebook' },
-  { icon: Instagram, href: 'https://instagram.com', label: 'Instagram' },
-  { icon: Twitter, href: 'https://twitter.com', label: 'Twitter' },
+  { icon: Instagram, href: 'https://instagram.com/hariyana.watch.opticals', label: 'Instagram' },
+  { icon: WhatsApp, href: 'https://wa.me/919828207999', label: 'WhatsApp' },
   { icon: Youtube, href: 'https://youtube.com', label: 'YouTube' },
 ];
 
@@ -44,17 +44,145 @@ export default function Footer() {
   const year = new Date().getFullYear();
   const [email, setEmail] = useState('');
 
+  // Column styling: bottom border on mobile/tablet, vertical divider lines on desktop (lg:)
+  const colClassName = "border-b border-[#c7a14e]/10 lg:border-b-0 lg:border-r border-[#c7a14e]/15 last:border-r-0 last:border-b-0 pb-8 lg:pb-0 px-0 lg:px-6 xl:px-8 first:lg:pl-0 last:lg:pr-0 flex flex-col justify-start";
+
   return (
-    <footer className="bg-[#0A0F18] border-t border-[#C9A84C]/15 text-gray-400">
+    <footer className="bg-[#050c14] border-t border-[#c7a14e]/15 text-gray-400">
+      {/* ============ INSTAGRAM FEED BANNER ============ */}
+      <div className="border-b border-[#c7a14e]/15 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            {/* Left side: text */}
+            <div className="flex-shrink-0 space-y-1.5 text-center lg:text-left">
+              <span className="text-[10px] font-bold text-[#c7a14e] tracking-[0.25em] uppercase block">
+                Follow Us On Instagram
+              </span>
+              <a
+                href="https://instagram.com/hariyana.watch.opticals"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-display text-2xl sm:text-3xl text-white font-medium hover:text-[#c7a14e] transition-colors block tracking-wide"
+              >
+                @hariyana.watch.opticals
+              </a>
+            </div>
+
+            {/* Right side: 6 Instagram cards */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3.5 w-full lg:w-auto justify-items-center">
+              {/* Card 1: Watch */}
+              <a
+                href="https://instagram.com/hariyana.watch.opticals"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
+              >
+                <Image
+                  src="/images/luxury_watches.png"
+                  alt="Watch"
+                  fill
+                  sizes="(max-width: 640px) 30vw, 120px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </a>
+
+              {/* Card 2: Sunglasses */}
+              <a
+                href="https://instagram.com/hariyana.watch.opticals"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
+              >
+                <Image
+                  src="/images/luxury_sunglasses.png"
+                  alt="Sunglasses"
+                  fill
+                  sizes="(max-width: 640px) 30vw, 120px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </a>
+
+              {/* Card 3: Optical Frames */}
+              <a
+                href="https://instagram.com/hariyana.watch.opticals"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
+              >
+                <Image
+                  src="/images/luxury_optical_frames.png"
+                  alt="Optical Frames"
+                  fill
+                  sizes="(max-width: 640px) 30vw, 120px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </a>
+
+              {/* Card 4: Store interior cinematic */}
+              <a
+                href="https://instagram.com/hariyana.watch.opticals"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
+              >
+                <Image
+                  src="/images/store_interior_cinematic.png"
+                  alt="Showroom display"
+                  fill
+                  sizes="(max-width: 640px) 30vw, 120px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </a>
+
+              {/* Card 5: Store interior */}
+              <a
+                href="https://instagram.com/hariyana.watch.opticals"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
+              >
+                <Image
+                  src="/images/store_interior.png"
+                  alt="Store showroom"
+                  fill
+                  sizes="(max-width: 640px) 30vw, 120px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </a>
+
+              {/* Card 6: View More Instagram Logo */}
+              <a
+                href="https://instagram.com/hariyana.watch.opticals"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square rounded-xl overflow-hidden border border-[#c7a14e]/30 bg-gradient-to-br from-[#0b131e] to-[#050c14] hover:border-[#c7a14e] transition-colors flex flex-col items-center justify-center gap-1 p-2 group w-full max-w-[120px] lg:w-24 xl:w-28"
+              >
+                <Instagram className="w-5 h-5 text-[#c7a14e] group-hover:scale-110 transition-transform duration-300" />
+                <span className="text-[9px] font-bold text-[#c7a14e] uppercase tracking-widest mt-1">
+                  View More
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ============ MAIN FOOTER LINKS ============ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-10">
-          {/* Brand block */}
-          <div className="col-span-2 lg:col-span-2 space-y-5">
-            <Image src="/images/logo-dark.png" alt="Hariyana Watch & Opticals" width={565} height={441} className="h-20 w-auto" />
-            <p className="text-sm leading-relaxed max-w-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-y-10 lg:gap-x-0">
+          {/* Column 1: Brand block */}
+          <div className={colClassName}>
+            <Image
+              src="/images/logo-dark.png"
+              alt="Hariyana Watch & Opticals"
+              width={565}
+              height={441}
+              className="h-16 w-auto object-contain self-start mb-4 animate-fade-in"
+            />
+            <p className="text-xs leading-relaxed max-w-[200px] text-gray-400 mb-6">
               Premium watches and eyewear for those who value time, style and trust.
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-5 mt-auto pt-2">
               {SOCIALS.map((s) => (
                 <a
                   key={s.label}
@@ -62,91 +190,101 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.label}
-                  className="w-9 h-9 rounded-full border border-[#C9A84C]/25 flex items-center justify-center text-gray-400 hover:text-[#0A0F18] hover:bg-[#C9A84C] hover:border-[#C9A84C] transition-colors"
+                  className="text-gray-400 hover:text-[#C9A84C] transition-colors"
                 >
-                  <s.icon className="w-4 h-4" />
+                  <s.icon className="w-5 h-5" />
                 </a>
               ))}
             </div>
           </div>
 
-          {/* Shop */}
-          <FooterCol title="Shop" links={SHOP} />
-          {/* Brands */}
-          <FooterCol title="Brands" links={BRANDS} />
-          {/* Customer Care */}
-          <FooterCol title="Customer Care" links={CARE} />
+          {/* Column 2: Shop */}
+          <div className={colClassName}>
+            <FooterCol title="Shop" links={SHOP} />
+          </div>
 
-          {/* Contact + Newsletter */}
-          <div className="col-span-2 lg:col-span-1 space-y-6">
-            <div>
-              <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-4">Contact Us</h4>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-start gap-2.5">
-                  <MapPin className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
-                  <span>SCO 25, Sector 14,<br />Hisar, Haryana 125001</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <a href="tel:+919876543210" className="hover:text-[#C9A84C] transition-colors">+91 98765 43210</a>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <a href="mailto:hello@hariyanawatch.in" className="hover:text-[#C9A84C] transition-colors">hello@hariyanawatch.in</a>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <Clock className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
-                  <span>10:00 AM &ndash; 8:00 PM<br />[All Days]</span>
-                </li>
-              </ul>
-            </div>
+          {/* Column 3: Brands */}
+          <div className={colClassName}>
+            <FooterCol title="Brands" links={BRANDS} />
+          </div>
 
-            <div>
-              <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-3">Newsletter</h4>
-              <p className="text-xs mb-3">Subscribe for updates on new arrivals and exclusive offers.</p>
-              <form
-                onSubmit={(e) => { e.preventDefault(); setEmail(''); }}
-                className="flex"
+          {/* Column 4: Customer Care */}
+          <div className={colClassName}>
+            <FooterCol title="Customer Care" links={CARE} />
+          </div>
+
+          {/* Column 5: Contact Us */}
+          <div className={colClassName}>
+            <h4 className="text-[#C9A84C] font-bold text-xs uppercase tracking-[0.15em] mb-5">Contact Us</h4>
+            <ul className="space-y-4 text-xs text-gray-400">
+              <li className="flex items-start gap-2.5">
+                <MapPin className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
+                <span className="leading-relaxed">SCO 25, Sector 14,<br />Hisar, Haryana 125001</span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                <a href="tel:+919876543210" className="hover:text-white transition-colors">+91 98765 43210</a>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                <a href="mailto:hello@hariyanawatch.in" className="hover:text-white transition-colors">hello@hariyanawatch.in</a>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <Clock className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
+                <span className="leading-relaxed">10:00 AM &ndash; 8:00 PM<br />(All Days)</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 6: Newsletter */}
+          <div className={colClassName}>
+            <h4 className="text-[#c7a14e] font-bold text-xs uppercase tracking-[0.15em] mb-5">Newsletter</h4>
+            <p className="text-xs text-gray-400 leading-relaxed mb-4">
+              Subscribe for updates on new arrivals and exclusive offers.
+            </p>
+            <form
+              onSubmit={(e) => { e.preventDefault(); setEmail(''); }}
+              className="flex w-full mt-auto"
+            >
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="flex-1 min-w-0 bg-[#0b131e] border border-[#c7a14e]/20 rounded-l-md px-3 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#c7a14e]/60"
+              />
+              <button
+                type="submit"
+                aria-label="Subscribe"
+                className="bg-[#c7a14e] text-[#050c14] px-4 rounded-r-md hover:bg-[#e8d9a0] transition-colors flex items-center justify-center flex-shrink-0"
               >
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="flex-1 min-w-0 bg-[#0F1B30] border border-[#C9A84C]/20 rounded-l-md px-3 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#C9A84C]/60"
-                />
-                <button
-                  type="submit"
-                  aria-label="Subscribe"
-                  className="bg-gradient-to-r from-[#C9A84C] to-[#A07A2A] text-[#0A0F18] px-4 rounded-r-md hover:brightness-110 transition-all"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
           </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/10 mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+        <div className="border-t border-[#c7a14e]/10 mt-16 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
           <p className="text-gray-500">
             &copy; {year} Hariyana Watch &amp; Opticals. All Rights Reserved.
           </p>
-          <div className="flex items-center gap-6 text-gray-500">
-            <Link href="/#contact" className="hover:text-[#C9A84C] transition-colors">Privacy Policy</Link>
-            <Link href="/#contact" className="hover:text-[#C9A84C] transition-colors">Terms &amp; Conditions</Link>
+          <div className="flex items-center gap-3 text-gray-500">
+            <Link href="/#contact" className="hover:text-[#c7a14e] transition-colors">Privacy Policy</Link>
+            <span>|</span>
+            <Link href="/#contact" className="hover:text-[#c7a14e] transition-colors">Terms &amp; Conditions</Link>
           </div>
         </div>
 
         {/* Developer credit */}
-        <div className="text-center text-xs text-gray-600 mt-4">
+        <div className="text-center text-[10px] text-gray-600 mt-4">
           Created by{' '}
           <a
             href="https://techprosolution.tech"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-[#C9A84C] hover:text-[#E8D9A0] transition-colors"
+            className="font-semibold text-[#C9A84C]/80 hover:text-[#E8D9A0] transition-colors"
           >
             Tech Pro Solutions
           </a>
@@ -158,12 +296,12 @@ export default function Footer() {
 
 function FooterCol({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
-    <div>
-      <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-4">{title}</h4>
-      <ul className="space-y-2.5 text-sm">
+    <div className="h-full flex flex-col justify-start">
+      <h4 className="text-[#C9A84C] font-bold text-xs uppercase tracking-[0.15em] mb-5">{title}</h4>
+      <ul className="space-y-3.5 text-xs">
         {links.map((l) => (
           <li key={l.label}>
-            <Link href={l.href} className="hover:text-[#C9A84C] transition-colors">{l.label}</Link>
+            <Link href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
           </li>
         ))}
       </ul>

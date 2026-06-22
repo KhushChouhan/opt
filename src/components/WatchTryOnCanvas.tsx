@@ -154,6 +154,18 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   const smoothedAngleRef = useRef<number | null>(null);
   const smoothedWidthRef = useRef<number | null>(null);
 
+  // Tracking loss buffer refs to prevent watch from snapping back to center on brief frame drops
+  const consecutiveLostFramesRef = useRef<number>(0);
+  const lastKnownTrackedStateRef = useRef<{
+    drawX: number;
+    drawY: number;
+    drawAngle: number;
+    watchWidth: number;
+    baseCompress: number;
+    isRightHand: boolean;
+    handednessLabel: string;
+  } | null>(null);
+
 
   // App States
   const [cameraState, setCameraState] = useState<'loading' | 'active' | 'denied' | 'fallback'>('loading');
@@ -238,9 +250,9 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     async function init() {
       try {
         setLoadingMessage('Loading Hand Tracking engine...');
-        // Load MediaPipe Camera and Hands from CDN
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js');
+        // Load MediaPipe Camera and Hands locally
+        await loadScript('/libs/mediapipe/camera_utils.js');
+        await loadScript('/libs/mediapipe/hands.js');
 
         if (!active) return;
 
@@ -260,16 +272,16 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         // Configure Hands detector
         const HandsClass = (window as any).Hands;
         if (!HandsClass) {
-          throw new Error('MediaPipe Hands library not loaded from CDN.');
+          throw new Error('MediaPipe Hands library not loaded.');
         }
 
         const hands = new HandsClass({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+          locateFile: (file: string) => `/libs/mediapipe/${file}`,
         });
 
         hands.setOptions({
           maxNumHands: 1,
-          modelComplexity: 0,
+          modelComplexity: 1,
           minDetectionConfidence: 0.4,
           minTrackingConfidence: 0.4,
         });
@@ -397,9 +409,9 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         }
       }
       
-      // Schedule next check in 33ms (~30fps tracking)
+      // Schedule next check in 10ms (maximizes tracking throughput on available CPU)
       if (cameraStateRef.current === 'active' || cameraStateRef.current === 'loading') {
-        setTimeout(runDetection, 33);
+        setTimeout(runDetection, 10);
       }
     };
 
@@ -409,14 +421,6 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   // Callback when Hands yields results
   const handleHandResults = (results: any) => {
     latestHandResults.current = results;
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      const confidence = results.multiHandedness?.[0]?.score || 0.8;
-      if (confidence >= 0.4) {
-        setHandDetected(true);
-        return;
-      }
-    }
-    setHandDetected(false);
   };
 
   // High-performance decoupled draw loop (runs at 60fps)
@@ -455,15 +459,28 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       const hasHandTracking = (currentCameraState === 'active' || currentCameraState === 'fallback') && 
         results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.4;
 
+      let drawX = 0;
+      let drawY = 0;
+      let drawAngle = 0;
+      let watchWidth = 0;
+      let baseCompress = 1.0;
+      let isRightHand = false;
+      let drawTrackingActive = false;
+      let handWidth = 0; // Needed for segmentation clipping
+      let watchHeight = 0;
+
       if (hasHandTracking) {
+        consecutiveLostFramesRef.current = 0;
+        drawTrackingActive = true;
+
+        const landmarks = results.multiHandLandmarks[0];
+        const handedness = results.multiHandedness[0]; // Left vs Right hand
+        isRightHand = handedness.label === 'Right';
+
+        const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
+        const getY = (lm: any) => lm.y * height;
+
         if (renderMode === 'original') {
-          // Original rendering mode
-          const landmarks = results.multiHandLandmarks[0];
-          const handedness = results.multiHandedness[0]; // Left vs Right hand
-
-          const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
-          const getY = (lm: any) => lm.y * height;
-
           const x_wrist = getX(landmarks[0]);
           const y_wrist = getY(landmarks[0]);
           const x_mcp = getX(landmarks[9]);
@@ -476,45 +493,13 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           const ux = vx / handLength;
           const uy = vy / handLength;
 
-          const x_watch = x_wrist + ux * (handLength * 0.18);
-          const y_watch = y_wrist + uy * (handLength * 0.18);
-
-          const watchWidth = handLength * 0.42;
-          const angle = Math.atan2(vy, vx) + Math.PI / 2;
-          const isRightHand = handedness.label === 'Right';
-
-          if (overlayImageRef.current) {
-            const img = overlayImageRef.current;
-            const aspectRatio = img.naturalHeight / img.naturalWidth;
-            const watchHeight = watchWidth * aspectRatio;
-
-            ctx.save();
-            ctx.translate(x_watch, y_watch);
-            ctx.rotate(angle);
-            if (isRightHand) {
-              ctx.scale(-1, 1);
-            }
-            ctx.drawImage(img, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
-            ctx.restore();
-          } else {
-            ctx.save();
-            ctx.translate(x_watch, y_watch);
-            ctx.rotate(angle);
-            ctx.strokeStyle = '#C9A84C';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
-          }
+          drawX = x_wrist + ux * (handLength * 0.18);
+          drawY = y_wrist + uy * (handLength * 0.18);
+          watchWidth = handLength * 0.42;
+          drawAngle = Math.atan2(vy, vx) + Math.PI / 2;
+          baseCompress = 1.0;
         } else {
-          // New and Segmentation rendering modes
-          const landmarks = results.multiHandLandmarks[0];
-          const handedness = results.multiHandedness[0]; // Left vs Right hand
-
-          const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
-          const getY = (lm: any) => lm.y * height;
-
+          // New and Segmentation modes
           const wrist = { x: getX(landmarks[0]), y: getY(landmarks[0]) };
           const indexMCP = { x: getX(landmarks[5]), y: getY(landmarks[5]) };
           const pinkyMCP = { x: getX(landmarks[17]), y: getY(landmarks[17]) };
@@ -526,7 +511,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
           const dx_width = indexMCP.x - pinkyMCP.x;
           const dy_width = indexMCP.y - pinkyMCP.y;
-          const handWidth = Math.sqrt(dx_width * dx_width + dy_width * dy_width);
+          handWidth = Math.sqrt(dx_width * dx_width + dy_width * dy_width);
           const dx_depth = knuckleCenter.x - wrist.x;
           const dy_depth = knuckleCenter.y - wrist.y;
           const handDepth = Math.sqrt(dx_depth * dx_depth + dy_depth * dy_depth);
@@ -536,14 +521,14 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           const baseSize = wristWidth * 0.5 + forearmWidth * 0.2 + handDepth * 0.3;
 
           const watchScaleMultiplier = 0.95 * liveScaleRef.current;
-          const targetWidth = baseSize * 1.12 * watchScaleMultiplier * 1.05; // Reduced default watch scale by ~9% to sit perfectly on the wrist
+          const targetWidth = baseSize * 1.12 * watchScaleMultiplier * 1.05;
 
           if (smoothedWidthRef.current === null) {
             smoothedWidthRef.current = targetWidth;
           } else {
             smoothedWidthRef.current = smoothedWidthRef.current * 0.88 + targetWidth * 0.12;
           }
-          const watchWidth = smoothedWidthRef.current;
+          watchWidth = smoothedWidthRef.current;
 
           const forearmDirectionX = dx_depth / (handDepth || 1);
           const forearmDirectionY = dy_depth / (handDepth || 1);
@@ -551,14 +536,12 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           const targetX = wrist.x - forearmDirectionX * (watchWidth * 0.45) + liveXOffsetRef.current;
           const targetY = wrist.y - forearmDirectionY * (watchWidth * 0.45) + liveYOffsetRef.current;
 
-          const isRightHand = handedness.label === 'Right';
           const knuckleVector = isRightHand
             ? { x: pinkyMCP.x - indexMCP.x, y: pinkyMCP.y - indexMCP.y }
             : { x: indexMCP.x - pinkyMCP.x, y: indexMCP.y - pinkyMCP.y };
 
           const targetAngle = Math.atan2(knuckleVector.y, knuckleVector.x) + (liveRotationOffsetRef.current * Math.PI) / 180;
-
-          const baseCompress = Math.min(1.0, Math.max(0.70, handWidth / (handDepth || 1)));
+          baseCompress = Math.min(1.0, Math.max(0.70, handWidth / (handDepth || 1)));
 
           if (!smoothedPositionRef.current) {
             smoothedPositionRef.current = { x: targetX, y: targetY };
@@ -579,59 +562,85 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             smoothedAngleRef.current = smoothedAngle;
           }
 
-          const drawX = smoothedPositionRef.current.x;
-          const drawY = smoothedPositionRef.current.y;
-          const drawAngle = smoothedAngleRef.current;
+          drawX = smoothedPositionRef.current.x;
+          drawY = smoothedPositionRef.current.y;
+          drawAngle = smoothedAngleRef.current;
+        }
 
-          const sampleX = Math.min(width - 5, Math.max(0, Math.round(drawX)));
-          const sampleY = Math.min(height - 5, Math.max(0, Math.round(drawY)));
-          let avgBrightness = 127;
-          try {
-            const imgData = ctx.getImageData(sampleX - 2, sampleY - 2, 5, 5);
-            const data = imgData.data;
-            let totalLuma = 0;
-            for (let i = 0; i < data.length; i += 4) {
-              totalLuma += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            }
-            avgBrightness = totalLuma / (data.length / 4);
-          } catch {
-            avgBrightness = 128;
+        // Save last known state for buffer fallback
+        lastKnownTrackedStateRef.current = {
+          drawX,
+          drawY,
+          drawAngle,
+          watchWidth,
+          baseCompress,
+          isRightHand,
+          handednessLabel: handedness.label
+        };
+
+        if (!handDetected) {
+          setHandDetected(true);
+        }
+      } else if (
+        (currentCameraState === 'active' || currentCameraState === 'fallback') &&
+        lastKnownTrackedStateRef.current !== null &&
+        consecutiveLostFramesRef.current < 25
+      ) {
+        // Hand not detected this frame, but we have a recently tracked state
+        consecutiveLostFramesRef.current += 1;
+        drawTrackingActive = true;
+
+        const state = lastKnownTrackedStateRef.current;
+        drawX = state.drawX;
+        drawY = state.drawY;
+        drawAngle = state.drawAngle;
+        watchWidth = state.watchWidth;
+        baseCompress = state.baseCompress;
+        isRightHand = state.isRightHand;
+
+        if (!handDetected) {
+          setHandDetected(true);
+        }
+      } else {
+        // Clear tracked cache once loss buffer expires
+        if (handDetected) {
+          setHandDetected(false);
+        }
+        smoothedPositionRef.current = null;
+        smoothedAngleRef.current = null;
+        smoothedWidthRef.current = null;
+        lastKnownTrackedStateRef.current = null;
+      }
+
+      if (drawTrackingActive) {
+        if (overlayImageRef.current) {
+          const img = overlayImageRef.current;
+          const bbox = assetBBoxRef.current || { left: 0, top: 0, width: img.naturalWidth || 1, height: img.naturalHeight || 1 };
+          watchHeight = watchWidth * (bbox.height / bbox.width);
+
+          ctx.save();
+          ctx.translate(drawX, drawY);
+          ctx.rotate(drawAngle);
+          
+          if (isRightHand) {
+            ctx.scale(-1, 1);
           }
-          // Narrowed brightness and contrast adjustments to preserve faithful asset appearance
-          const brightnessRatio = Math.min(1.05, Math.max(0.95, avgBrightness / 128));
-          const contrastRatio = Math.min(1.03, Math.max(0.97, 0.98 + (avgBrightness / 128) * 0.02));
 
+          if (renderMode === 'segmentation') {
+            const clipHandWidth = handWidth || (watchWidth / 0.8);
+            const wristClipWidth = clipHandWidth * 0.88;
+            const forearmClipWidth = clipHandWidth * 0.93;
+            ctx.beginPath();
+            ctx.moveTo(-wristClipWidth / 2, watchWidth * 0.45);
+            ctx.lineTo(wristClipWidth / 2, watchWidth * 0.45);
+            ctx.lineTo(forearmClipWidth / 2, -watchHeight * 4);
+            ctx.lineTo(-forearmClipWidth / 2, -watchHeight * 4);
+            ctx.closePath();
+            ctx.clip();
+          }
 
-
-
-          if (overlayImageRef.current) {
-            const img = overlayImageRef.current;
-            const bbox = assetBBoxRef.current || { left: 0, top: 0, width: img.naturalWidth || 1, height: img.naturalHeight || 1 };
-            const watchHeight = watchWidth * (bbox.height / bbox.width);
-
-
-            ctx.save();
-            ctx.translate(drawX, drawY);
-            ctx.rotate(drawAngle);
-            
-            if (isRightHand) {
-              ctx.scale(-1, 1);
-            }
-
-            // Apply forearm mask clipping to visible wrist boundaries (Occlusion) ONLY in segmentation mode
-            if (renderMode === 'segmentation') {
-              const wristClipWidth = handWidth * 0.88;
-              const forearmClipWidth = handWidth * 0.93;
-              ctx.beginPath();
-              ctx.moveTo(-wristClipWidth / 2, watchWidth * 0.45);
-              ctx.lineTo(wristClipWidth / 2, watchWidth * 0.45);
-              ctx.lineTo(forearmClipWidth / 2, -watchHeight * 4);
-              ctx.lineTo(-forearmClipWidth / 2, -watchHeight * 4);
-              ctx.closePath();
-              ctx.clip();
-            }
-
-            // 1. Draw dynamic soft contact shadow (Soft Ambient Layer)
+          if (renderMode !== 'original') {
+            // Draw dynamic soft contact shadow (Soft Ambient Layer)
             ctx.save();
             ctx.scale(baseCompress, 1);
             if (ctx.filter !== undefined) {
@@ -651,7 +660,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             ctx.fill();
             ctx.restore();
 
-            // 2. Draw dynamic tight contact shadow (Anchoring Layer - prevents floating effect)
+            // Draw dynamic tight contact shadow (Anchoring Layer - prevents floating effect)
             ctx.save();
             ctx.scale(baseCompress, 1);
             if (ctx.filter !== undefined) {
@@ -673,51 +682,55 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
             // Apply blur and lighting matching filters to context (subtle blur matches soft webcam resolution)
             if (ctx.filter !== undefined) {
+              const sampleX = Math.min(width - 5, Math.max(0, Math.round(drawX)));
+              const sampleY = Math.min(height - 5, Math.max(0, Math.round(drawY)));
+              let avgBrightness = 127;
+              try {
+                const imgData = ctx.getImageData(sampleX - 2, sampleY - 2, 5, 5);
+                const data = imgData.data;
+                let totalLuma = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                  totalLuma += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                }
+                avgBrightness = totalLuma / (data.length / 4);
+              } catch {
+                avgBrightness = 128;
+              }
+              const brightnessRatio = Math.min(1.05, Math.max(0.95, avgBrightness / 128));
+              const contrastRatio = Math.min(1.03, Math.max(0.97, 0.98 + (avgBrightness / 128) * 0.02));
               ctx.filter = `blur(0.6px) brightness(${brightnessRatio}) contrast(${contrastRatio})`;
             }
-
-            // Draw the entire watch image as a single continuous piece
-            ctx.save();
-            ctx.scale(baseCompress, 1);
-            ctx.drawImage(img, bbox.left, bbox.top, bbox.width, bbox.height, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
-            ctx.restore();
-
-            ctx.restore();
-          } else if (currentCameraState === 'active') {
-            const watchHeight = watchWidth;
-            ctx.save();
-            ctx.translate(drawX, drawY);
-            ctx.rotate(drawAngle);
-            ctx.scale(baseCompress, 1);
-
-            // Apply wrist occlusion clipping for fallback circle ONLY in segmentation mode
-            if (renderMode === 'segmentation') {
-              const wristClipWidth = handWidth * 0.88;
-              const forearmClipWidth = handWidth * 0.93;
-              ctx.beginPath();
-              ctx.moveTo(-wristClipWidth / 2, watchWidth * 0.45);
-              ctx.lineTo(wristClipWidth / 2, watchWidth * 0.45);
-              ctx.lineTo(forearmClipWidth / 2, -watchHeight * 4);
-              ctx.lineTo(-forearmClipWidth / 2, -watchHeight * 4);
-              ctx.closePath();
-              ctx.clip();
-            }
-
-            ctx.strokeStyle = '#C9A84C';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
           }
+
+          // Draw the entire watch image as a single continuous piece
+          ctx.save();
+          if (renderMode !== 'original') {
+            ctx.scale(baseCompress, 1);
+          }
+          ctx.drawImage(img, bbox.left, bbox.top, bbox.width, bbox.height, -watchWidth / 2, -watchHeight / 2, watchWidth, watchHeight);
+          ctx.restore();
+
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.translate(drawX, drawY);
+          ctx.rotate(drawAngle);
+          if (renderMode !== 'original') {
+            ctx.scale(baseCompress, 1);
+          }
+          ctx.strokeStyle = '#C9A84C';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(0, 0, watchWidth / 4, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
         }
       } else {
-
-
-
         // Reset smoothed tracking state when hand tracking is inactive
         smoothedPositionRef.current = null;
         smoothedAngleRef.current = null;
+        smoothedWidthRef.current = null;
+        lastKnownTrackedStateRef.current = null;
 
         // Manual dragging mode (fallback / denied / no hand found)
         const x = manualPositionRef.current.x === 0 ? width / 2 : manualPositionRef.current.x;
@@ -1069,231 +1082,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             )}
           </div>
 
-          {/* Admin Live Calibration HUD */}
-          {showCalibrator && (
-            <div className="p-6 glass-panel rounded-lg border border-[#C9A84C]/45 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-                <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider flex items-center">
-                  <Sliders className="w-4 h-4 mr-2" />
-                  Admin Live Calibration Panel
-                </h4>
-                <span className="text-[9px] px-2 py-0.5 bg-[#C9A84C]/10 border border-[#C9A84C]/20 text-[#C9A84C] font-semibold rounded uppercase tracking-wider">
-                  Live Mode
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs text-white">
-                {/* Scale factor */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Scale factor (Width)</span>
-                    <div className="flex items-center space-x-1.5">
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveScale(prev => Math.max(0.5, Number((prev - 0.01).toFixed(2))))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        -
-                      </button>
-                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveScale.toFixed(2)}</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveScale(prev => Math.min(2.0, Number((prev + 0.01).toFixed(2))))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.01"
-                    value={liveScale}
-                    onChange={(e) => setLiveScale(parseFloat(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
-                  />
-                </div>
-
-                {/* Rotation Bias */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Rotation Bias (degrees)</span>
-                    <div className="flex items-center space-x-1.5">
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveRotationOffset(prev => Math.max(-180, prev - 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        -
-                      </button>
-                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveRotationOffset}°</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveRotationOffset(prev => Math.min(180, prev + 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="-180"
-                    max="180"
-                    step="1"
-                    value={liveRotationOffset}
-                    onChange={(e) => setLiveRotationOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
-                  />
-                </div>
-
-                {/* X Offset */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Horizontal Shift (X Axis)</span>
-                    <div className="flex items-center space-x-1.5">
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveXOffset(prev => Math.max(-150, prev - 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        -
-                      </button>
-                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveXOffset}px</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveXOffset(prev => Math.min(150, prev + 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="-150"
-                    max="150"
-                    step="1"
-                    value={liveXOffset}
-                    onChange={(e) => setLiveXOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
-                  />
-                </div>
-
-                {/* Y Offset */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Vertical Shift (Y Axis)</span>
-                    <div className="flex items-center space-x-1.5">
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveYOffset(prev => Math.max(-150, prev - 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        -
-                      </button>
-                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveYOffset}px</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveYOffset(prev => Math.min(150, prev + 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="-150"
-                    max="150"
-                    step="1"
-                    value={liveYOffset}
-                    onChange={(e) => setLiveYOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Render Mode Selection */}
-              <div className="space-y-1.5 border-t border-gray-800 pt-3 mt-1">
-                <span className="text-gray-400">AR Render Mode Comparison (Feature Flag)</span>
-                <div className="flex flex-wrap gap-2.5 mt-1.5">
-                  {(['original', 'new', 'segmentation'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setRenderMode(mode)}
-                      className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
-                        renderMode === mode
-                          ? 'bg-[#C9A84C] text-[#0B1422] border-[#C9A84C]'
-                          : 'bg-[#1A2742] text-gray-300 border-gray-700 hover:border-gray-500'
-                      }`}
-                    >
-                      {mode === 'original' ? 'Original (Flat)' : mode === 'new' ? 'New (Curved & Smoothed)' : 'Segmentation (Occluded)'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2 space-x-3">
-
-                <Button 
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
-                    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
-                    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
-                    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
-                  }}
-                  className="text-xs"
-                >
-                  Reset Settings
-                </Button>
-                <Button 
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(`/api/products/${product.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          name: product.name,
-                          category: product.category,
-                          price: product.price,
-                          description: product.description,
-                          image_url: product.image_url,
-                          overlay_image_url: product.overlay_image_url,
-                          stock: product.stock,
-                          lens_image_url: product.lens_image_url || null,
-                          reflection_image_url: product.reflection_image_url || null,
-                          overlay_scale: liveScale,
-                          overlay_x_offset: liveXOffset,
-                          overlay_y_offset: liveYOffset,
-                          overlay_rotation_offset: liveRotationOffset
-                        })
-                      });
-                      if (!res.ok) {
-                        const data = await res.json();
-                        throw new Error(data.error || 'Failed to save calibration settings.');
-                      }
-                      alert('Calibration settings successfully saved to database!');
-                    } catch (err: any) {
-                      alert(err.message || 'Error saving calibration settings.');
-                    }
-                  }}
-                  className="text-xs text-[#0B1422] bg-[#C9A84C] hover:bg-[#C9A84C]/90"
-                >
-                  Save Settings
-                </Button>
-              </div>
-            </div>
-          )}
-
           {/* Calibration / Upload Help panel */}
-
           <div className="p-5 glass-panel rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               <h4 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start">
@@ -1301,7 +1090,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                 Need calibration?
               </h4>
               <p className="text-xs text-gray-400 mt-1">
-                Drag the watch on the canvas or use the sliders below to calibrate size and rotation.
+                Use the sliders below or drag the watch directly to calibrate its size and position on your wrist.
               </p>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
@@ -1324,47 +1113,271 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             </div>
           </div>
 
-          {/* Manual adjustment HUD */}
-          {(cameraState === 'fallback' || cameraState === 'denied' || !handDetected) && (
-            <div className="p-6 glass-panel rounded-lg space-y-4">
-              <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider flex items-center">
-                <Sliders className="w-4 h-4 text-[#C9A84C] mr-2" />
-                Manual Adjustments (Drag watch on canvas or use sliders)
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                {/* Scale slider */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Watch Size</span>
-                    <span className="text-[#C9A84C] font-mono">{(manualScale * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.05"
-                    value={manualScale}
-                    onChange={(e) => setManualScale(parseFloat(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-gray-700 h-1 rounded"
-                  />
-                </div>
-                {/* Rotation slider */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Angle Rotation</span>
-                    <span className="text-[#C9A84C] font-mono">{manualRotation}°</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-180"
-                    max="180"
-                    step="5"
-                    value={manualRotation}
-                    onChange={(e) => setManualRotation(parseInt(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-gray-700 h-1 rounded"
-                  />
-                </div>
+          {/* Unified Adjustments Panel */}
+          {cameraState !== 'loading' && (
+            <div className="p-6 glass-panel rounded-lg border border-[#C9A84C]/25 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider flex items-center">
+                  <Sliders className="w-4 h-4 mr-2" />
+                  {handDetected ? 'Fine-tune Watch Fit (Wrist Locked)' : 'Manual Adjustments (Drag watch or use sliders)'}
+                </h4>
+                {showCalibrator && (
+                  <span className="text-[9px] px-2 py-0.5 bg-[#C9A84C]/10 border border-[#C9A84C]/20 text-[#C9A84C] font-semibold rounded uppercase tracking-wider">
+                    Admin Mode
+                  </span>
+                )}
               </div>
+
+              {handDetected ? (
+                /* Auto-fitting calibration mode (live offsets) */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs text-white">
+                    {/* Scale factor */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Watch Size</span>
+                        <div className="flex items-center space-x-1.5">
+                          <button 
+                            type="button" 
+                            onClick={() => setLiveScale(prev => Math.max(0.5, Number((prev - 0.01).toFixed(2))))}
+                            className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                          >
+                            -
+                          </button>
+                          <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveScale.toFixed(2)}</span>
+                          <button 
+                            type="button" 
+                            onClick={() => setLiveScale(prev => Math.min(2.0, Number((prev + 0.01).toFixed(2))))}
+                            className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.0"
+                        step="0.01"
+                        value={liveScale}
+                        onChange={(e) => setLiveScale(parseFloat(e.target.value))}
+                        className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Rotation Bias */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Angle Rotation</span>
+                        <div className="flex items-center space-x-1.5">
+                          <button 
+                            type="button" 
+                            onClick={() => setLiveRotationOffset(prev => Math.max(-180, prev - 1))}
+                            className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                          >
+                            -
+                          </button>
+                          <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveRotationOffset}°</span>
+                          <button 
+                            type="button" 
+                            onClick={() => setLiveRotationOffset(prev => Math.min(180, prev + 1))}
+                            className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        step="1"
+                        value={liveRotationOffset}
+                        onChange={(e) => setLiveRotationOffset(parseInt(e.target.value))}
+                        className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
+                      />
+                    </div>
+
+                    {/* X Offset */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Horizontal Shift</span>
+                        <div className="flex items-center space-x-1.5">
+                          <button 
+                            type="button" 
+                            onClick={() => setLiveXOffset(prev => Math.max(-150, prev - 1))}
+                            className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                          >
+                            -
+                          </button>
+                          <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveXOffset}px</span>
+                          <button 
+                            type="button" 
+                            onClick={() => setLiveXOffset(prev => Math.min(150, prev + 1))}
+                            className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-150"
+                        max="150"
+                        step="1"
+                        value={liveXOffset}
+                        onChange={(e) => setLiveXOffset(parseInt(e.target.value))}
+                        className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Y Offset */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Vertical Shift</span>
+                        <div className="flex items-center space-x-1.5">
+                          <button 
+                            type="button" 
+                            onClick={() => setLiveYOffset(prev => Math.max(-150, prev - 1))}
+                            className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                          >
+                            -
+                          </button>
+                          <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveYOffset}px</span>
+                          <button 
+                            type="button" 
+                            onClick={() => setLiveYOffset(prev => Math.min(150, prev + 1))}
+                            className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="-150"
+                        max="150"
+                        step="1"
+                        value={liveYOffset}
+                        onChange={(e) => setLiveYOffset(parseInt(e.target.value))}
+                        className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  {showCalibrator && (
+                    <div className="space-y-1.5 border-t border-gray-800 pt-3 mt-1 text-xs">
+                      <span className="text-gray-400">AR Render Mode Comparison (Feature Flag)</span>
+                      <div className="flex flex-wrap gap-2.5 mt-1.5">
+                        {(['original', 'new', 'segmentation'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setRenderMode(mode)}
+                            className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                              renderMode === mode
+                                ? 'bg-[#C9A84C] text-[#0B1422] border-[#C9A84C]'
+                                : 'bg-[#1A2742] text-gray-300 border-gray-700 hover:border-gray-500'
+                            }`}
+                          >
+                            {mode === 'original' ? 'Original (Flat)' : mode === 'new' ? 'New (Curved & Smoothed)' : 'Segmentation (Occluded)'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2 space-x-3 border-t border-gray-850 mt-2">
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
+                        setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
+                        setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
+                        setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+                      }}
+                      className="text-xs"
+                    >
+                      Reset Settings
+                    </Button>
+                    {showCalibrator && (
+                      <Button 
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/products/${product.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                name: product.name,
+                                category: product.category,
+                                price: product.price,
+                                description: product.description,
+                                image_url: product.image_url,
+                                overlay_image_url: product.overlay_image_url,
+                                stock: product.stock,
+                                lens_image_url: product.lens_image_url || null,
+                                reflection_image_url: product.reflection_image_url || null,
+                                overlay_scale: liveScale,
+                                overlay_x_offset: liveXOffset,
+                                overlay_y_offset: liveYOffset,
+                                overlay_rotation_offset: liveRotationOffset
+                              })
+                            });
+                            if (!res.ok) {
+                              const data = await res.json();
+                              throw new Error(data.error || 'Failed to save calibration settings.');
+                            }
+                            alert('Calibration settings successfully saved to database!');
+                          } catch (err: any) {
+                            alert(err.message || 'Error saving calibration settings.');
+                          }
+                        }}
+                        className="text-xs text-[#0B1422] bg-[#C9A84C] hover:bg-[#C9A84C]/90"
+                      >
+                        Save Settings
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Manual adjustments fallback mode (drag-and-drop coordinates) */
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  {/* Scale slider */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Watch Size</span>
+                      <span className="text-[#C9A84C] font-mono">{(manualScale * 100).toFixed(0)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2.0"
+                      step="0.05"
+                      value={manualScale}
+                      onChange={(e) => setManualScale(parseFloat(e.target.value))}
+                      className="w-full accent-[#C9A84C] bg-gray-700 h-1 rounded cursor-pointer"
+                    />
+                  </div>
+                  {/* Rotation slider */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Angle Rotation</span>
+                      <span className="text-[#C9A84C] font-mono">{manualRotation}°</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-180"
+                      max="180"
+                      step="5"
+                      value={manualRotation}
+                      onChange={(e) => setManualRotation(parseInt(e.target.value))}
+                      className="w-full accent-[#C9A84C] bg-gray-700 h-1 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

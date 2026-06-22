@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import WatchTryOnCanvas from '@/components/WatchTryOnCanvas';
 
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   params: {
     productId: string;
@@ -54,7 +56,7 @@ export default async function WatchTryOnPage({ params }: PageProps) {
   }
 
   return (
-    <div className="bg-[#0B1422] min-h-screen py-6">
+    <div className="bg-[#050c14] min-h-screen py-6">
       <WatchTryOnCanvas product={product} />
     </div>
   );

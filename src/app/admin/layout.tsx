@@ -9,12 +9,12 @@ export const metadata: Metadata = {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0B1422] pb-16">
+    <div className="min-h-screen bg-[#050c14] pb-16">
       {/* Dashboard Top Banner */}
-      <div className="bg-[#0F1B30] border-b border-[#C9A84C]/20 py-4 mb-8">
+      <div className="bg-[#0b131e] border-b border-[#c7a14e]/20 py-4 mb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <div>
-            <h1 className="text-xs uppercase font-bold tracking-widest text-[#C9A84C]">
+            <h1 className="text-xs uppercase font-bold tracking-widest text-[#c7a14e]">
               Management Center
             </h1>
             <p className="text-[10px] text-gray-500 font-sans mt-0.5">

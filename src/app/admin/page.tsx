@@ -26,7 +26,7 @@ import Modal from '@/components/ui/Modal';
 interface Product {
   id: string;
   name: string;
-  category: 'glasses' | 'sunglasses' | 'watches';
+  category: 'glasses' | 'sunglasses' | 'watches' | 'belts' | 'perfumes' | 'wallets' | 'accessories';
   price: number;
   description: string;
   image_url: string;
@@ -40,6 +40,16 @@ interface Product {
   stock: number;
   created_at: string;
 }
+
+const getActualCategory = (product: Product): string => {
+  if (product.description) {
+    if (product.description.includes('[Category: perfumes]')) return 'perfumes';
+    if (product.description.includes('[Category: belts]')) return 'belts';
+    if (product.description.includes('[Category: wallets]')) return 'wallets';
+    if (product.description.includes('[Category: accessories]')) return 'accessories';
+  }
+  return product.category;
+};
 
 interface Order {
   id: string;
@@ -190,7 +200,7 @@ export default function AdminDashboard() {
     setEditingProduct(product);
     setProductForm({
       name: product.name,
-      category: product.category,
+      category: getActualCategory(product),
       price: product.price.toString(),
       description: product.description || '',
       image_url: product.image_url,
@@ -564,7 +574,7 @@ export default function AdminDashboard() {
                         />
                       )}
                       <span className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/55 text-xs font-semibold rounded text-amber-500 border border-amber-500/20 capitalize">
-                        {product.category}
+                        {getActualCategory(product) === 'glasses' ? 'Eyeglasses' : getActualCategory(product)}
                       </span>
                     </div>
 
@@ -624,10 +634,14 @@ export default function AdminDashboard() {
                 { value: 'glasses', label: 'Eyeglasses' },
                 { value: 'sunglasses', label: 'Sunglasses' },
                 { value: 'watches', label: 'Watches' },
+                { value: 'belts', label: 'Belts' },
+                { value: 'perfumes', label: 'Perfumes' },
+                { value: 'wallets', label: 'Wallets' },
+                { value: 'accessories', label: 'Accessories' },
               ]}
               required
               value={productForm.category}
-              onChange={(e) => setProductForm(prev => ({ ...prev, category: e.target.value as 'glasses' | 'sunglasses' | 'watches' }))}
+              onChange={(e) => setProductForm(prev => ({ ...prev, category: e.target.value as typeof prev.category }))}
             />
 
             <Input

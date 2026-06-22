@@ -61,6 +61,9 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   const [faceDetected, setFaceDetected] = useState(false);
   const [snapshot, setSnapshot] = useState<string | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [selectedOverlayId, setSelectedOverlayId] = useState<string>('default');
+
+
 
   // Camera Selection States
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -159,134 +162,141 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
     setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
     setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+    setSelectedOverlayId('default');
   }, [product]);
 
-  // Initialize and load dependencies
+  // Load try-on assets (overlay frame, lens, reflection) dynamically
+  useEffect(() => {
+    const activeUrl = selectedOverlayId === 'default'
+      ? product.overlay_image_url
+      : selectedOverlayId === 'style_1'
+        ? '/images/overlays/first_1.png'
+        : selectedOverlayId === 'style_2'
+          ? '/images/overlays/first_2.png'
+          : '/images/overlays/first_3.png';
+    const cb = `cb=${Date.now()}`;
+
+    // Load overlay image with cache-busting to prevent cached non-CORS response errors
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = activeUrl.includes('?')
+      ? `${activeUrl}&${cb}`
+      : `${activeUrl}?${cb}`;
+    img.onload = () => {
+      overlayImageRef.current = img;
+      
+      // Auto-trim transparent padding to center the actual frame correctly
+      try {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = img.naturalWidth;
+        tempCanvas.height = img.naturalHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCtx.drawImage(img, 0, 0);
+          const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+          const data = imgData.data;
+          
+          let minX = tempCanvas.width;
+          let maxX = 0;
+          let minY = tempCanvas.height;
+          let maxY = 0;
+          let hasPixels = false;
+          
+          for (let y = 0; y < tempCanvas.height; y++) {
+            for (let x = 0; x < tempCanvas.width; x++) {
+              const alpha = data[(y * tempCanvas.width + x) * 4 + 3];
+              // Use alpha > 30 to be robust against noise/semi-transparent compression artifacts
+              if (alpha > 30) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                hasPixels = true;
+              }
+            }
+          }
+          
+          if (hasPixels) {
+            const w = maxX - minX + 1;
+            const h = maxY - minY + 1;
+            const actualCenterX = minX + w / 2;
+            const actualCenterY = minY + h / 2;
+            const dx = actualCenterX - img.naturalWidth / 2;
+            const dy = actualCenterY - img.naturalHeight / 2;
+            
+            overlayCropRef.current = {
+              shiftX: -dx / img.naturalWidth,
+              shiftY: -dy / img.naturalHeight
+            };
+          } else {
+            overlayCropRef.current = { shiftX: 0, shiftY: 0 };
+          }
+        }
+      } catch (e) {
+        console.warn('Auto-trim failed (possibly CORS restrictions):', e);
+        overlayCropRef.current = { shiftX: 0, shiftY: 0 };
+      }
+    };
+    img.onerror = () => {
+      console.error('Failed to load overlay image, using fallbacks.');
+    };
+
+    // Load optional lens image with cache-busting
+    if (product.lens_image_url) {
+      const lensImg = new Image();
+      lensImg.crossOrigin = 'anonymous';
+      lensImg.src = product.lens_image_url.includes('?')
+        ? `${product.lens_image_url}&${cb}`
+        : `${product.lens_image_url}?${cb}`;
+      lensImg.onload = () => {
+        lensImageRef.current = lensImg;
+      };
+      lensImg.onerror = () => {
+        console.error('Failed to load lens image.');
+      };
+    } else {
+      lensImageRef.current = null;
+    }
+
+    // Load optional reflection image with cache-busting
+    if (product.reflection_image_url) {
+      const reflImg = new Image();
+      reflImg.crossOrigin = 'anonymous';
+      reflImg.src = product.reflection_image_url.includes('?')
+        ? `${product.reflection_image_url}&${cb}`
+        : `${product.reflection_image_url}?${cb}`;
+      reflImg.onload = () => {
+        reflectionImageRef.current = reflImg;
+      };
+      reflImg.onerror = () => {
+        console.error('Failed to load reflection image.');
+      };
+    } else {
+      reflectionImageRef.current = null;
+    }
+  }, [product, selectedOverlayId]);
+
+  // Initialize and load dependencies once on mount
   useEffect(() => {
     let active = true;
 
     async function init() {
       try {
         setLoadingMessage('Loading Face Tracking engine...');
-        // Load MediaPipe FaceMesh from CDN
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
+        // Load MediaPipe FaceMesh locally
+        await loadScript('/libs/mediapipe/camera_utils.js');
+        await loadScript('/libs/mediapipe/face_mesh.js');
 
         if (!active) return;
-
-        // Load overlay image with cache-busting to prevent cached non-CORS response errors
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        const cb = `cb=${Date.now()}`;
-        img.src = product.overlay_image_url.includes('?')
-          ? `${product.overlay_image_url}&${cb}`
-          : `${product.overlay_image_url}?${cb}`;
-        img.onload = () => {
-          overlayImageRef.current = img;
-          
-          // Auto-trim transparent padding to center the actual frame correctly
-          try {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = img.naturalWidth;
-            tempCanvas.height = img.naturalHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-            if (tempCtx) {
-              tempCtx.drawImage(img, 0, 0);
-              const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-              const data = imgData.data;
-              
-              let minX = tempCanvas.width;
-              let maxX = 0;
-              let minY = tempCanvas.height;
-              let maxY = 0;
-              let hasPixels = false;
-              
-              for (let y = 0; y < tempCanvas.height; y++) {
-                for (let x = 0; x < tempCanvas.width; x++) {
-                  const alpha = data[(y * tempCanvas.width + x) * 4 + 3];
-                  // Use alpha > 30 to be robust against noise/semi-transparent compression artifacts
-                  if (alpha > 30) {
-                    if (x < minX) minX = x;
-                    if (x > maxX) maxX = x;
-                    if (y < minY) minY = y;
-                    if (y > maxY) maxY = y;
-                    hasPixels = true;
-                  }
-                }
-              }
-              
-              if (hasPixels) {
-                const w = maxX - minX + 1;
-                const h = maxY - minY + 1;
-                const actualCenterX = minX + w / 2;
-                const actualCenterY = minY + h / 2;
-                const dx = actualCenterX - img.naturalWidth / 2;
-                const dy = actualCenterY - img.naturalHeight / 2;
-                
-                overlayCropRef.current = {
-                  shiftX: -dx / img.naturalWidth,
-                  shiftY: -dy / img.naturalHeight
-                };
-                console.log('Auto-trim succeeded:', {
-                  w, h, dx, dy,
-                  shiftX: overlayCropRef.current.shiftX,
-                  shiftY: overlayCropRef.current.shiftY
-                });
-              } else {
-                overlayCropRef.current = { shiftX: 0, shiftY: 0 };
-              }
-            }
-          } catch (e) {
-            console.warn('Auto-trim failed (possibly CORS restrictions):', e);
-            overlayCropRef.current = { shiftX: 0, shiftY: 0 };
-          }
-        };
-        img.onerror = () => {
-          console.error('Failed to load overlay image, using fallbacks.');
-        };
- 
-        // Load optional lens image with cache-busting
-        if (product.lens_image_url) {
-          const lensImg = new Image();
-          lensImg.crossOrigin = 'anonymous';
-          lensImg.src = product.lens_image_url.includes('?')
-            ? `${product.lens_image_url}&${cb}`
-            : `${product.lens_image_url}?${cb}`;
-          lensImg.onload = () => {
-            lensImageRef.current = lensImg;
-          };
-          lensImg.onerror = () => {
-            console.error('Failed to load lens image.');
-          };
-        } else {
-          lensImageRef.current = null;
-        }
- 
-        // Load optional reflection image with cache-busting
-        if (product.reflection_image_url) {
-          const reflImg = new Image();
-          reflImg.crossOrigin = 'anonymous';
-          reflImg.src = product.reflection_image_url.includes('?')
-            ? `${product.reflection_image_url}&${cb}`
-            : `${product.reflection_image_url}?${cb}`;
-          reflImg.onload = () => {
-            reflectionImageRef.current = reflImg;
-          };
-          reflImg.onerror = () => {
-            console.error('Failed to load reflection image.');
-          };
-        } else {
-          reflectionImageRef.current = null;
-        }
 
         // Configure FaceMesh
         const FaceMeshClass = (window as any).FaceMesh;
         if (!FaceMeshClass) {
-          throw new Error('FaceMesh library not loaded from CDN.');
+          throw new Error('FaceMesh library not loaded.');
         }
 
         const faceMesh = new FaceMeshClass({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+          locateFile: (file: string) => `/libs/mediapipe/${file}`,
         });
 
         faceMesh.setOptions({
@@ -318,7 +328,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       stopAllStreams();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product]);
+  }, []);
 
   // Stop video streams and cancel animation loops
   const stopAllStreams = () => {
@@ -419,9 +429,9 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         }
       }
       
-      // Schedule next check in 33ms (~30fps tracking)
+      // Schedule next check in 10ms (maximizes tracking throughput on available CPU)
       if (cameraStateRef.current === 'active' || cameraStateRef.current === 'loading') {
-        setTimeout(runDetection, 33);
+        setTimeout(runDetection, 10);
       }
     };
 
@@ -1025,6 +1035,8 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               </div>
             )}
           </div>
+
+
 
           {/* Calibration / Upload Help panel */}
           <div className="p-5 glass-panel rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">

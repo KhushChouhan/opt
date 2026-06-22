@@ -33,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
-      <body className="antialiased min-h-screen flex flex-col bg-[#0A0F18] text-[#f3f4f6] font-sans">
+      <body className="antialiased min-h-screen flex flex-col bg-[#050c14] text-[#f3f4f6] font-sans">
         <Providers>
           <Navbar />
           <main className="flex-grow">

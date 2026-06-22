@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
+export const dynamic = 'force-dynamic';
+
 // GET products - Public
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,8 +13,11 @@ export async function GET(request: NextRequest) {
   try {
     let query = supabaseAdmin.from('products').select('*').order('created_at', { ascending: false });
 
-    if (category && ['glasses', 'sunglasses', 'watches'].includes(category)) {
-      query = query.eq('category', category);
+    const isCustomCategory = ['belts', 'perfumes', 'wallets', 'accessories'].includes(category || '');
+    const dbCategory = isCustomCategory ? 'glasses' : category;
+
+    if (dbCategory && ['glasses', 'sunglasses', 'watches'].includes(dbCategory)) {
+      query = query.eq('category', dbCategory);
     }
 
     const { data: products, error } = await query;
@@ -22,7 +27,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch products.' }, { status: 500 });
     }
 
-    return NextResponse.json(products);
+    let filteredProducts = products || [];
+    if (isCustomCategory && products) {
+      filteredProducts = products.filter((p: { description?: string | null }) => 
+        p.description && p.description.includes(`[Category: ${category}]`)
+      );
+    }
+
+    return NextResponse.json(filteredProducts);
   } catch (error) {
     console.error('API products GET error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
@@ -45,8 +57,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Product name is required.' }, { status: 400 });
     }
 
-    if (!category || !['glasses', 'sunglasses', 'watches'].includes(category)) {
-      return NextResponse.json({ error: 'Valid category (glasses, sunglasses, watches) is required.' }, { status: 400 });
+    if (!category || !['glasses', 'sunglasses', 'watches', 'belts', 'perfumes', 'wallets', 'accessories'].includes(category)) {
+      return NextResponse.json({ error: 'Valid category (glasses, sunglasses, watches, belts, perfumes, wallets, accessories) is required.' }, { status: 400 });
     }
 
     const parsedPrice = parseFloat(price);
@@ -75,13 +87,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Reflection image URL must be a valid URL or local asset path.' }, { status: 400 });
     }
 
+    let dbCategory = category;
+    let dbDescription = description?.trim() || '';
+
+    if (['belts', 'perfumes', 'wallets', 'accessories'].includes(category)) {
+      dbCategory = 'glasses';
+      const cleanDesc = dbDescription.replace(/^\[Category:\s*.*?\]\s*/g, '');
+      dbDescription = `[Category: ${category}] ${cleanDesc}`;
+    }
+
     const { data: newProduct, error } = await supabaseAdmin
       .from('products')
       .insert({
         name: name.trim(),
-        category,
+        category: dbCategory,
         price: parsedPrice,
-        description: description?.trim() || '',
+        description: dbDescription,
         image_url: image_url.trim(),
         overlay_image_url: overlay_image_url.trim(),
         lens_image_url: lens_image_url?.trim() || null,

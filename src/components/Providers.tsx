@@ -3,6 +3,7 @@
 import React from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { SWRConfig } from 'swr';
+import SmoothScroll from './SmoothScroll';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -14,6 +15,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           shouldRetryOnError: false,
         }}
       >
+        <SmoothScroll />
         {children}
       </SWRConfig>
     </SessionProvider>
