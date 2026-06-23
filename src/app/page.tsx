@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   ShieldCheck, BadgeCheck, CreditCard, RefreshCw, Truck,
   Watch, Glasses, ArrowRight, ChevronLeft, ChevronRight,
@@ -54,7 +53,7 @@ const BEST_SELLERS = [
 
 const REVIEWS = [
   { quote: 'Excellent collection and genuine products. The staff is very helpful and knowledgeable.', name: 'Rajat Verma', image: '/images/client_rajat.png' },
-  { quote: 'Best place for premium watches and branded eyewear in Hisar. Highly recommended!', name: 'Neha Katkar', image: '/images/client_neha.png' },
+  { quote: 'Best place for premium watches and branded eyewear in Hanumangarh. Highly recommended!', name: 'Neha Katkar', image: '/images/client_neha.png' },
   { quote: 'Great experience! Got my perfect pair with their free eye test and expert guidance.', name: 'Amit Saini', image: '/images/client_amit.png' },
 ];
 
@@ -72,134 +71,54 @@ export default function Home() {
     carouselRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
   };
 
-  const [activeTryOnIndex, setActiveTryOnIndex] = useState(1);
-
-  const handleTryOnSelect = (index: number) => {
-    setActiveTryOnIndex(index);
-  };
-
-  // Parallax scrolling for hero background
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end start'],
-  });
-  const yBg = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
-
-  // Framer Motion staggered animations variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 35 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.85,
-        ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
-      },
-    },
-  };
-
   return (
     <div className="bg-[#050c14] text-white overflow-hidden">
       {/* ============ HERO ============ */}
-      <section
-        ref={heroRef}
-        className="relative overflow-hidden min-h-[calc(100vh-80px)] lg:h-[90vh] flex items-center bg-[#050c14]"
-      >
-        {/* Background Hatom Grid Overlay */}
-        <div className="luxury-grid-overlay opacity-30" />
-
-        {/* Parallax Background Image */}
-        <motion.div style={{ y: yBg }} className="absolute inset-0 w-full h-full z-0 pointer-events-none">
-          <Image
-            src="/images/banner-background-direct.png"
-            alt="Luxury chronograph watch and premium sunglasses"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-right"
-          />
-        </motion.div>
-
-        {/* Left fade and bottom fade gradients for text legibility */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050c14] via-[#050c14]/85 to-transparent z-0 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050c14] via-transparent to-transparent z-0 pointer-events-none" />
+      <section className="relative overflow-hidden min-h-[540px] md:min-h-[660px] flex items-center">
+        {/* Background banner (combined watch + sunglasses + gears) */}
+        <Image
+          src="/images/banner-background-direct.png"
+          alt="Luxury chronograph watch and premium sunglasses"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-right"
+        />
+        {/* Left fade for text legibility */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050c14] via-[#050c14]/75 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050c14]/60 via-transparent to-transparent" />
 
         {/* Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-16 md:py-24">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="max-w-xl"
-          >
-            <motion.div variants={itemVariants} className="flex items-center gap-3">
+          <div className="max-w-xl">
+            <div className="flex items-center gap-3">
               <span className="w-10 h-px bg-[#c7a14e]" />
               <span className="text-[11px] font-bold text-[#c7a14e] tracking-[0.35em] uppercase">Welcome to Hariyana</span>
-            </motion.div>
-            
-            <motion.h1 variants={itemVariants} className="font-display font-bold leading-[1.02] mt-6 text-5xl sm:text-6xl md:text-7xl">
+            </div>
+            <h1 className="font-display font-bold leading-[1.02] mt-6 text-5xl sm:text-6xl md:text-7xl">
               <span className="block text-white">Timeless Elegance.</span>
-              <span className="block text-[#c7a14e] mt-1">Perfect Vision.</span>
-            </motion.h1>
-
-            <motion.div variants={itemVariants} className="w-32 h-px bg-gradient-to-r from-[#c7a14e] to-transparent mt-7" />
-            
-            <motion.p variants={itemVariants} className="text-gray-300 mt-6 max-w-md leading-relaxed text-sm md:text-base font-light">
+              <span className="block text-[#c7a14e]">Perfect Vision.</span>
+            </h1>
+            <div className="w-32 h-px bg-gradient-to-r from-[#c7a14e] to-transparent mt-7" />
+            <p className="text-gray-300 mt-6 max-w-md leading-relaxed">
               Curated luxury timepieces and premium eyewear for those who value time, style and trust.
-            </motion.p>
-            
-            <motion.div variants={itemVariants} className="flex flex-wrap gap-4 mt-9">
+            </p>
+            <div className="flex flex-wrap gap-4 mt-9">
               <Link
                 href="/products?category=watches"
-                className="group inline-flex items-center gap-2.5 bg-gradient-to-r from-[#c7a14e] to-[#9e782f] text-[#050c14] px-7 py-3.5 rounded-md text-xs font-bold uppercase tracking-widest hover:brightness-110 hover:shadow-[0_0_30px_rgba(199,161,78,0.45)] transition-all duration-300 transform active:scale-95"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#c7a14e] to-[#9e782f] text-[#050c14] px-7 py-3.5 rounded-md text-xs font-bold uppercase tracking-wider hover:brightness-110 hover:shadow-[0_0_25px_rgba(199,161,78,0.35)] transition-all"
               >
                 <Watch className="w-4 h-4" /> Shop Watches
               </Link>
               <Link
                 href="/products?category=glasses"
-                className="group inline-flex items-center gap-2.5 border border-[#c7a14e]/40 text-[#c7a14e] px-7 py-3.5 rounded-md text-xs font-bold uppercase tracking-widest hover:bg-[#c7a14e]/10 hover:border-[#c7a14e] transition-all duration-300 transform active:scale-95"
+                className="inline-flex items-center gap-2 border border-[#c7a14e]/50 text-[#c7a14e] px-7 py-3.5 rounded-md text-xs font-bold uppercase tracking-wider hover:bg-[#c7a14e]/10 transition-all"
               >
                 <Glasses className="w-4 h-4" /> Explore Frames
               </Link>
-            </motion.div>
-          </motion.div>
-        </div>
-
-        {/* Scroll Indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.8 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer z-20 group"
-          onClick={() => document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth' })}
-        >
-          <span className="text-[9px] font-bold text-[#c7a14e]/60 tracking-[0.25em] uppercase group-hover:text-[#c7a14e] transition-colors duration-300">Scroll</span>
-          <div className="w-5.5 h-9 rounded-full border border-[#c7a14e]/30 flex justify-center p-1.5 group-hover:border-[#c7a14e]/85 transition-colors duration-300">
-            <motion.div
-              animate={{
-                y: [0, 11, 0],
-              }}
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-              className="w-1 h-1.5 rounded-full bg-[#c7a14e]"
-            />
+            </div>
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* ============ TRUST BAR ============ */}
@@ -314,7 +233,7 @@ export default function Home() {
                 {/* Notch/Pill overlay */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-3.5 bg-[#1E2A3B] rounded-b-xl z-20" />
                 
-                {/* Real Try-on Model Photo (static original image) */}
+                {/* Real Try-on Model Photo */}
                 <Image
                   src="/images/tryon_model.png"
                   alt="Virtual Try-On Model"
@@ -327,38 +246,34 @@ export default function Home() {
                 {/* Glasses Selector Overlays at bottom */}
                 <div className="absolute bottom-4 left-0 right-0 px-2 flex justify-center gap-1.5 z-20">
                   {[
-                    { img: '/images/hero_sunglasses.png', brand: 'RAY-BAN', model: 'Aviator', price: '₹10,990' },
-                    { img: '/images/hero_glasses.png', brand: 'OAKLEY', model: 'Holbrook', price: '₹7,490' },
-                    { img: '/images/luxury_optical_frames.png', brand: 'TITAN', model: 'Signature', price: '₹5,995' }
-                  ].map((item, i) => {
-                    const isSelected = activeTryOnIndex === i;
-                    return ( 
-                      <button
-                        key={i}
-                        onClick={() => handleTryOnSelect(i)}
-                        className={`w-[70px] h-[82px] rounded bg-white flex flex-col items-center justify-between p-1.5 shadow-md transition-all duration-300 text-center outline-none ${
-                          isSelected ? 'border-2 border-[#c7a14e] scale-105 shadow-lg' : 'border border-gray-200/60 opacity-90 hover:opacity-100'
-                        }`}
-                      >
-                        {/* Small glasses image */}
-                        <div className="relative w-full h-[28px] flex items-center justify-center">
-                          <Image
-                            src={item.img}
-                            alt={item.model}
-                            fill
-                            className="object-contain p-0.5 filter brightness-95 pointer-events-none"
-                            sizes="60px"
-                          />
-                        </div>
-                        {/* Metadata */}
-                        <div className="flex flex-col items-center justify-center text-[7px] leading-[1.1] text-gray-900 font-bold select-none text-center">
-                          <span className="text-[6px] text-[#9e782f] font-extrabold uppercase tracking-wider">{item.brand}</span>
-                          <span className="text-[7px] text-gray-800 font-semibold truncate max-w-[58px]">{item.model}</span>
-                          <span className="text-[6.5px] text-gray-500 font-normal mt-0.5">{item.price}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                    { img: '/images/hero_sunglasses.png', brand: 'RAY-BAN', model: 'Aviator', price: '₹10,990', active: false },
+                    { img: '/images/hero_glasses.png', brand: 'OAKLEY', model: 'Holbrook', price: '₹7,490', active: true },
+                    { img: '/images/luxury_optical_frames.png', brand: 'TITAN', model: 'Signature', price: '₹5,995', active: false }
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className={`w-[70px] h-[82px] rounded bg-white flex flex-col items-center justify-between p-1.5 shadow-md transition-all duration-300 ${
+                        item.active ? 'border-2 border-[#c7a14e] scale-105 shadow-lg' : 'border border-gray-200/60 opacity-90'
+                      }`}
+                    >
+                      {/* Small glasses image */}
+                      <div className="relative w-full h-[28px] flex items-center justify-center">
+                        <Image
+                          src={item.img}
+                          alt={item.model}
+                          fill
+                          className="object-contain p-0.5 filter brightness-95"
+                          sizes="60px"
+                        />
+                      </div>
+                      {/* Metadata */}
+                      <div className="flex flex-col items-center justify-center text-[7px] leading-[1.1] text-gray-900 font-bold select-none text-center">
+                        <span className="text-[6px] text-[#9e782f] font-extrabold uppercase tracking-wider">{item.brand}</span>
+                        <span className="text-[7px] text-gray-800 font-semibold truncate max-w-[58px]">{item.model}</span>
+                        <span className="text-[6.5px] text-gray-500 font-normal mt-0.5">{item.price}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

@@ -219,15 +219,27 @@ export default function Footer() {
             <ul className="space-y-4 text-xs text-gray-400">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
-                <span className="leading-relaxed">SCO 25, Sector 14,<br />Hisar, Haryana 125001</span>
+                <a
+                  href="https://maps.app.goo.gl/Ao5XF84qxdaMoFxL8"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors leading-relaxed"
+                >
+                  52 Main Bus Stand,<br />Hanumangarh Town, Rajasthan 335513
+                </a>
               </li>
-              <li className="flex items-center gap-2.5">
-                <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                <a href="tel:+919876543210" className="hover:text-white transition-colors">+91 98765 43210</a>
+              <li className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2.5">
+                  <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                  <a href="tel:+919828207999" className="hover:text-white transition-colors">Vinod Kumar: 98282-07999</a>
+                </div>
+                <div className="flex items-center gap-2.5 ml-[26px]">
+                  <a href="tel:+918526200444" className="hover:text-white transition-colors">Shop Line: 85262-00444</a>
+                </div>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                <a href="mailto:hello@hariyanawatch.in" className="hover:text-white transition-colors">hello@hariyanawatch.in</a>
+                <a href="mailto:hariyanaoptical49@gmail.com" className="hover:text-white transition-colors">hariyanaoptical49@gmail.com</a>
               </li>
               <li className="flex items-start gap-2.5">
                 <Clock className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />

@@ -18,7 +18,7 @@ export default function StoreLocator() {
       {/* Column 1: Static Map Image Link (Fast Initial Load) */}
       <div className="col-span-1 lg:col-span-6 relative min-h-[300px] lg:min-h-[400px] w-full overflow-hidden bg-charcoal group">
         <a
-          href="https://maps.google.com/?q=Hariyana+Watch+Opticals+Hanumangarh+Rajasthan"
+          href="https://maps.app.goo.gl/Ao5XF84qxdaMoFxL8"
           target="_blank"
           rel="noopener noreferrer"
           className="absolute inset-0 block w-full h-full"

@@ -410,13 +410,30 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   // Asynchronous detection loop (decoupled from rendering loop)
   const startDetectionLoop = () => {
     let isDetecting = false;
+    let logCounter = 0;
     
     const runDetection = async () => {
       const currentCameraState = cameraStateRef.current;
+      logCounter++;
+      if (logCounter % 100 === 0) {
+        console.log('runDetection tick:', {
+          currentCameraState,
+          videoExists: !!videoRef.current,
+          videoReadyState: videoRef.current?.readyState,
+          videoWidth: videoRef.current?.videoWidth,
+          videoHeight: videoRef.current?.videoHeight,
+          faceMeshExists: !!faceMeshRef.current,
+          isDetecting
+        });
+      }
+
       if (currentCameraState === 'active' && videoRef.current && faceMeshRef.current && !isDetecting) {
         if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA or higher
           isDetecting = true;
           try {
+            if (logCounter % 100 === 0) {
+              console.log('Sending frame to FaceMesh...');
+            }
             await faceMeshRef.current.send({ image: videoRef.current });
             detectionFrameCount.current += 1;
             detectionError.current = null;
@@ -425,6 +442,10 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
             detectionError.current = err?.message || String(err);
           } finally {
             isDetecting = false;
+          }
+        } else {
+          if (logCounter % 100 === 0) {
+            console.warn('Video not ready, readyState:', videoRef.current.readyState);
           }
         }
       }
@@ -440,6 +461,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
   // Callback when FaceMesh yields results
   const handleFaceResults = (results: any) => {
+    console.log('FaceMesh results:', results);
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
       latestLandmarks.current = results.multiFaceLandmarks[0];
       setFaceDetected(true);
@@ -996,13 +1018,15 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
             {/* Hidden video element */}
             <video
               ref={videoRef}
+              width={640}
+              height={480}
               style={{
                 position: 'absolute',
                 left: 0,
                 top: 0,
                 width: '100%',
                 height: '100%',
-                opacity: 0,
+                opacity: 0.01,
                 zIndex: -10,
                 pointerEvents: 'none'
               }}

@@ -250,9 +250,9 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     async function init() {
       try {
         setLoadingMessage('Loading Hand Tracking engine...');
-        // Load MediaPipe Camera and Hands locally
-        await loadScript('/libs/mediapipe/camera_utils.js');
-        await loadScript('/libs/mediapipe/hands.js');
+        // Load MediaPipe Camera and Hands from CDN to prevent version mismatch crashes
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js');
 
         if (!active) return;
 
@@ -276,12 +276,12 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         }
 
         const hands = new HandsClass({
-          locateFile: (file: string) => `/libs/mediapipe/${file}`,
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
         });
 
         hands.setOptions({
           maxNumHands: 1,
-          modelComplexity: 1,
+          modelComplexity: 0,
           minDetectionConfidence: 0.4,
           minTrackingConfidence: 0.4,
         });
@@ -390,13 +390,30 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   // Asynchronous detection loop (decoupled from rendering loop)
   const startDetectionLoop = () => {
     let isDetecting = false;
+    let logCounter = 0;
     
     const runDetection = async () => {
       const currentCameraState = cameraStateRef.current;
+      logCounter++;
+      if (logCounter % 100 === 0) {
+        console.log('Watch runDetection tick:', {
+          currentCameraState,
+          videoExists: !!videoRef.current,
+          videoReadyState: videoRef.current?.readyState,
+          videoWidth: videoRef.current?.videoWidth,
+          videoHeight: videoRef.current?.videoHeight,
+          handsExists: !!handsRef.current,
+          isDetecting
+        });
+      }
+
       if (currentCameraState === 'active' && videoRef.current && handsRef.current && !isDetecting) {
         if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA or higher
           isDetecting = true;
           try {
+            if (logCounter % 100 === 0) {
+              console.log('Sending frame to Hands...');
+            }
             await handsRef.current.send({ image: videoRef.current });
             detectionFrameCount.current += 1;
             detectionError.current = null;
@@ -405,6 +422,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             detectionError.current = err?.message || String(err);
           } finally {
             isDetecting = false;
+          }
+        } else {
+          if (logCounter % 100 === 0) {
+            console.warn('Watch video not ready, readyState:', videoRef.current?.readyState);
           }
         }
       }
@@ -420,6 +441,18 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
   // Callback when Hands yields results
   const handleHandResults = (results: any) => {
+    console.log('handleHandResults callback triggered:', {
+      hasLandmarks: !!results.multiHandLandmarks,
+      landmarksCount: results.multiHandLandmarks?.length,
+      hasHandedness: !!results.multiHandedness
+    });
+    
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      console.log('Hands detected!', {
+        landmarksCount: results.multiHandLandmarks.length,
+        handedness: results.multiHandedness?.[0]
+      });
+    }
     latestHandResults.current = results;
   };
 
@@ -1042,13 +1075,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             {/* Hidden video element */}
             <video
               ref={videoRef}
+              width={640}
+              height={480}
               style={{
                 position: 'absolute',
                 left: 0,
                 top: 0,
                 width: '100%',
                 height: '100%',
-                opacity: 0,
+                opacity: 0.01,
                 zIndex: -10,
                 pointerEvents: 'none'
               }}

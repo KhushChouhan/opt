@@ -6,8 +6,7 @@ import Image from 'next/image';
 import { MapPin, Navigation, Info, Eye, Sparkles, Store } from 'lucide-react';
 import { buildWhatsAppUrl, WHATSAPP_PRIMARY } from '@/utils/whatsapp';
 
-const STORE_ADDRESS = 'Hariyana Watch & Opticals, SCO 25, Sector 14, Hisar, Haryana 125001';
-const MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(STORE_ADDRESS)}`;
+const MAPS_URL = 'https://maps.app.goo.gl/Ao5XF84qxdaMoFxL8';
 
 const STATS = [
   { value: '25+', label: 'Years of Trust' },
@@ -111,9 +110,9 @@ interface MapNode {
 const MAP_NODES: MapNode[] = [
   {
     id: 'hisar',
-    name: 'Hisar Flagship Showroom',
+    name: 'Hanumangarh Flagship Showroom',
     role: 'Main Showroom',
-    details: 'SCO 25, Sector 14 | Open 10 AM - 8 PM',
+    details: '52 Main Bus Stand | Open 10 AM - 8:30 PM',
     x: '50%',
     y: '50%',
     color: '#c7a14e',
@@ -367,7 +366,7 @@ function InteractiveLuxuryMap() {
             letterSpacing: '0.05em'
           }}
         >
-          Sector 14 Hisar
+          Hanumangarh Town
         </text>
 
         <circle cx="50%" cy="50%" r="30" fill="none" stroke="#c7a14e" strokeWidth="1" className="animate-breathe" />
@@ -411,10 +410,10 @@ function InteractiveLuxuryMap() {
       <div className="absolute bottom-4 left-4 right-4 z-20 pointer-events-auto bg-[#06111F]/85 border border-[#C9A55C]/30 backdrop-blur-lg px-4 py-3 rounded-md flex items-center justify-between gap-2 shadow-2xl transition-all duration-300 hover:border-[#C9A55C] hover:bg-[#06111F]/95">
         <div className="min-w-0">
           <h4 className="text-[11px] font-extrabold text-white uppercase tracking-wider font-sans truncate">
-            Hisar Flagship Showroom
+            Hanumangarh Flagship Showroom
           </h4>
           <p className="text-[9.5px] text-gray-400 font-sans mt-0.5 truncate">
-            SCO 25, Sector 14 | Open 10 AM – 8 PM
+            52 Main Bus Stand | Open 10 AM – 8:30 PM
           </p>
         </div>
         <span className="flex-shrink-0 text-[8.5px] font-bold uppercase tracking-widest text-[#C9A55C] border border-[#C9A55C]/40 bg-[#C9A55C]/5 px-2.5 py-1 rounded-sm font-sans whitespace-nowrap">
@@ -573,21 +572,21 @@ export default function ShowroomLegacySection() {
                     title: 'Free Eye Test',
                     sub: 'By Expert Optometrists',
                     icon: Eye,
-                    msg: 'Hi Hariyana Watch & Opticals, I want to book an Expert Eye Test appointment at your Hisar showroom.',
+                    msg: 'Hi Hariyana Watch & Opticals, I want to book an Expert Eye Test appointment at your Hanumangarh showroom.',
                   },
                   {
                     id: 'styling',
                     title: 'Personalized Styling',
                     sub: 'Find Your Perfect Look',
                     icon: Sparkles,
-                    msg: 'Hi Hariyana Watch & Opticals, I would like to book a Personalized Styling session at your Hisar flagship showroom.',
+                    msg: 'Hi Hariyana Watch & Opticals, I would like to book a Personalized Styling session at your Hanumangarh flagship showroom.',
                   },
                   {
                     id: 'experience',
                     title: 'Premium Experience',
                     sub: 'Luxury Redefined',
                     icon: Store,
-                    msg: 'Hi Hariyana Watch & Opticals, I would like to request a Luxury Product Demonstration at your Hisar store.',
+                    msg: 'Hi Hariyana Watch & Opticals, I would like to request a Luxury Product Demonstration at your Hanumangarh store.',
                   },
                 ].map((service) => (
                   <button
@@ -615,7 +614,7 @@ export default function ShowroomLegacySection() {
                   <p className="text-[11px] font-light leading-relaxed text-[#9CA3AF] font-sans">
                     <span className="font-bold text-white">Hariyana Watch &amp; Opticals</span>
                     <br />
-                    SCO 25, Sector 14, Hisar, Haryana 125001
+                    52 Main Bus Stand, Hanumangarh Town, Rajasthan 335513
                   </p>
                 </div>
 
