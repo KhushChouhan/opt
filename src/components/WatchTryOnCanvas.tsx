@@ -242,9 +242,18 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       ctx.scale(-1, 1);
 
       if (currentCameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0) {
-        ctx.drawImage(videoRef.current, 0, 0, width, height);
+        const vw = videoRef.current.videoWidth;
+        const vh = videoRef.current.videoHeight;
+        const scale = Math.max(width / vw, height / vh);
+        const drawW = vw * scale;
+        const drawH = vh * scale;
+        ctx.drawImage(videoRef.current, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
       } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
-        ctx.drawImage(uploadedImageRef.current, 0, 0, width, height);
+        const img = uploadedImageRef.current;
+        const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+        const drawW = img.naturalWidth * scale;
+        const drawH = img.naturalHeight * scale;
+        ctx.drawImage(img, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
       } else {
         ctx.fillStyle = '#0F1B30';
         ctx.fillRect(0, 0, width, height);
@@ -748,16 +757,16 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         {/* Try-on Mirror Container */}
         <div className="lg:col-span-8 space-y-3">
 
-          {/* Camera Selector */}
+          {/* Camera Selector — hidden on mobile, visible on desktop or multi-camera */}
           {cameraState === 'active' && devices.length > 1 && (
-            <div className="flex items-center justify-between bg-[#0F1B30]/80 p-2.5 sm:p-3 rounded-lg border border-[#C9A84C]/20 text-xs">
+            <div className="hidden sm:flex items-center justify-between bg-[#0F1B30]/80 p-2.5 rounded-lg border border-[#C9A84C]/20 text-xs">
               <span className="text-gray-300 font-semibold uppercase tracking-wider flex items-center">
                 <Camera className="w-3.5 h-3.5 text-[#C9A84C] mr-1.5" /> Camera:
               </span>
               <select
                 value={selectedDeviceId}
                 onChange={handleDeviceChange}
-                className="bg-[#1A2742] border border-gray-700 text-white rounded px-2 py-1 focus:outline-none focus:border-[#C9A84C] text-xs max-w-[180px] sm:max-w-none"
+                className="bg-[#1A2742] border border-gray-700 text-white rounded px-2 py-1 focus:outline-none focus:border-[#C9A84C] text-xs"
               >
                 {devices.map((device, idx) => (
                   <option key={device.deviceId} value={device.deviceId}>
@@ -768,9 +777,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             </div>
           )}
 
-          {/* Canvas Wrapper - responsive 4:3 on desktop, 3:4 portrait on mobile */}
-          <div className="relative w-full bg-[#0F1B30] rounded-xl overflow-hidden shadow-2xl border border-white/5"
-            style={{ aspectRatio: '4/3' }}>
+          {/* Canvas Wrapper — portrait on mobile, landscape on desktop */}
+          <div className="relative w-full bg-[#0F1B30] rounded-xl overflow-hidden shadow-2xl border border-white/5 aspect-[3/4] sm:aspect-[4/3]">
 
             {/* Loading Cover */}
             {cameraState === 'loading' && (
