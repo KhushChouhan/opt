@@ -539,7 +539,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           const y_tip = getY(landmarks[1]);
 
           // Tighter scaling: use mostly eye distance, less cheekbone for natural fit
-          glassesWidth = (baseDistance * 0.42 + eyeDistance * 0.95) * 0.88 * overlayScale;
+          glassesWidth = (baseDistance * 0.42 + eyeDistance * 0.95) * 0.80 * overlayScale;
           if (symmetry_ratio < 0.95) {
             glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
           }

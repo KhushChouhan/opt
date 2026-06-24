@@ -309,7 +309,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         // Reduced base size to make watch appear smaller and better fit
         const baseSize = wristWidth * 0.42 + forearmWidth * 0.18 + handDepth * 0.25;
 
-        const watchScaleMultiplier = 0.80 * liveScaleRef.current;
+        const watchScaleMultiplier = 0.65 * liveScaleRef.current;
         const targetWidth = baseSize * 1.0 * watchScaleMultiplier;
 
         if (smoothedWidthRef.current === null) {
@@ -322,8 +322,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         const forearmDirectionX = dx_depth / (handDepth || 1);
         const forearmDirectionY = dy_depth / (handDepth || 1);
 
-        const targetX = wrist.x - forearmDirectionX * (watchWidth * 0.40) + liveXOffsetRef.current;
-        const targetY = wrist.y - forearmDirectionY * (watchWidth * 0.40) + liveYOffsetRef.current;
+        const targetX = wrist.x - forearmDirectionX * (watchWidth * 0.10) + liveXOffsetRef.current;
+        const targetY = wrist.y - forearmDirectionY * (watchWidth * 0.10) + liveYOffsetRef.current;
 
         const knuckleVector = isRightHand
           ? { x: pinkyMCP.x - indexMCP.x, y: pinkyMCP.y - indexMCP.y }

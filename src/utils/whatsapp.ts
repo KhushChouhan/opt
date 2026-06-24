@@ -1,5 +1,6 @@
 export const WHATSAPP_PRIMARY = '';
-export const WHATSAPP_STORE = '918526200444';
+export const WHATSAPP_STORE = '919828207999';
+
 
 /**
  * Builds a sanitized, URL-encoded WhatsApp click-to-chat link.
