@@ -539,7 +539,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           const y_tip = getY(landmarks[1]);
 
           // Tighter scaling: use mostly eye distance, less cheekbone for natural fit
-          glassesWidth = (baseDistance * 0.42 + eyeDistance * 0.95) * 0.80 * overlayScale;
+          glassesWidth = (baseDistance * 0.42 + eyeDistance * 0.95) * 0.85 * overlayScale;
           if (symmetry_ratio < 0.95) {
             glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
           }
@@ -550,7 +550,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
           // Composite positioning: anchor to landmark 168 + vertical lens shift + tilt correction
           x_center_shifted = x_168 + overlayXOffset;
-          y_center_shifted = y_168 + eyeDistance * 0.06 + pitchCompensation + overlayYOffset;
+          y_center_shifted = y_168 + eyeDistance * 0.14 + pitchCompensation + overlayYOffset;
 
           // Render temporary debug visuals if enabled locally
           if (ENABLE_DEBUG_HUD) {
