@@ -4,14 +4,12 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Camera, Upload, Check, AlertCircle, RefreshCw, ShoppingCart, HelpCircle, Sliders, Flame } from 'lucide-react';
+import { Camera, Upload, Check, AlertCircle, RefreshCw, MessageCircle, HelpCircle, Sliders, Flame, X } from 'lucide-react';
 import { loadScript } from '@/lib/loadScript';
 import Button from '@/components/ui/Button';
-import Modal from '@/components/ui/Modal';
-import { Input, Textarea } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
+import { buildWhatsAppUrl, WHATSAPP_STORE } from '@/utils/whatsapp';
 
 // Feature flags for try-on fitting engine A/B testing and local calibration debugging
 const USE_NEW_FITTING_ENGINE = true;
@@ -39,7 +37,6 @@ interface GlassesTryOnCanvasProps {
 }
 
 export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps) {
-  const router = useRouter();
   
   // Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -59,9 +56,8 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   const [cameraState, setCameraState] = useState<'loading' | 'active' | 'denied' | 'fallback'>('loading');
   const [loadingMessage, setLoadingMessage] = useState('Initializing virtual mirror...');
   const [faceDetected, setFaceDetected] = useState(false);
-  const [snapshot, setSnapshot] = useState<string | null>(null);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string>('default');
+  const [showAdjustPanel, setShowAdjustPanel] = useState(false);
 
 
 
@@ -91,42 +87,20 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   useEffect(() => { manualPositionRef.current = manualPosition; }, [manualPosition]);
   useEffect(() => { manualRotationRef.current = manualRotation; }, [manualRotation]);
 
-  // Checkout Form States
-  const [customerName, setCustomerName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [formError, setFormError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Conversion Boosting Widgets & Sticky Buy Bar States
+  // Conversion Boosting Widgets
   const [liveViewers, setLiveViewers] = useState<number>(55);
-  const [showStickyBar, setShowStickyBar] = useState<boolean>(false);
 
   // Initialize and update live viewers
   useEffect(() => {
     setLiveViewers(Math.floor(Math.random() * (95 - 45 + 1)) + 45);
     const interval = setInterval(() => {
       setLiveViewers((prev) => {
-        const delta = Math.random() > 0.5 ? Math.floor(Math.random() * 3) + 1 : - (Math.floor(Math.random() * 3) + 1);
+        const delta = Math.random() > 0.5 ? Math.floor(Math.random() * 3) + 1 : -(Math.floor(Math.random() * 3) + 1);
         const next = prev + delta;
         return next >= 40 && next <= 100 ? next : prev;
       });
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
-
-  // Monitor scroll for Sticky Bottom Buy Bar
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 400) {
-        setShowStickyBar(true);
-      } else {
-        setShowStickyBar(false);
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Deterministic count based on product ID character codes
@@ -461,7 +435,6 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
   // Callback when FaceMesh yields results
   const handleFaceResults = (results: any) => {
-    console.log('FaceMesh results:', results);
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
       latestLandmarks.current = results.multiFaceLandmarks[0];
       setFaceDetected(true);
@@ -552,8 +525,8 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           const x_tip = getX(landmarks[1]);
           const y_tip = getY(landmarks[1]);
 
-          // Blended width scaling: blend cheekbone width and pupil distance for wide-face protection
-          glassesWidth = (baseDistance * 0.6 + eyeDistance * 1.2) * 0.956 * overlayScale;
+          // Tighter scaling: use mostly eye distance, less cheekbone for natural fit
+          glassesWidth = (baseDistance * 0.42 + eyeDistance * 0.95) * 0.88 * overlayScale;
           if (symmetry_ratio < 0.95) {
             glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
           }
@@ -564,7 +537,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
           // Composite positioning: anchor to landmark 168 + vertical lens shift + tilt correction
           x_center_shifted = x_168 + overlayXOffset;
-          y_center_shifted = y_168 + eyeDistance * 0.08 + pitchCompensation + overlayYOffset;
+          y_center_shifted = y_168 + eyeDistance * 0.06 + pitchCompensation + overlayYOffset;
 
           // Render temporary debug visuals if enabled locally
           if (ENABLE_DEBUG_HUD) {
@@ -872,106 +845,40 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     });
   };
 
-  // Capture image snapshot (keeps in-memory Base64)
-  const takeSnapshot = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-    setSnapshot(dataUrl);
-    setIsCheckoutOpen(true);
-  };
-
-  // Form Submission
-  const handleCheckoutSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    setIsSubmitting(true);
-
-    if (customerName.trim().length < 2) {
-      setFormError('Please enter a valid name (at least 2 characters).');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const phoneRegex = /^[6-9]\d{9}$/;
-    if (!phoneRegex.test(phone.trim())) {
-      setFormError('Please enter a valid 10-digit Indian phone number.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (address.trim().length < 10) {
-      setFormError('Please enter a detailed physical delivery address (min 10 chars).');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const pinRegex = /^\d{6}$/;
-    if (!pinRegex.test(pincode.trim())) {
-      setFormError('Please enter a valid 6-digit Indian PIN code.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const orderId = crypto.randomUUID();
-
-    try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: orderId,
-          product_id: product.id,
-          customer_name: customerName,
-          phone,
-          address,
-          pincode,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to place order.');
-      }
-
-      setIsCheckoutOpen(false);
-      router.push(`/order-success?id=${orderId}&product=${encodeURIComponent(product.name)}`);
-    } catch (err: any) {
-      console.error('Checkout error:', err);
-      setFormError(err.message || 'An unexpected database error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+  // WhatsApp Inquiry
+  const handleInquiry = () => {
+    const msg = `Hi Hariyana Watch & Opticals! 👋\n\nI'm interested in purchasing:\n\n*${product.name}*\nPrice: ₹${product.price.toLocaleString('en-IN')}\n\nPlease share availability and more details. Thank you!`;
+    const url = buildWhatsAppUrl(msg, WHATSAPP_STORE);
+    window.open(url, '_blank');
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
       {/* Back to catalog */}
-      <div className="mb-6">
-        <Link href="/products" className="text-sm text-gray-400 hover:text-[#C9A84C] transition-colors">
-          &larr; Back to Catalog
+      <div className="mb-4">
+        <Link href="/products" className="text-sm text-gray-400 hover:text-[#C9A84C] transition-colors flex items-center gap-1.5">
+          ← Back to Catalog
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 items-start">
         {/* Try-on Mirror Container (Left column) */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className="lg:col-span-8 space-y-3">
           
-          {/* Active Camera Device Selector (Premium feature) */}
+          {/* Camera Device Selector */}
           {cameraState === 'active' && devices.length > 1 && (
-            <div className="flex items-center justify-between bg-[#0F1B30]/80 p-3 rounded-lg border border-[#C9A84C]/20 text-xs">
+            <div className="flex items-center justify-between bg-[#0F1B30]/80 p-2.5 sm:p-3 rounded-lg border border-[#C9A84C]/20 text-xs">
               <span className="text-gray-300 font-semibold uppercase tracking-wider flex items-center">
-                <Camera className="w-4 h-4 text-[#C9A84C] mr-1.5" /> Select Camera:
+                <Camera className="w-3.5 h-3.5 text-[#C9A84C] mr-1.5" /> Camera:
               </span>
               <select
                 value={selectedDeviceId}
                 onChange={handleDeviceChange}
-                className="bg-[#1A2742] border border-gray-700 text-white rounded px-2.5 py-1 focus:outline-none focus:border-[#C9A84C]"
+                className="bg-[#1A2742] border border-gray-700 text-white rounded px-2 py-1 focus:outline-none focus:border-[#C9A84C] text-xs max-w-[180px] sm:max-w-none"
               >
-                {devices.map((device) => (
+                {devices.map((device, idx) => (
                   <option key={device.deviceId} value={device.deviceId}>
-                    {device.label || `Camera ${devices.indexOf(device) + 1}`}
+                    {device.label || `Camera ${idx + 1}`}
                   </option>
                 ))}
               </select>
@@ -979,38 +886,36 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           )}
 
           {/* Canvas Wrapper */}
-          <div className="relative aspect-[4/3] w-full bg-[#0F1B30] rounded-lg overflow-hidden shadow-2xl">
+          <div className="relative w-full bg-[#0F1B30] rounded-xl overflow-hidden shadow-2xl border border-white/5" style={{ aspectRatio: '4/3' }}>
             {/* Loading Cover */}
             {cameraState === 'loading' && (
               <div className="absolute inset-0 z-30 bg-[#0B1422] flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <RefreshCw className="w-10 h-10 text-[#C9A84C] animate-spin" />
-                <p className="text-sm font-semibold text-gray-300">{loadingMessage}</p>
+                <RefreshCw className="w-8 h-8 sm:w-10 sm:h-10 text-[#C9A84C] animate-spin" />
+                <p className="text-xs sm:text-sm font-semibold text-gray-300">{loadingMessage}</p>
+                <p className="text-[10px] text-gray-500 max-w-xs">Face the camera and stay still for best results</p>
               </div>
             )}
 
-            {/* Permission Denied UI (Graceful degradation) */}
+            {/* Permission Denied UI */}
             {cameraState === 'denied' && (
-              <div className="absolute inset-0 z-30 bg-[#0F1B30] flex flex-col items-center justify-center p-8 text-center space-y-5">
+              <div className="absolute inset-0 z-30 bg-[#0F1B30] flex flex-col items-center justify-center p-6 sm:p-8 text-center space-y-4">
                 <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full">
-                  <AlertCircle className="w-8 h-8" />
+                  <AlertCircle className="w-7 h-7 sm:w-8 sm:h-8" />
                 </div>
                 <div>
-                  <h4 className="text-white font-bold text-base uppercase font-luxury">Camera Stream Blocked</h4>
+                  <h4 className="text-white font-bold text-sm sm:text-base uppercase font-luxury">Camera Blocked</h4>
                   <p className="text-xs text-gray-400 max-w-sm mx-auto mt-2 leading-relaxed">
-                    Camera permissions were denied or are currently in use by another application. 
-                    Please click the camera icon in your browser&apos;s address bar to allow permission and reload, or upload a photo below to try on.
+                    Camera permissions were denied. Allow camera in browser settings, or upload a selfie below.
                   </p>
                 </div>
-                <label className="flex items-center space-x-2 px-4 py-2 bg-[#C9A84C] text-[#0B1422] hover:bg-[#C9A84C]/95 rounded-md text-xs font-bold cursor-pointer transition-all">
+                <label className="flex items-center space-x-2 px-4 py-2 bg-[#C9A84C] text-[#0B1422] hover:bg-[#C9A84C]/90 rounded-md text-xs font-bold cursor-pointer transition-all">
                   <Upload className="w-4 h-4" />
-                  <span>Upload Photo to Try On</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
+                  <span>Upload Selfie to Try On</span>
+                  <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                 </label>
+                <button onClick={() => startWebcam(selectedDeviceId)} className="text-[#C9A84C] text-xs font-semibold underline hover:text-[#E8D9A0] transition-colors">
+                  Try again
+                </button>
               </div>
             )}
 
@@ -1034,7 +939,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               muted
             />
 
-            {/* Canvas (active render) */}
+            {/* Canvas */}
             <canvas
               ref={canvasRef}
               width={640}
@@ -1046,335 +951,163 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleMouseUpOrLeave}
-              className={`w-full h-full object-cover select-none ${
-                cameraState === 'fallback' || cameraState === 'denied' ? 'cursor-move' : ''
-              }`}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              className={`select-none ${cameraState === 'fallback' || cameraState === 'denied' ? 'cursor-move' : ''}`}
             />
 
-            {/* Top HUD overlay status */}
+            {/* Status HUD */}
             {cameraState === 'active' && (
-              <div className="absolute top-4 left-4 z-20 bg-black/60 px-3 py-1.5 rounded border border-[#C9A84C]/20 text-[10px] uppercase font-bold tracking-wider text-[#C9A84C] flex items-center space-x-1.5">
-                <span className={`w-2 h-2 rounded-full ${faceDetected ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
-                <span>{faceDetected ? 'Face Locked' : 'Searching Face...'}</span>
+              <div className="absolute top-3 left-3 z-20 bg-black/65 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase font-bold tracking-wider text-white flex items-center space-x-1.5">
+                <span className={`w-2 h-2 rounded-full ${faceDetected ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                <span>{faceDetected ? 'Face Locked ✓' : 'Show your face...'}</span>
               </div>
+            )}
+
+            {/* Adjust button overlay */}
+            {cameraState !== 'loading' && cameraState !== 'denied' && (
+              <button
+                onClick={() => setShowAdjustPanel(!showAdjustPanel)}
+                className="absolute bottom-3 right-3 z-20 bg-black/70 backdrop-blur-sm border border-[#C9A84C]/40 text-[#C9A84C] px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-black/90 transition-all"
+              >
+                <Sliders className="w-3 h-3" />
+                Adjust
+              </button>
+            )}
+
+            {/* Upload overlay */}
+            {cameraState === 'active' && (
+              <label className="absolute bottom-3 left-3 z-20 bg-black/65 backdrop-blur-sm border border-white/10 text-gray-300 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5 hover:border-[#C9A84C]/40 hover:text-[#C9A84C] transition-all cursor-pointer">
+                <Upload className="w-3 h-3" />
+                Upload Selfie
+                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+              </label>
             )}
           </div>
 
 
 
-          {/* Calibration / Upload Help panel */}
-          <div className="p-5 glass-panel rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-center sm:text-left">
-              <h4 className="text-sm font-bold text-white flex items-center justify-center sm:justify-start">
-                <HelpCircle className="w-4 h-4 text-[#C9A84C] mr-1.5" />
-                Need calibration?
-              </h4>
-              <p className="text-xs text-gray-400 mt-1">
-                Drag the overlay or upload a selfie. WebGL maps the glasses dynamically.
-              </p>
-            </div>
-            <div className="flex items-center space-x-3 w-full sm:w-auto">
-              <label className="flex-grow sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 border border-[#C9A84C] text-[#C9A84C] hover:bg-[#C9A84C]/10 rounded-md text-xs font-semibold cursor-pointer transition-all">
-                <Upload className="w-4 h-4" />
-                <span>Upload Selfie</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </label>
-              {cameraState !== 'active' && (
-                <Button variant="outline" className="text-xs flex-grow sm:flex-initial" onClick={() => startWebcam(selectedDeviceId)}>
-                  <Camera className="w-4 h-4 mr-2" />
-                  Try Web Cam
-                </Button>
-              )}
-            </div>
+          {/* Tip bar */}
+          <div className="p-3 sm:p-4 bg-[#0F1B30]/60 rounded-lg border border-white/5 flex items-start sm:items-center gap-3">
+            <HelpCircle className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5 sm:mt-0" />
+            <p className="text-xs text-gray-400 leading-relaxed">
+              <span className="text-white font-semibold">Tip:</span> Face the camera directly for automatic detection. Use the <span className="text-[#C9A84C]">Adjust</span> button to fine-tune the fit.
+            </p>
           </div>
 
-          {/* Admin Live Calibration HUD */}
-          {showCalibrator && (
-            <div className="p-6 glass-panel rounded-lg border border-[#C9A84C]/45 space-y-4 shadow-xl">
+          {/* Adjustment Panel (collapsible) */}
+          {showAdjustPanel && cameraState !== 'loading' && (
+            <div className="p-4 sm:p-5 bg-[#0F1B30]/90 backdrop-blur-md rounded-xl border border-[#C9A84C]/20 shadow-xl space-y-4">
               <div className="flex items-center justify-between border-b border-gray-800 pb-3">
                 <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider flex items-center">
-                  <Sliders className="w-4 h-4 mr-2" />
-                  Admin Live Calibration Panel
+                  <Sliders className="w-3.5 h-3.5 mr-2" />
+                  {faceDetected ? 'Fine-tune Glasses Fit' : 'Manual Placement'}
                 </h4>
-                <span className="text-[9px] px-2 py-0.5 bg-[#C9A84C]/10 border border-[#C9A84C]/20 text-[#C9A84C] font-semibold rounded uppercase tracking-wider">
-                  Live Mode
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs text-white">
-                {/* Scale factor */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Scale factor (Width)</span>
-                    <div className="flex items-center space-x-1.5">
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveScale(prev => Math.max(0.5, Number((prev - 0.01).toFixed(2))))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        -
-                      </button>
-                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveScale.toFixed(2)}</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveScale(prev => Math.min(2.0, Number((prev + 0.01).toFixed(2))))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.01"
-                    value={liveScale}
-                    onChange={(e) => setLiveScale(parseFloat(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
-                  />
-                </div>
-
-                {/* Rotation Bias */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Rotation Bias (degrees)</span>
-                    <div className="flex items-center space-x-1.5">
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveRotationOffset(prev => Math.max(-45, prev - 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        -
-                      </button>
-                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveRotationOffset}°</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveRotationOffset(prev => Math.min(45, prev + 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="-45"
-                    max="45"
-                    step="1"
-                    value={liveRotationOffset}
-                    onChange={(e) => setLiveRotationOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
-                  />
-                </div>
-
-                {/* X Offset */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Horizontal Shift (X Axis)</span>
-                    <div className="flex items-center space-x-1.5">
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveXOffset(prev => Math.max(-100, prev - 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        -
-                      </button>
-                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveXOffset}px</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveXOffset(prev => Math.min(100, prev + 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="-100"
-                    max="100"
-                    step="1"
-                    value={liveXOffset}
-                    onChange={(e) => setLiveXOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
-                  />
-                </div>
-
-                {/* Y Offset */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Vertical Shift (Y Axis)</span>
-                    <div className="flex items-center space-x-1.5">
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveYOffset(prev => Math.max(-100, prev - 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        -
-                      </button>
-                      <span className="text-[#C9A84C] font-mono min-w-[28px] text-center">{liveYOffset}px</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setLiveYOffset(prev => Math.min(100, prev + 1))}
-                        className="w-5 h-5 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px] text-white"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="-100"
-                    max="100"
-                    step="1"
-                    value={liveYOffset}
-                    onChange={(e) => setLiveYOffset(parseInt(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-[#1A2742] h-1 rounded cursor-pointer"
-                  />
-                </div>
+                <button onClick={() => setShowAdjustPanel(false)} className="text-gray-500 hover:text-white transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="flex justify-end pt-2 space-x-3">
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
-                    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
-                    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
-                    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
-                  }}
-                  className="text-xs"
-                >
-                  Reset Settings
-                </Button>
-                <Button 
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(`/api/products/${product.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          name: product.name,
-                          category: product.category,
-                          price: product.price,
-                          description: product.description,
-                          image_url: product.image_url,
-                          overlay_image_url: product.overlay_image_url,
-                          lens_image_url: product.lens_image_url,
-                          reflection_image_url: product.reflection_image_url,
-                          stock: product.stock,
-                          overlay_scale: liveScale,
-                          overlay_x_offset: liveXOffset,
-                          overlay_y_offset: liveYOffset,
-                          overlay_rotation_offset: liveRotationOffset
-                        })
-                      });
-                      if (!res.ok) {
-                        const data = await res.json();
-                        throw new Error(data.error || 'Failed to save calibration settings.');
-                      }
-                      alert('Calibration settings successfully saved to database!');
-                    } catch (err: any) {
-                      alert(err.message || 'Error saving calibration settings.');
-                    }
-                  }}
-                  className="text-xs text-[#0B1422] bg-[#C9A84C] hover:bg-[#C9A84C]/90"
-                >
-                  Save Settings
-                </Button>
-              </div>
-            </div>
-          )}
+              {faceDetected ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-white">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Glasses Size</span>
+                      <div className="flex items-center space-x-1.5">
+                        <button type="button" onClick={() => setLiveScale(prev => Math.max(0.3, Number((prev - 0.05).toFixed(2))))} className="w-6 h-6 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px]">-</button>
+                        <span className="text-[#C9A84C] font-mono min-w-[32px] text-center text-[11px]">{liveScale.toFixed(2)}</span>
+                        <button type="button" onClick={() => setLiveScale(prev => Math.min(2.0, Number((prev + 0.05).toFixed(2))))} className="w-6 h-6 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px]">+</button>
+                      </div>
+                    </div>
+                    <input type="range" min="0.3" max="2.0" step="0.05" value={liveScale} onChange={(e) => setLiveScale(parseFloat(e.target.value))} className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Rotation</span>
+                      <span className="text-[#C9A84C] font-mono text-[11px]">{liveRotationOffset}°</span>
+                    </div>
+                    <input type="range" min="-45" max="45" step="1" value={liveRotationOffset} onChange={(e) => setLiveRotationOffset(parseInt(e.target.value))} className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Horizontal Shift</span>
+                      <span className="text-[#C9A84C] font-mono text-[11px]">{liveXOffset}px</span>
+                    </div>
+                    <input type="range" min="-100" max="100" step="1" value={liveXOffset} onChange={(e) => setLiveXOffset(parseInt(e.target.value))} className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Vertical Shift</span>
+                      <span className="text-[#C9A84C] font-mono text-[11px]">{liveYOffset}px</span>
+                    </div>
+                    <input type="range" min="-100" max="100" step="1" value={liveYOffset} onChange={(e) => setLiveYOffset(parseInt(e.target.value))} className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between"><span className="text-gray-400">Glasses Size</span><span className="text-[#C9A84C] font-mono">{(manualScale * 100).toFixed(0)}%</span></div>
+                    <input type="range" min="0.3" max="2.0" step="0.05" value={manualScale} onChange={(e) => setManualScale(parseFloat(e.target.value))} className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between"><span className="text-gray-400">Rotation</span><span className="text-[#C9A84C] font-mono">{manualRotation}°</span></div>
+                    <input type="range" min="-45" max="45" step="1" value={manualRotation} onChange={(e) => setManualRotation(parseInt(e.target.value))} className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
+                  </div>
+                </div>
+              )}
 
-          {/* Manual adjustment HUD if camera denied/fallback/no face */}
-          {(cameraState === 'fallback' || cameraState === 'denied' || !faceDetected) && (
-            <div className="p-6 glass-panel rounded-lg space-y-4">
-              <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider flex items-center">
-                <Sliders className="w-4 h-4 text-[#C9A84C] mr-2" />
-                Manual Adjustments (Drag frame on canvas or use sliders)
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                {/* Scale slider */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Overlay Size</span>
-                    <span className="text-[#C9A84C] font-mono">{(manualScale * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.05"
-                    value={manualScale}
-                    onChange={(e) => setManualScale(parseFloat(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-gray-700 h-1 rounded"
-                  />
-                </div>
-                {/* Rotation slider */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Angle Rotation</span>
-                    <span className="text-[#C9A84C] font-mono">{manualRotation}°</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-45"
-                    max="45"
-                    step="1"
-                    value={manualRotation}
-                    onChange={(e) => setManualRotation(parseInt(e.target.value))}
-                    className="w-full accent-[#C9A84C] bg-gray-700 h-1 rounded"
-                  />
-                </div>
+              <div className="flex items-center justify-between pt-2 border-t border-gray-800">
+                <button onClick={() => { setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0); setLiveXOffset(0); setLiveYOffset(0); setLiveRotationOffset(0); setManualScale(1.0); setManualRotation(0); }} className="text-xs text-gray-400 hover:text-white transition-colors underline">Reset to defaults</button>
+                {showCalibrator && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`/api/products/${product.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: product.name, category: product.category, price: product.price, description: product.description, image_url: product.image_url, overlay_image_url: product.overlay_image_url, lens_image_url: product.lens_image_url, reflection_image_url: product.reflection_image_url, stock: product.stock, overlay_scale: liveScale, overlay_x_offset: liveXOffset, overlay_y_offset: liveYOffset, overlay_rotation_offset: liveRotationOffset }) });
+                        if (!res.ok) throw new Error('Save failed');
+                        alert('Calibration saved!');
+                      } catch (err: any) { alert(err.message || 'Error saving.'); }
+                    }}
+                    className="text-xs px-3 py-1.5 bg-[#C9A84C] text-[#0B1422] rounded font-bold hover:bg-[#C9A84C]/90 transition-all"
+                  >
+                    Save (Admin)
+                  </button>
+                )}
               </div>
             </div>
           )}
         </div>
 
         {/* Product Details Panel (Right column) */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 space-y-4">
           <Card className="border-gray-800 bg-[#0F1B30]/50">
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="p-4 sm:p-6 space-y-5">
               <div>
                 <span className="px-2 py-0.5 bg-[#1A2742] border border-[#C9A84C]/20 text-[#C9A84C] text-[10px] font-bold uppercase tracking-widest rounded">
                   {product.category}
                 </span>
-                <h2 className="font-luxury text-2xl font-bold text-white mt-3 leading-snug">
+                <h2 className="font-luxury text-xl sm:text-2xl font-bold text-white mt-3 leading-snug">
                   {product.name}
                 </h2>
-                <div className="mt-3 flex items-baseline">
-                  <span className="text-2xl font-bold text-[#C9A84C]">
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-xl sm:text-2xl font-bold text-[#C9A84C]">
                     ₹{product.price.toLocaleString('en-IN')}
                   </span>
-                  <span className="text-xs text-gray-500 ml-2">incl. all taxes</span>
+                  <span className="text-xs text-gray-500">incl. taxes</span>
                 </div>
               </div>
 
-              {/* Conversion-Boosting Widgets */}
-              <div className="border-t border-gray-800/60 pt-4 space-y-3">
+              {/* Conversion Widgets */}
+              <div className="space-y-2.5 pt-1 border-t border-gray-800/65">
                 {/* Live Viewers count */}
                 <div className="flex items-center space-x-2 text-xs text-gray-300">
-                  <span className="relative flex h-2 w-2">
+                  <span className="relative flex h-2 w-2 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                   </span>
-                  <p>
-                    <span className="text-[#E8D9A0] font-bold">{liveViewers} fashion enthusiasts</span> are viewing this frame now
-                  </p>
+                  <p><span className="text-[#E8D9A0] font-bold">{liveViewers}</span> people viewing now</p>
                 </div>
-
-                {/* Deterministic recent sales count */}
                 <div className="flex items-center space-x-2 text-xs text-gray-300">
-                  <Flame className="w-4 h-4 text-amber-500 shrink-0" />
-                  <p>
-                    <span className="text-[#C9A84C] font-bold">{salesCount} orders</span> placed in the last {salesHours} hours
-                  </p>
+                  <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <p><span className="text-[#C9A84C] font-bold">{salesCount} orders</span> in the last {salesHours}hrs</p>
                 </div>
 
                 {/* Visual Urgency Stock Progress Bar */}
@@ -1405,13 +1138,13 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               </div>
 
               <div className="border-t border-gray-800 pt-4">
-                <h4 className="text-xs font-semibold uppercase text-gray-400 tracking-wider mb-2">Description</h4>
-                <p className="text-xs text-gray-300 leading-relaxed">
-                  {product.description || 'No description available for this designer piece.'}
+                <h4 className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1.5">About this frame</h4>
+                <p className="text-xs text-gray-300 leading-relaxed line-clamp-4">
+                  {product.description || 'Premium designer eyewear crafted with precision.'}
                 </p>
               </div>
 
-              <div className="border-t border-gray-800 pt-4 space-y-3">
+              <div className="border-t border-gray-800 pt-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-gray-400">Availability</span>
                   {product.stock > 0 ? (
@@ -1426,133 +1159,26 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
                 </div>
               </div>
 
-              <div className="pt-2">
+              {/* Product image preview */}
+              <div className="relative w-full aspect-square rounded-lg overflow-hidden border border-white/5 bg-black/20">
+                <NextImage src={product.image_url} alt={product.name} fill sizes="(max-width: 1024px) 100vw, 300px" className="object-contain p-2" />
+              </div>
+
+              <div className="pt-1 space-y-2">
                 <Button
-                  onClick={takeSnapshot}
-                  className="w-full flex items-center justify-center py-2.5 font-bold uppercase tracking-wider text-xs"
-                  disabled={product.stock <= 0}
+                  onClick={handleInquiry}
+                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent"
                 >
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Order This Frame
+                  <MessageCircle className="w-4 h-4" />
+                  Inquire on WhatsApp
                 </Button>
+                <p className="text-[10px] text-gray-500 text-center">Click to chat directly on WhatsApp</p>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Checkout Modal (Checkout Form) */}
-      <Modal isOpen={isCheckoutOpen} onClose={() => setIsCheckoutOpen(false)} title="Order Request Details">
-        <form onSubmit={handleCheckoutSubmit} className="space-y-4">
-          <div className="flex flex-col items-center justify-center p-4 bg-black/20 rounded border border-[#C9A84C]/10 mb-2">
-            {snapshot && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={snapshot}
-                alt="Try-on snapshot preview"
-                className="max-h-40 rounded border border-gray-800"
-              />
-            )}
-            <span className="text-[10px] text-gray-500 uppercase tracking-widest mt-2">Try-on Snapshot (In-Memory preview)</span>
-          </div>
-
-          {formError && (
-            <div className="p-3 rounded bg-red-950/40 border border-red-500/20 text-red-400 text-xs font-medium flex items-center">
-              <AlertCircle className="w-4 h-4 mr-2 shrink-0" />
-              <span>{formError}</span>
-            </div>
-          )}
-
-          <Input
-            label="Full Name"
-            type="text"
-            placeholder="Enter your name"
-            required
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-          />
-
-          <Input
-            label="Indian Phone Number"
-            type="tel"
-            placeholder="10-digit mobile number (e.g. 9828207999)"
-            required
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-
-          <Textarea
-            label="Detailed Physical Address"
-            placeholder="Street name, house number, landmarks..."
-            required
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-          />
-
-          <Input
-            label="6-Digit PIN Code"
-            type="text"
-            placeholder="e.g. 335513"
-            required
-            value={pincode}
-            onChange={(e) => setPincode(e.target.value)}
-          />
-
-          <div className="pt-2 flex space-x-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => setIsCheckoutOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1" isLoading={isSubmitting}>
-              Submit Order
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Sticky Bottom Buy Bar (Hongo conversion layout choice) */}
-      <div 
-        className={`fixed bottom-0 left-0 right-0 z-40 bg-[#0F1B30]/95 backdrop-blur-md border-t border-[#C9A84C]/35 shadow-[0_-10px_25px_rgba(0,0,0,0.6)] py-3 px-4 sm:px-6 transition-all duration-500 ease-in-out transform ${
-          showStickyBar ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
-        }`}
-      >
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center space-x-3.5">
-            <div className="relative w-10 h-10 rounded overflow-hidden border border-gray-800 bg-black/20 shrink-0">
-              <NextImage 
-                src={product.image_url} 
-                alt={product.name} 
-                fill 
-                sizes="40px"
-                className="object-cover"
-              />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-white line-clamp-1 font-luxury">{product.name}</h4>
-              <p className="text-[10px] text-[#C9A84C] font-bold uppercase tracking-wider capitalize">{product.category}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-xs text-gray-500">Luxury price</p>
-              <p className="text-sm font-bold text-[#C9A84C]">₹{product.price.toLocaleString('en-IN')}</p>
-            </div>
-            <Button
-              onClick={takeSnapshot}
-              disabled={product.stock <= 0}
-              className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#0B1422] bg-[#C9A84C] hover:bg-[#C9A84C]/90 shadow-[0_0_15px_rgba(212,175,55,0.25)] flex items-center"
-            >
-              <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
-              Instant Order
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

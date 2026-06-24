@@ -1,4 +1,4 @@
-export const WHATSAPP_PRIMARY = '919882070999';
+export const WHATSAPP_PRIMARY = '';
 export const WHATSAPP_STORE = '918526200444';
 
 /**
