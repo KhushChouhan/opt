@@ -236,24 +236,51 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       const height = canvas.height;
       const currentCameraState = cameraStateRef.current;
 
-      // Draw webcam feed or uploaded photo (mirrored)
+      // Draw webcam feed or uploaded photo (mirrored if front camera)
+      let drawW = width;
+      let drawH = height;
+      let offsetX = 0;
+      let offsetY = 0;
+      let isMirror = false; // Default to false since watch try-on defaults to rear camera
+
+      if (currentCameraState === 'active') {
+        const activeDevice = devices.find((d) => d.deviceId === selectedDeviceId);
+        if (activeDevice) {
+          const label = activeDevice.label.toLowerCase();
+          if (label.includes('front') || label.includes('user') || label.includes('integrated') || label.includes('selfie') || label.includes('webcam')) {
+            isMirror = true;
+          }
+        } else if (devices.length > 0) {
+          const label = devices[0].label.toLowerCase();
+          if (label.includes('front') || label.includes('user') || label.includes('integrated') || label.includes('selfie') || label.includes('webcam')) {
+            isMirror = true;
+          }
+        }
+      }
+
       ctx.save();
-      ctx.translate(width, 0);
-      ctx.scale(-1, 1);
+      if (isMirror) {
+        ctx.translate(width, 0);
+        ctx.scale(-1, 1);
+      }
 
       if (currentCameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0) {
         const vw = videoRef.current.videoWidth;
         const vh = videoRef.current.videoHeight;
         const scale = Math.max(width / vw, height / vh);
-        const drawW = vw * scale;
-        const drawH = vh * scale;
-        ctx.drawImage(videoRef.current, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+        drawW = vw * scale;
+        drawH = vh * scale;
+        offsetX = (width - drawW) / 2;
+        offsetY = (height - drawH) / 2;
+        ctx.drawImage(videoRef.current, offsetX, offsetY, drawW, drawH);
       } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
         const img = uploadedImageRef.current;
         const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
-        const drawW = img.naturalWidth * scale;
-        const drawH = img.naturalHeight * scale;
-        ctx.drawImage(img, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+        drawW = img.naturalWidth * scale;
+        drawH = img.naturalHeight * scale;
+        offsetX = (width - drawW) / 2;
+        offsetY = (height - drawH) / 2;
+        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
       } else {
         ctx.fillStyle = '#0F1B30';
         ctx.fillRect(0, 0, width, height);
@@ -285,8 +312,14 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         const handedness = results.multiHandedness[0];
         isRightHand = handedness.label === 'Right';
 
-        const getX = (lm: any) => (1 - lm.x) * width;
-        const getY = (lm: any) => lm.y * height;
+        const getX = (lm: any) => {
+          if (isMirror) {
+            return width - (offsetX + lm.x * drawW);
+          } else {
+            return offsetX + lm.x * drawW;
+          }
+        };
+        const getY = (lm: any) => offsetY + lm.y * drawH;
 
         const wrist = { x: getX(landmarks[0]), y: getY(landmarks[0]) };
         const indexMCP = { x: getX(landmarks[5]), y: getY(landmarks[5]) };
@@ -309,7 +342,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         // Reduced base size to make watch appear smaller and better fit
         const baseSize = wristWidth * 0.42 + forearmWidth * 0.18 + handDepth * 0.25;
 
-        const watchScaleMultiplier = 0.74 * liveScaleRef.current;
+        const watchScaleMultiplier = 0.82 * liveScaleRef.current;
         const targetWidth = baseSize * 1.0 * watchScaleMultiplier;
 
         if (smoothedWidthRef.current === null) {
@@ -322,8 +355,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         const forearmDirectionX = dx_depth / (handDepth || 1);
         const forearmDirectionY = dy_depth / (handDepth || 1);
 
-        const targetX = wrist.x - forearmDirectionX * (watchWidth * 0.05) + liveXOffsetRef.current;
-        const targetY = wrist.y - forearmDirectionY * (watchWidth * 0.05) + liveYOffsetRef.current;
+        const targetX = wrist.x - forearmDirectionX * (watchWidth * 0.03) + liveXOffsetRef.current;
+        const targetY = wrist.y - forearmDirectionY * (watchWidth * 0.03) + liveYOffsetRef.current;
 
         const knuckleVector = isRightHand
           ? { x: pinkyMCP.x - indexMCP.x, y: pinkyMCP.y - indexMCP.y }
@@ -757,9 +790,9 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         {/* Try-on Mirror Container */}
         <div className="lg:col-span-8 space-y-3">
 
-          {/* Camera Selector — hidden on mobile, visible on desktop or multi-camera */}
+          {/* Camera Selector — only show when multiple cameras exist */}
           {cameraState === 'active' && devices.length > 1 && (
-            <div className="hidden sm:flex items-center justify-between bg-[#0F1B30]/80 p-2.5 rounded-lg border border-[#C9A84C]/20 text-xs">
+            <div className="flex items-center justify-between bg-[#0F1B30]/80 p-2.5 rounded-lg border border-[#C9A84C]/20 text-xs">
               <span className="text-gray-300 font-semibold uppercase tracking-wider flex items-center">
                 <Camera className="w-3.5 h-3.5 text-[#C9A84C] mr-1.5" /> Camera:
               </span>

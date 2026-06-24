@@ -458,27 +458,51 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       const currentCameraState = cameraStateRef.current;
 
       // 1. Draw webcam feed or uploaded photo (mirrored, cover-fill)
+      let drawW = width;
+      let drawH = height;
+      let offsetX = 0;
+      let offsetY = 0;
+      let isMirror = true;
+
+      // Check mirror state based on active camera direction
+      if (currentCameraState === 'active') {
+        const activeDevice = devices.find((d) => d.deviceId === selectedDeviceId);
+        if (activeDevice) {
+          const label = activeDevice.label.toLowerCase();
+          if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
+            isMirror = false;
+          }
+        } else if (devices.length > 0) {
+          const label = devices[0].label.toLowerCase();
+          if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
+            isMirror = false;
+          }
+        }
+      }
+
       ctx.save();
-      ctx.translate(width, 0);
-      ctx.scale(-1, 1);
+      if (isMirror) {
+        ctx.translate(width, 0);
+        ctx.scale(-1, 1);
+      }
       
       if (currentCameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0) {
         const vw = videoRef.current.videoWidth;
         const vh = videoRef.current.videoHeight;
         const scale = Math.max(width / vw, height / vh);
-        const drawW = vw * scale;
-        const drawH = vh * scale;
-        const drawX = (width - drawW) / 2;
-        const drawY = (height - drawH) / 2;
-        ctx.drawImage(videoRef.current, drawX, drawY, drawW, drawH);
+        drawW = vw * scale;
+        drawH = vh * scale;
+        offsetX = (width - drawW) / 2;
+        offsetY = (height - drawH) / 2;
+        ctx.drawImage(videoRef.current, offsetX, offsetY, drawW, drawH);
       } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
         const img = uploadedImageRef.current;
         const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
-        const drawW = img.naturalWidth * scale;
-        const drawH = img.naturalHeight * scale;
-        const drawX = (width - drawW) / 2;
-        const drawY = (height - drawH) / 2;
-        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        drawW = img.naturalWidth * scale;
+        drawH = img.naturalHeight * scale;
+        offsetX = (width - drawW) / 2;
+        offsetY = (height - drawH) / 2;
+        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
       } else {
         // Background fallback
         ctx.fillStyle = '#0F1B30';
@@ -490,8 +514,14 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
       if ((currentCameraState === 'active' || currentCameraState === 'fallback') && latestLandmarks.current) {
         const landmarks = latestLandmarks.current;
         
-        const getX = (lm: any) => (1 - lm.x) * width; // Mirrored coordinate mapping
-        const getY = (lm: any) => lm.y * height;
+        const getX = (lm: any) => {
+          if (isMirror) {
+            return width - (offsetX + lm.x * drawW);
+          } else {
+            return offsetX + lm.x * drawW;
+          }
+        };
+        const getY = (lm: any) => offsetY + lm.y * drawH;
 
         const x_left_eye = getX(landmarks[33]);
         const y_left_eye = getY(landmarks[33]);
@@ -878,9 +908,9 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         {/* Try-on Mirror Container (Left column) */}
         <div className="lg:col-span-8 space-y-3">
           
-          {/* Camera Device Selector — only show on desktop or when multiple cameras exist */}
+          {/* Camera Device Selector — only show when multiple cameras exist */}
           {cameraState === 'active' && devices.length > 1 && (
-            <div className="hidden sm:flex items-center justify-between bg-[#0F1B30]/80 p-2.5 rounded-lg border border-[#C9A84C]/20 text-xs">
+            <div className="flex items-center justify-between bg-[#0F1B30]/80 p-2.5 rounded-lg border border-[#C9A84C]/20 text-xs">
               <span className="text-gray-300 font-semibold uppercase tracking-wider flex items-center">
                 <Camera className="w-3.5 h-3.5 text-[#C9A84C] mr-1.5" /> Camera:
               </span>
