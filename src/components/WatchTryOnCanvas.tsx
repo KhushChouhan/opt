@@ -348,7 +348,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         if (smoothedWidthRef.current === null) {
           smoothedWidthRef.current = targetWidth;
         } else {
-          smoothedWidthRef.current = smoothedWidthRef.current * 0.88 + targetWidth * 0.12;
+          smoothedWidthRef.current = smoothedWidthRef.current * 0.70 + targetWidth * 0.30;
         }
         watchWidth = smoothedWidthRef.current;
 
@@ -372,13 +372,13 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           const prevPos = smoothedPositionRef.current;
           const prevAngle = smoothedAngleRef.current ?? targetAngle;
 
-          const smoothedX = prevPos.x * 0.85 + targetX * 0.15;
-          const smoothedY = prevPos.y * 0.85 + targetY * 0.15;
+          const smoothedX = prevPos.x * 0.55 + targetX * 0.45;
+          const smoothedY = prevPos.y * 0.55 + targetY * 0.45;
 
           let angleDiff = targetAngle - prevAngle;
           while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
           while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-          const smoothedAngle = prevAngle + angleDiff * 0.12;
+          const smoothedAngle = prevAngle + angleDiff * 0.35;
 
           smoothedPositionRef.current = { x: smoothedX, y: smoothedY };
           smoothedAngleRef.current = smoothedAngle;
@@ -604,8 +604,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     async function init() {
       try {
         setLoadingMessage('Loading Hand Tracking engine...');
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js');
+        await loadScript('/libs/mediapipe/camera_utils.js');
+        await loadScript('/libs/mediapipe/hands.js');
 
         if (!active) return;
 
@@ -624,12 +624,12 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         if (!HandsClass) throw new Error('MediaPipe Hands library not loaded.');
 
         const hands = new HandsClass({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+          locateFile: (file: string) => `/libs/mediapipe/${file}`,
         });
 
         hands.setOptions({
           maxNumHands: 1,
-          modelComplexity: 0,
+          modelComplexity: 1,
           minDetectionConfidence: 0.45,
           minTrackingConfidence: 0.45,
         });

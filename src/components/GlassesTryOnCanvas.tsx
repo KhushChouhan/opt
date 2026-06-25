@@ -275,7 +275,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
         faceMesh.setOptions({
           maxNumFaces: 1,
-          refineLandmarks: false,
+          refineLandmarks: true,
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5,
         });
