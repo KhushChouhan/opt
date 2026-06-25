@@ -35,6 +35,10 @@ interface BBox {
   height: number;
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function computeAssetBBox(img: HTMLImageElement): BBox {
   if (typeof window === 'undefined') {
     return { left: 0, top: 0, width: img.naturalWidth || 1, height: img.naturalHeight || 1 };
@@ -337,13 +341,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         const dy_depth = knuckleCenter.y - wrist.y;
         const handDepth = Math.sqrt(dx_depth * dx_depth + dy_depth * dy_depth);
 
-        const wristWidth = handWidth * 0.85;
-        const forearmWidth = handWidth * 0.90;
-        // Reduced base size to make watch appear smaller and better fit
-        const baseSize = wristWidth * 0.42 + forearmWidth * 0.18 + handDepth * 0.25;
-
-        const watchScaleMultiplier = 0.82 * liveScaleRef.current;
-        const targetWidth = baseSize * 1.0 * watchScaleMultiplier;
+        const wristWidth = handWidth * 0.82;
+        const normalizedPalmDepth = clamp(handDepth, handWidth * 1.35, handWidth * 2.35);
+        const rawTargetWidth = wristWidth * 0.72 + normalizedPalmDepth * 0.12;
+        const targetWidth = clamp(rawTargetWidth, handWidth * 0.68, handWidth * 1.04) * 0.92 * liveScaleRef.current;
 
         if (smoothedWidthRef.current === null) {
           smoothedWidthRef.current = targetWidth;
@@ -354,9 +355,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         const forearmDirectionX = dx_depth / (handDepth || 1);
         const forearmDirectionY = dy_depth / (handDepth || 1);
+        const forearmOffset = clamp(handDepth * 0.12, watchWidth * 0.22, watchWidth * 0.46);
 
-        const targetX = wrist.x - forearmDirectionX * (watchWidth * 0.03) + liveXOffsetRef.current;
-        const targetY = wrist.y - forearmDirectionY * (watchWidth * 0.03) + liveYOffsetRef.current;
+        const targetX = wrist.x - forearmDirectionX * forearmOffset + liveXOffsetRef.current;
+        const targetY = wrist.y - forearmDirectionY * forearmOffset + liveYOffsetRef.current;
 
         const knuckleVector = isRightHand
           ? { x: pinkyMCP.x - indexMCP.x, y: pinkyMCP.y - indexMCP.y }

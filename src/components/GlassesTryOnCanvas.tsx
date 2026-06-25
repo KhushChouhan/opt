@@ -44,7 +44,12 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   const renderFrameId = useRef<number | null>(null);
   const faceMeshRef = useRef<any>(null);
   const overlayImageRef = useRef<HTMLImageElement | null>(null);
-  const overlayCropRef = useRef<{ shiftX: number; shiftY: number } | null>(null);
+  const overlayCropRef = useRef<{
+    shiftX: number;
+    shiftY: number;
+    contentWidthRatio: number;
+    contentHeightRatio: number;
+  } | null>(null);
   const lensImageRef = useRef<HTMLImageElement | null>(null);
   const reflectionImageRef = useRef<HTMLImageElement | null>(null);
   const uploadedImageRef = useRef<HTMLImageElement | null>(null);
@@ -200,15 +205,17 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
             
             overlayCropRef.current = {
               shiftX: -dx / img.naturalWidth,
-              shiftY: -dy / img.naturalHeight
+              shiftY: -dy / img.naturalHeight,
+              contentWidthRatio: w / img.naturalWidth,
+              contentHeightRatio: h / img.naturalHeight
             };
           } else {
-            overlayCropRef.current = { shiftX: 0, shiftY: 0 };
+            overlayCropRef.current = { shiftX: 0, shiftY: 0, contentWidthRatio: 1, contentHeightRatio: 1 };
           }
         }
       } catch (e) {
         console.warn('Auto-trim failed (possibly CORS restrictions):', e);
-        overlayCropRef.current = { shiftX: 0, shiftY: 0 };
+        overlayCropRef.current = { shiftX: 0, shiftY: 0, contentWidthRatio: 1, contentHeightRatio: 1 };
       }
     };
     img.onerror = () => {
@@ -563,24 +570,27 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         let y_center_shifted = 0;
 
         if (USE_NEW_FITTING_ENGINE) {
+          const categoryFitScale = product.category === 'sunglasses' ? 1.06 : 1.0;
+          const categoryYOffset = product.category === 'sunglasses' ? eyeDistance * 0.02 : 0;
           const x_168 = getX(landmarks[168]);
           const y_168 = getY(landmarks[168]);
           const x_tip = getX(landmarks[1]);
           const y_tip = getY(landmarks[1]);
 
           // Tighter scaling: use mostly eye distance, less cheekbone for natural fit
-          glassesWidth = (baseDistance * 0.42 + eyeDistance * 0.95) * 0.85 * overlayScale;
+          glassesWidth = (baseDistance * 0.42 + eyeDistance * 0.95) * 0.85 * categoryFitScale * overlayScale;
           if (symmetry_ratio < 0.95) {
             glassesWidth = glassesWidth * (0.88 + 0.12 * symmetry_ratio);
           }
 
           // Pitch compensation: detect up/down tilt using normalized nose-tip relative position
           const pitch = (y_tip - y_168) / eyeDistance;
-          const pitchCompensation = -(pitch - 0.35) * eyeDistance * 0.30;
+          const rawPitchCompensation = -(pitch - 0.35) * eyeDistance * 0.30;
+          const pitchCompensation = Math.max(-eyeDistance * 0.16, Math.min(eyeDistance * 0.14, rawPitchCompensation));
 
           // Composite positioning: anchor to landmark 168 + vertical lens shift + tilt correction
           x_center_shifted = x_168 + overlayXOffset;
-          y_center_shifted = y_168 + eyeDistance * 0.14 + pitchCompensation + overlayYOffset;
+          y_center_shifted = y_168 + eyeDistance * 0.14 + categoryYOffset + pitchCompensation + overlayYOffset;
 
           // Render temporary debug visuals if enabled locally
           if (ENABLE_DEBUG_HUD) {
@@ -626,7 +636,15 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         if (overlayImageRef.current) {
           const img = overlayImageRef.current;
           const aspectRatio = img.naturalHeight / img.naturalWidth;
-          const glassesHeight = glassesWidth * aspectRatio;
+          const contentWidthRatio = overlayCropRef.current?.contentWidthRatio && overlayCropRef.current.contentWidthRatio > 0
+            ? overlayCropRef.current.contentWidthRatio
+            : 1;
+          const contentHeightRatio = overlayCropRef.current?.contentHeightRatio && overlayCropRef.current.contentHeightRatio > 0
+            ? overlayCropRef.current.contentHeightRatio
+            : 1;
+          const drawWidth = glassesWidth / contentWidthRatio;
+          const drawHeight = drawWidth * aspectRatio;
+          const visibleHeight = drawHeight * contentHeightRatio;
 
           ctx.save();
           ctx.translate(x_center_shifted, y_center_shifted);
@@ -638,8 +656,8 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           let shiftX = 0;
           let shiftY = 0;
           if (overlayCropRef.current) {
-            shiftX = overlayCropRef.current.shiftX * glassesWidth;
-            shiftY = overlayCropRef.current.shiftY * glassesHeight;
+            shiftX = overlayCropRef.current.shiftX * drawWidth;
+            shiftY = overlayCropRef.current.shiftY * drawHeight;
           }
 
           // 1. Draw Lens Layer (Behind the Frame)
@@ -648,16 +666,16 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
             if (lensImageRef.current) {
               ctx.globalAlpha = 0.65; // G-15 Green Lens opacity = 65%
               // Custom Lens Layer PNG (aligned with shifted frame center)
-              ctx.drawImage(lensImageRef.current, -glassesWidth / 2 + shiftX, -glassesHeight / 2 + shiftY, glassesWidth, glassesHeight);
+              ctx.drawImage(lensImageRef.current, -drawWidth / 2 + shiftX, -drawHeight / 2 + shiftY, drawWidth, drawHeight);
             } else if (product.category === 'glasses') {
               ctx.globalAlpha = 0.15; // Clear glass blue-light tint
               // Programmatic Lens Tint Layer (Locked to center to align with trimmed frame center)
               const radiusX = glassesWidth * 0.165; 
-              const radiusY = glassesHeight * 0.32;
+              const radiusY = visibleHeight * 0.32;
  
               ctx.beginPath();
-              ctx.ellipse(-glassesWidth * 0.21 + shiftX, shiftY, radiusX, radiusY, 0, 0, 2 * Math.PI);
-              ctx.ellipse(glassesWidth * 0.21 + shiftX, shiftY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.ellipse(-glassesWidth * 0.21, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.ellipse(glassesWidth * 0.21, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
  
               ctx.fillStyle = 'rgba(215, 230, 255, 0.15)'; // Blue-light clear tint
               ctx.fill();
@@ -668,14 +686,14 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           // 2. Draw Frame Layer (Full Opacity, shifted dynamically based on padding)
           ctx.save();
           ctx.globalAlpha = 1.0;
-          ctx.drawImage(img, -glassesWidth / 2 + shiftX, -glassesHeight / 2 + shiftY, glassesWidth, glassesHeight);
+          ctx.drawImage(img, -drawWidth / 2 + shiftX, -drawHeight / 2 + shiftY, drawWidth, drawHeight);
           ctx.restore();
 
           // 3. Draw Reflection Layer (On Top)
           if (reflectionImageRef.current) {
             ctx.save();
             ctx.globalAlpha = 0.25;
-            ctx.drawImage(reflectionImageRef.current, -glassesWidth / 2 + shiftX, -glassesHeight / 2 + shiftY, glassesWidth, glassesHeight);
+            ctx.drawImage(reflectionImageRef.current, -drawWidth / 2 + shiftX, -drawHeight / 2 + shiftY, drawWidth, drawHeight);
             ctx.restore();
           }
 
@@ -699,8 +717,22 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         if (overlayImageRef.current) {
           const img = overlayImageRef.current;
           const aspectRatio = img.naturalHeight / img.naturalWidth;
-          const w = 180 * manualScaleRef.current;
+          const contentWidthRatio = overlayCropRef.current?.contentWidthRatio && overlayCropRef.current.contentWidthRatio > 0
+            ? overlayCropRef.current.contentWidthRatio
+            : 1;
+          const contentHeightRatio = overlayCropRef.current?.contentHeightRatio && overlayCropRef.current.contentHeightRatio > 0
+            ? overlayCropRef.current.contentHeightRatio
+            : 1;
+          const visibleW = 180 * manualScaleRef.current;
+          const w = visibleW / contentWidthRatio;
           const h = w * aspectRatio;
+          const visibleH = h * contentHeightRatio;
+          let shiftX = 0;
+          let shiftY = 0;
+          if (overlayCropRef.current) {
+            shiftX = overlayCropRef.current.shiftX * w;
+            shiftY = overlayCropRef.current.shiftY * h;
+          }
 
           ctx.save();
           ctx.translate(x, y);
@@ -711,15 +743,15 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
             ctx.save();
             if (lensImageRef.current) {
               ctx.globalAlpha = 0.65;
-              ctx.drawImage(lensImageRef.current, -w / 2, -h / 2, w, h);
+              ctx.drawImage(lensImageRef.current, -w / 2 + shiftX, -h / 2 + shiftY, w, h);
             } else if (product.category === 'glasses') {
               ctx.globalAlpha = 0.15; // Clear glass blue-light tint
-              const radiusX = w * 0.15;
-              const radiusY = h * 0.28;
+              const radiusX = visibleW * 0.15;
+              const radiusY = visibleH * 0.28;
               
               ctx.beginPath();
-              ctx.ellipse(-w * 0.22, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
-              ctx.ellipse(w * 0.22, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.ellipse(-visibleW * 0.22, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
+              ctx.ellipse(visibleW * 0.22, 0, radiusX, radiusY, 0, 0, 2 * Math.PI);
               
               ctx.fillStyle = 'rgba(215, 230, 255, 0.15)'; // Blue-light clear tint
               ctx.fill();
@@ -730,14 +762,14 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           // 2. Draw Frame (Full Opacity)
           ctx.save();
           ctx.globalAlpha = 1.0;
-          ctx.drawImage(img, -w / 2, -h / 2, w, h);
+          ctx.drawImage(img, -w / 2 + shiftX, -h / 2 + shiftY, w, h);
           ctx.restore();
 
           // 3. Draw Reflections (On Top)
           if (reflectionImageRef.current) {
             ctx.save();
             ctx.globalAlpha = 0.25;
-            ctx.drawImage(reflectionImageRef.current, -w / 2, -h / 2, w, h);
+            ctx.drawImage(reflectionImageRef.current, -w / 2 + shiftX, -h / 2 + shiftY, w, h);
             ctx.restore();
           }
           
