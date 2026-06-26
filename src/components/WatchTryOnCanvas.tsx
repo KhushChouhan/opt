@@ -396,41 +396,45 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         const forearmDirX = dx_d === 0 && dy_d === 0 ? 0 : (wristPt.x - palmCenter.x) / handDepth;
         const forearmDirY = dx_d === 0 && dy_d === 0 ? 1 : (wristPt.y - palmCenter.y) / handDepth;
 
+        // Local coordinate system:
+        // Y points along the forearm towards the elbow.
+        // X points across the wrist (perpendicular, to the right of the arm).
+        const localY = { x: forearmDirX, y: forearmDirY };
+        const localX = { x: forearmDirY, y: -forearmDirX };
+
         // ── WATCH ANCHOR POINT ──────────────────────────────────────────────────
         // MediaPipe landmark 0 sits at the very base of the palm / wrist joint.
-        // A real watch sits ~25% of the way from the wrist landmark TOWARD the
-        // palm center (i.e., just above the wrist bone, on the wrist crease).
-        // Moving in the palm direction (negative forearm direction) places it correctly.
-        const wristCreaseOffset = handDepth * 0.25;  // 25% toward palm = wrist crease
-        const anchorX = wristPt.x - forearmDirX * wristCreaseOffset;
-        const anchorY = wristPt.y - forearmDirY * wristCreaseOffset;
+        // A real watch sits ~22% of the way from the wrist landmark AWAY from the palm (towards the elbow).
+        // Moving in the positive forearm direction (+localY) places it correctly.
+        const wristCreaseOffset = handDepth * 0.22;
+        const anchorX = wristPt.x + localY.x * wristCreaseOffset;
+        const anchorY = wristPt.y + localY.y * wristCreaseOffset;
 
         // ── WATCH SIZING ──────────────────────────────────────────────────────
-        // A watch face naturally spans ~90% of the wrist width.
-        // handWidth (knuckle span) ≈ 1.2× wrist width for an average hand,
-        // so 0.75 × handWidth gives a natural-looking case diameter.
-        const naturalWidth = Math.max(handWidth * 0.78, 50);
+        // Anatomical watch sizing:
+        // An average watch face is about 40-42mm, while knuckle span is about 80-85mm.
+        // So watchWidth should be roughly 50% of the knuckle span (handWidth).
+        const naturalWidth = Math.max(handWidth * 0.50, 35);
         const targetWatchWidth = naturalWidth * liveScaleRef.current;
 
         if (smoothedWidthRef.current === null) {
           smoothedWidthRef.current = targetWatchWidth;
         } else {
-          // 70% new, 30% old → fast size response
-          smoothedWidthRef.current = smoothedWidthRef.current * 0.30 + targetWatchWidth * 0.70;
+          // Responsive smoothing
+          smoothedWidthRef.current = smoothedWidthRef.current * 0.25 + targetWatchWidth * 0.75;
         }
         watchWidth = smoothedWidthRef.current;
 
         // ── POSITION WITH USER OFFSET (hand-relative, scales with distance) ──
-        // Convert slider pixel values to hand-relative fractions so the
-        // offset is the same visual size regardless of how close the hand is.
-        // 100 px is the reference hand width at a comfortable close-up distance.
+        // Offsets are applied in the hand's local coordinate system so that:
+        // - Horizontal Shift (liveXOffset) always moves the watch across the wrist
+        // - Vertical Shift (liveYOffset) always moves the watch up/down the forearm
         const offsetScale = handWidth / 100;
-        const targetX = anchorX + liveXOffsetRef.current * offsetScale;
-        const targetY = anchorY + liveYOffsetRef.current * offsetScale;
+        const targetX = anchorX + (liveXOffsetRef.current * localX.x + liveYOffsetRef.current * localY.x) * offsetScale;
+        const targetY = anchorY + (liveXOffsetRef.current * localX.y + liveYOffsetRef.current * localY.y) * offsetScale;
 
         // ── ROTATION ──────────────────────────────────────────────────────────
-        // Perpendicular to forearm direction.  Works for both hands automatically.
-        // We subtract PI/2 to turn the "along forearm" angle into "across wrist".
+        // The watch angle is perpendicular to the forearm direction so straps point along the forearm.
         const rawAngle = Math.atan2(forearmDirY, forearmDirX) - Math.PI / 2;
         const rotOffsetRad = (liveRotationOffsetRef.current * Math.PI) / 180;
         const targetAngle = rawAngle + rotOffsetRad;
@@ -835,17 +839,41 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         if (renderFrameId.current) cancelAnimationFrame(renderFrameId.current);
         renderFrameId.current = requestAnimationFrame(drawLoop);
 
-        // Run hands on uploaded static image (drawn onto the canvas at 640x480)
-        setTimeout(async () => {
+        // Run hands on uploaded static image repeatedly until detected or max retries
+        let retries = 0;
+        const runStaticDetection = async () => {
           const canvas = canvasRef.current;
-          if (handsRef.current && canvas) {
+          if (handsRef.current && canvas && cameraStateRef.current === 'fallback') {
             try {
+              // Ensure image is drawn to canvas
+              const img = uploadedImageRef.current;
+              if (img) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  const scale = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+                  const drawW = img.naturalWidth * scale;
+                  const drawH = img.naturalHeight * scale;
+                  const offsetX = (canvas.width - drawW) / 2;
+                  const offsetY = (canvas.height - drawH) / 2;
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+                }
+              }
               await handsRef.current.send({ image: canvas });
+              if (latestHandResults.current && latestHandResults.current.multiHandLandmarks && latestHandResults.current.multiHandLandmarks.length > 0) {
+                console.log('Static image hand detected successfully!');
+                return;
+              }
             } catch (err) {
               console.error('Error running hands on static image:', err);
             }
+            retries++;
+            if (retries < 15 && cameraStateRef.current === 'fallback' && !latestHandResults.current) {
+              setTimeout(runStaticDetection, 250);
+            }
           }
-        }, 150);
+        };
+        setTimeout(runStaticDetection, 150);
       };
     };
     reader.readAsDataURL(file);

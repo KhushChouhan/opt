@@ -914,17 +914,41 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         if (renderFrameId.current) cancelAnimationFrame(renderFrameId.current);
         renderFrameId.current = requestAnimationFrame(drawLoop);
 
-        // Run face-mesh on uploaded static image (drawn onto the canvas at 640x480)
-        setTimeout(async () => {
+        // Run face-mesh on uploaded static image repeatedly until detected or max retries
+        let retries = 0;
+        const runStaticDetection = async () => {
           const canvas = canvasRef.current;
-          if (faceMeshRef.current && canvas) {
+          if (faceMeshRef.current && canvas && cameraStateRef.current === 'fallback') {
             try {
+              // Ensure image is drawn to canvas
+              const img = uploadedImageRef.current;
+              if (img) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  const scale = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+                  const drawW = img.naturalWidth * scale;
+                  const drawH = img.naturalHeight * scale;
+                  const offsetX = (canvas.width - drawW) / 2;
+                  const offsetY = (canvas.height - drawH) / 2;
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+                }
+              }
               await faceMeshRef.current.send({ image: canvas });
+              if (latestLandmarks.current) {
+                console.log('Static image face detected successfully!');
+                return;
+              }
             } catch (err) {
               console.error('Error running facemesh on static image:', err);
             }
+            retries++;
+            if (retries < 15 && cameraStateRef.current === 'fallback' && !latestLandmarks.current) {
+              setTimeout(runStaticDetection, 250);
+            }
           }
-        }, 150);
+        };
+        setTimeout(runStaticDetection, 150);
       };
     };
     reader.readAsDataURL(file);
