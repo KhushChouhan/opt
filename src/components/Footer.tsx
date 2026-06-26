@@ -34,7 +34,7 @@ const CARE = [
 ];
 
 const SOCIALS = [
-  { icon: Facebook, href: 'https://www.facebook.com/haryanawatch1?mibextid=ZbWKwL', label: 'Facebook' },
+  { icon: Facebook, href: 'https://www.facebook.com/Vinod271083', label: 'Facebook' },
   { icon: Instagram, href: 'https://hariyana-watch-opticals.vercel.app/products?category=sunglasses', label: 'Instagram' },
   { icon: WhatsApp, href: 'https://wa.me/919828207999', label: 'WhatsApp' },
   { icon: Youtube, href: 'https://youtube.com', label: 'YouTube' },

@@ -506,10 +506,22 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         }
       } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
         const img = uploadedImageRef.current;
-        if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          console.log('Canvas resized dynamically to uploaded image:', img.naturalWidth, img.naturalHeight);
+        const maxDim = 1280;
+        let targetW = img.naturalWidth;
+        let targetH = img.naturalHeight;
+        if (img.naturalWidth > maxDim || img.naturalHeight > maxDim) {
+          if (img.naturalWidth > img.naturalHeight) {
+            targetW = maxDim;
+            targetH = Math.round((img.naturalHeight * maxDim) / img.naturalWidth);
+          } else {
+            targetH = maxDim;
+            targetW = Math.round((img.naturalWidth * maxDim) / img.naturalHeight);
+          }
+        }
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+          console.log('Canvas resized dynamically to scaled uploaded image:', targetW, targetH);
         }
       }
 
@@ -605,8 +617,16 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
         const symmetry_ratio = Math.min(dist_to_left, dist_to_right) / Math.max(dist_to_left, dist_to_right);
         const yaw = (dist_to_left - dist_to_right) / (dist_to_left + dist_to_right || 1);
 
-        // Rotation angle based strictly on eyes (extremely stable, no perspective distortion)
-        const rollAngle = Math.atan2(y_left_eye - y_right_eye, x_left_eye - x_right_eye);
+        // Ensure left is always the eye with smaller screen X, and right is always the eye with larger screen X.
+        // This is robust against horizontal mirroring/selfie uploading and prevents 180-degree upside down flips.
+        const isLeftEyeOnLeft = x_left_eye < x_right_eye;
+        const x_screen_left = isLeftEyeOnLeft ? x_left_eye : x_right_eye;
+        const y_screen_left = isLeftEyeOnLeft ? y_left_eye : y_right_eye;
+        const x_screen_right = isLeftEyeOnLeft ? x_right_eye : x_left_eye;
+        const y_screen_right = isLeftEyeOnLeft ? y_right_eye : y_left_eye;
+
+        // Rotation angle based strictly on screen-space left-to-right eye vector
+        const rollAngle = Math.atan2(y_screen_right - y_screen_left, x_screen_right - x_screen_left);
 
         let glassesWidth = 0;
         let x_center_shifted = 0;

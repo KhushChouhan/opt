@@ -253,10 +253,22 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         }
       } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
         const img = uploadedImageRef.current;
-        if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          console.log('Canvas resized dynamically to uploaded image:', img.naturalWidth, img.naturalHeight);
+        const maxDim = 1280;
+        let targetW = img.naturalWidth;
+        let targetH = img.naturalHeight;
+        if (img.naturalWidth > maxDim || img.naturalHeight > maxDim) {
+          if (img.naturalWidth > img.naturalHeight) {
+            targetW = maxDim;
+            targetH = Math.round((img.naturalHeight * maxDim) / img.naturalWidth);
+          } else {
+            targetH = maxDim;
+            targetW = Math.round((img.naturalWidth * maxDim) / img.naturalHeight);
+          }
+        }
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+          console.log('Canvas resized dynamically to scaled uploaded image:', targetW, targetH);
         }
       }
 
@@ -378,11 +390,20 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         // Watch position: place on the wrist crease (15% offset down the forearm)
         const wristPlacementOffset = handScale * 0.15;
-        const targetX = wristPt.x + forearmDirX * wristPlacementOffset + liveXOffsetRef.current;
-        const targetY = wristPt.y + forearmDirY * wristPlacementOffset + liveYOffsetRef.current;
+        
+        // Dynamically scale horizontal & vertical offsets based on hand scale (distance from camera)
+        const offsetScale = handScale / 120.0;
+        const scaledXOffset = liveXOffsetRef.current * offsetScale;
+        const scaledYOffset = liveYOffsetRef.current * offsetScale;
+        
+        // Mirror horizontal offset anatomically for the right hand so fit is consistent
+        const handRelativeXOffset = isRightHand ? -scaledXOffset : scaledXOffset;
 
-        // Watch width: proportional to hand width for natural sizing
-        const wristWidth = handWidth * 1.10;
+        const targetX = wristPt.x + forearmDirX * wristPlacementOffset + handRelativeXOffset;
+        const targetY = wristPt.y + forearmDirY * wristPlacementOffset + scaledYOffset;
+
+        // Watch width: stable scaling based on maximum dimension of hand/palm (handScale) instead of handWidth alone
+        const wristWidth = handScale * 1.10;
         const targetWatchWidth = wristWidth * liveScaleRef.current;
 
         if (smoothedWidthRef.current === null) {
