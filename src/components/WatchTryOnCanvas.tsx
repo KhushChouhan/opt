@@ -95,22 +95,24 @@ function computeAssetBBox(img: HTMLImageElement): BBox {
   };
 }
 
-// Helper functions to resolve watch calibration defaults (1.20, -10, 15, 90)
+// Helper functions to resolve watch calibration defaults based on left/right hand
 const getWatchScale = (val: any) => {
-  const num = val !== null && val !== undefined ? Number(val) : 1.20;
-  return num === 1.0 ? 1.20 : num;
+  const num = val !== null && val !== undefined ? Number(val) : 1.45;
+  return num === 1.0 ? 1.45 : num;
 };
 const getWatchXOffset = (val: any) => {
-  const num = val !== null && val !== undefined ? Number(val) : -10.0;
-  return num === 0.0 ? -10.0 : num;
+  const num = val !== null && val !== undefined ? Number(val) : -9.0;
+  return num === 0.0 ? -9.0 : num;
 };
-const getWatchYOffset = (val: any) => {
-  const num = val !== null && val !== undefined ? Number(val) : 15.0;
-  return num === 0.0 ? 15.0 : num;
+const getWatchYOffset = (val: any, isRightHand = true) => {
+  const fallback = isRightHand ? 15.0 : 28.0;
+  const num = val !== null && val !== undefined ? Number(val) : fallback;
+  return num === 0.0 ? fallback : num;
 };
-const getWatchRotOffset = (val: any) => {
-  const num = val !== null && val !== undefined ? Number(val) : 90.0;
-  return num === 0.0 ? 90.0 : num;
+const getWatchRotOffset = (val: any, isRightHand = true) => {
+  const fallback = isRightHand ? 90.0 : -95.0;
+  const num = val !== null && val !== undefined ? Number(val) : fallback;
+  return num === 0.0 ? fallback : num;
 };
 
 interface WatchTryOnCanvasProps {
@@ -163,8 +165,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   useEffect(() => {
     setLiveScale(getWatchScale(product.overlay_scale));
     setLiveXOffset(getWatchXOffset(product.overlay_x_offset));
-    setLiveYOffset(getWatchYOffset(product.overlay_y_offset));
-    setLiveRotationOffset(getWatchRotOffset(product.overlay_rotation_offset));
+    setLiveYOffset(getWatchYOffset(product.overlay_y_offset, lastHandSideRef.current !== 'Left'));
+    setLiveRotationOffset(getWatchRotOffset(product.overlay_rotation_offset, lastHandSideRef.current !== 'Left'));
+    hasManuallyAdjustedRef.current = { scale: false, x: false, y: false, rotation: false };
+    lastHandSideRef.current = null;
   }, [product]);
 
   // Temporal smoothing refs
@@ -180,6 +184,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     baseCompress: number;
     isRightHand: boolean;
   } | null>(null);
+
+  // Manual adjustments tracking to allow adaptive hand default swapping
+  const hasManuallyAdjustedRef = useRef({ scale: false, x: false, y: false, rotation: false });
+  const lastHandSideRef = useRef<'Right' | 'Left' | null>(null);
 
   // App States
   const [cameraState, setCameraState] = useState<'loading' | 'active' | 'denied' | 'fallback'>('loading');
@@ -350,6 +358,24 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         const landmarks = results.multiHandLandmarks[0];
         const handedness = results.multiHandedness[0];
         isRightHand = handedness.label === 'Right';
+
+        const currentHandSide = isRightHand ? 'Right' : 'Left';
+        if (lastHandSideRef.current !== currentHandSide) {
+          lastHandSideRef.current = currentHandSide;
+          
+          if (!hasManuallyAdjustedRef.current.scale) {
+            setLiveScale(getWatchScale(product.overlay_scale));
+          }
+          if (!hasManuallyAdjustedRef.current.x) {
+            setLiveXOffset(getWatchXOffset(product.overlay_x_offset));
+          }
+          if (!hasManuallyAdjustedRef.current.y) {
+            setLiveYOffset(getWatchYOffset(product.overlay_y_offset, isRightHand));
+          }
+          if (!hasManuallyAdjustedRef.current.rotation) {
+            setLiveRotationOffset(getWatchRotOffset(product.overlay_rotation_offset, isRightHand));
+          }
+        }
 
         // Coordinate mapping helpers
         // IMPORTANT: MediaPipe hand landmarks are always in the original (un-mirrored) video space.
@@ -1123,15 +1149,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400">Watch Size</span>
                       <div className="flex items-center space-x-1.5">
-                        <button type="button" onClick={() => setLiveScale(prev => Math.max(0.3, Number((prev - 0.05).toFixed(2))))}
+                        <button type="button" onClick={() => { setLiveScale(prev => Math.max(0.3, Number((prev - 0.05).toFixed(2)))); hasManuallyAdjustedRef.current.scale = true; }}
                           className="w-6 h-6 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px]">-</button>
                         <span className="text-[#C9A84C] font-mono min-w-[32px] text-center text-[11px]">{liveScale.toFixed(2)}</span>
-                        <button type="button" onClick={() => setLiveScale(prev => Math.min(2.0, Number((prev + 0.05).toFixed(2))))}
+                        <button type="button" onClick={() => { setLiveScale(prev => Math.min(2.0, Number((prev + 0.05).toFixed(2)))); hasManuallyAdjustedRef.current.scale = true; }}
                           className="w-6 h-6 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px]">+</button>
                       </div>
                     </div>
                     <input type="range" min="0.3" max="2.0" step="0.05" value={liveScale}
-                      onChange={(e) => setLiveScale(parseFloat(e.target.value))}
+                      onChange={(e) => { setLiveScale(parseFloat(e.target.value)); hasManuallyAdjustedRef.current.scale = true; }}
                       className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
                   </div>
 
@@ -1140,15 +1166,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400">Rotation</span>
                       <div className="flex items-center space-x-1.5">
-                        <button type="button" onClick={() => setLiveRotationOffset(prev => Math.max(-180, prev - 5))}
+                        <button type="button" onClick={() => { setLiveRotationOffset(prev => Math.max(-180, prev - 5)); hasManuallyAdjustedRef.current.rotation = true; }}
                           className="w-6 h-6 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px]">-</button>
                         <span className="text-[#C9A84C] font-mono min-w-[32px] text-center text-[11px]">{liveRotationOffset}°</span>
-                        <button type="button" onClick={() => setLiveRotationOffset(prev => Math.min(180, prev + 5))}
+                        <button type="button" onClick={() => { setLiveRotationOffset(prev => Math.min(180, prev + 5)); hasManuallyAdjustedRef.current.rotation = true; }}
                           className="w-6 h-6 bg-[#1A2742] border border-gray-700 hover:border-[#C9A84C] rounded flex items-center justify-center font-bold text-[10px]">+</button>
                       </div>
                     </div>
                     <input type="range" min="-180" max="180" step="5" value={liveRotationOffset}
-                      onChange={(e) => setLiveRotationOffset(parseInt(e.target.value))}
+                      onChange={(e) => { setLiveRotationOffset(parseInt(e.target.value)); hasManuallyAdjustedRef.current.rotation = true; }}
                       className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
                   </div>
 
@@ -1159,7 +1185,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                       <span className="text-[#C9A84C] font-mono text-[11px]">{liveXOffset}px</span>
                     </div>
                     <input type="range" min="-100" max="100" step="1" value={liveXOffset}
-                      onChange={(e) => setLiveXOffset(parseInt(e.target.value))}
+                      onChange={(e) => { setLiveXOffset(parseInt(e.target.value)); hasManuallyAdjustedRef.current.x = true; }}
                       className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
                   </div>
 
@@ -1170,7 +1196,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                       <span className="text-[#C9A84C] font-mono text-[11px]">{liveYOffset}px</span>
                     </div>
                     <input type="range" min="-100" max="100" step="1" value={liveYOffset}
-                      onChange={(e) => setLiveYOffset(parseInt(e.target.value))}
+                      onChange={(e) => { setLiveYOffset(parseInt(e.target.value)); hasManuallyAdjustedRef.current.y = true; }}
                       className="w-full accent-[#C9A84C] h-1.5 rounded cursor-pointer" />
                   </div>
                 </div>
@@ -1202,10 +1228,11 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                   onClick={() => {
                     setLiveScale(getWatchScale(product.overlay_scale));
                     setLiveXOffset(getWatchXOffset(product.overlay_x_offset));
-                    setLiveYOffset(getWatchYOffset(product.overlay_y_offset));
-                    setLiveRotationOffset(getWatchRotOffset(product.overlay_rotation_offset));
+                    setLiveYOffset(getWatchYOffset(product.overlay_y_offset, lastHandSideRef.current !== 'Left'));
+                    setLiveRotationOffset(getWatchRotOffset(product.overlay_rotation_offset, lastHandSideRef.current !== 'Left'));
                     setManualScale(1.0);
                     setManualRotation(0);
+                    hasManuallyAdjustedRef.current = { scale: false, x: false, y: false, rotation: false };
                   }}
                   className="text-xs text-gray-400 hover:text-white transition-colors underline"
                 >
