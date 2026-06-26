@@ -365,67 +365,82 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           return offsetY + lm.y * drawH;
         };
 
-        // Key landmarks for wrist detection
-        const wristPt = { x: getX(landmarks[0]), y: getY(landmarks[0]) };          // Wrist center
-        const indexMCP = { x: getX(landmarks[5]), y: getY(landmarks[5]) };          // Index finger base
-        const middleMCP = { x: getX(landmarks[9]), y: getY(landmarks[9]) };         // Middle finger base
-        const ringMCP = { x: getX(landmarks[13]), y: getY(landmarks[13]) };         // Ring finger base
-        const pinkyMCP = { x: getX(landmarks[17]), y: getY(landmarks[17]) };        // Pinky base
-        // Thumb CMC (landmark 1) available if needed for more advanced wrist width estimation
+        // ── Key landmarks ──────────────────────────────────────────────────────
+        // Landmark 0  = wrist bone (base of palm)
+        // Landmarks 5,9,13,17 = MCP knuckles (index→pinky)
+        const wristPt    = { x: getX(landmarks[0]),  y: getY(landmarks[0])  };
+        const indexMCP   = { x: getX(landmarks[5]),  y: getY(landmarks[5])  };
+        const middleMCP  = { x: getX(landmarks[9]),  y: getY(landmarks[9])  };
+        const ringMCP    = { x: getX(landmarks[13]), y: getY(landmarks[13]) };
+        const pinkyMCP   = { x: getX(landmarks[17]), y: getY(landmarks[17]) };
 
-        // Palm center: average of all MCP joints
+        // Palm center = average of 4 MCP knuckles
         const palmCenter = {
           x: (indexMCP.x + middleMCP.x + ringMCP.x + pinkyMCP.x) / 4,
-          y: (indexMCP.y + middleMCP.y + ringMCP.y + pinkyMCP.y) / 4
+          y: (indexMCP.y + middleMCP.y + ringMCP.y + pinkyMCP.y) / 4,
         };
 
-        // Measure hand width (across knuckles) and depth (wrist to palm)
-        const dx_knuckles = indexMCP.x - pinkyMCP.x;
-        const dy_knuckles = indexMCP.y - pinkyMCP.y;
-        handWidth = Math.sqrt(dx_knuckles * dx_knuckles + dy_knuckles * dy_knuckles);
+        // ── Geometry measurements ──────────────────────────────────────────────
+        // Hand width = distance across knuckles (index → pinky).
+        // This is the most stable 2-D measure and scales perfectly with camera distance.
+        const dx_k = indexMCP.x - pinkyMCP.x;
+        const dy_k = indexMCP.y - pinkyMCP.y;
+        handWidth = Math.sqrt(dx_k * dx_k + dy_k * dy_k);
 
-        const dx_depth = palmCenter.x - wristPt.x;
-        const dy_depth = palmCenter.y - wristPt.y;
-        const handDepth = Math.sqrt(dx_depth * dx_depth + dy_depth * dy_depth);
+        // Hand depth = wrist-to-palm-center distance
+        const dx_d = palmCenter.x - wristPt.x;
+        const dy_d = palmCenter.y - wristPt.y;
+        const handDepth = Math.sqrt(dx_d * dx_d + dy_d * dy_d) || 1;
 
-        // Forearm direction: from palm center toward wrist crease
-        const forearmDirX = (wristPt.x - palmCenter.x) / (handDepth || 1);
-        const forearmDirY = (wristPt.y - palmCenter.y) / (handDepth || 1);
+        // ── Forearm axis (unit vector pointing from palm → wrist, i.e. toward elbow) ──
+        const forearmDirX = dx_d === 0 && dy_d === 0 ? 0 : (wristPt.x - palmCenter.x) / handDepth;
+        const forearmDirY = dx_d === 0 && dy_d === 0 ? 1 : (wristPt.y - palmCenter.y) / handDepth;
 
+        // ── WATCH ANCHOR POINT ──────────────────────────────────────────────────
+        // MediaPipe landmark 0 sits at the very base of the palm / wrist joint.
+        // A real watch sits ~25% of the way from the wrist landmark TOWARD the
+        // palm center (i.e., just above the wrist bone, on the wrist crease).
+        // Moving in the palm direction (negative forearm direction) places it correctly.
+        const wristCreaseOffset = handDepth * 0.25;  // 25% toward palm = wrist crease
+        const anchorX = wristPt.x - forearmDirX * wristCreaseOffset;
+        const anchorY = wristPt.y - forearmDirY * wristCreaseOffset;
 
-        // ----- WATCH SIZING -----
-        // Use handWidth (knuckle-to-knuckle) for accurate wrist proportions.
-        // 88% of knuckle width with a 60px floor for natural watch sizing.
-        const watchNaturalWidth = Math.max(handWidth * 0.88, 60);
-        const targetWatchWidth = watchNaturalWidth * liveScaleRef.current;
+        // ── WATCH SIZING ──────────────────────────────────────────────────────
+        // A watch face naturally spans ~90% of the wrist width.
+        // handWidth (knuckle span) ≈ 1.2× wrist width for an average hand,
+        // so 0.75 × handWidth gives a natural-looking case diameter.
+        const naturalWidth = Math.max(handWidth * 0.78, 50);
+        const targetWatchWidth = naturalWidth * liveScaleRef.current;
 
         if (smoothedWidthRef.current === null) {
           smoothedWidthRef.current = targetWatchWidth;
         } else {
-          smoothedWidthRef.current = smoothedWidthRef.current * 0.40 + targetWatchWidth * 0.60;
+          // 70% new, 30% old → fast size response
+          smoothedWidthRef.current = smoothedWidthRef.current * 0.30 + targetWatchWidth * 0.70;
         }
         watchWidth = smoothedWidthRef.current;
 
-        // ----- WATCH POSITION -----
-        // Anchor: wrist landmark (0), then step slightly UP the forearm (toward elbow)
-        // so the watch sits centered on the wrist crease, not on the palm.
-        const wristPlacementOffset = handDepth * 0.40;  // 40% of palm depth toward elbow — places watch on forearm
+        // ── POSITION WITH USER OFFSET (hand-relative, scales with distance) ──
+        // Convert slider pixel values to hand-relative fractions so the
+        // offset is the same visual size regardless of how close the hand is.
+        // 100 px is the reference hand width at a comfortable close-up distance.
+        const offsetScale = handWidth / 100;
+        const targetX = anchorX + liveXOffsetRef.current * offsetScale;
+        const targetY = anchorY + liveYOffsetRef.current * offsetScale;
 
-        // liveX/YOffset are screen-space pixel offsets from the sliders (already intuitive).
-        const targetX = wristPt.x + forearmDirX * wristPlacementOffset + liveXOffsetRef.current;
-        const targetY = wristPt.y + forearmDirY * wristPlacementOffset + liveYOffsetRef.current;
-
-        // ----- WATCH ROTATION -----
-        // Angle perpendicular to forearm. Works identically for left and right hands.
+        // ── ROTATION ──────────────────────────────────────────────────────────
+        // Perpendicular to forearm direction.  Works for both hands automatically.
+        // We subtract PI/2 to turn the "along forearm" angle into "across wrist".
         const rawAngle = Math.atan2(forearmDirY, forearmDirX) - Math.PI / 2;
         const rotOffsetRad = (liveRotationOffsetRef.current * Math.PI) / 180;
         const targetAngle = rawAngle + rotOffsetRad;
 
-        // ----- PERSPECTIVE COMPRESSION -----
-        const perspectiveRatio = handWidth / (handDepth || 1);
-        baseCompress = clamp(perspectiveRatio, 0.80, 1.0);
+        // ── PERSPECTIVE COMPRESSION ───────────────────────────────────────────
+        // When the wrist is side-on, handWidth shrinks relative to handDepth.
+        const perspectiveRatio = handWidth / handDepth;
+        baseCompress = clamp(perspectiveRatio, 0.60, 1.0);
 
-        // ----- SMOOTHING -----
+        // ── SMOOTHING ─────────────────────────────────────────────────────────
         if (!smoothedPositionRef.current) {
           smoothedPositionRef.current = { x: targetX, y: targetY };
           smoothedAngleRef.current = targetAngle;
