@@ -111,6 +111,12 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   const assetBBoxRef = useRef<BBox | null>(null);
   const latestHandResults = useRef<any>(null);
 
+  // Device detection — used for adaptive resolution / model complexity
+  const isMobile = typeof navigator !== 'undefined' && (
+    /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || window.innerWidth < 768
+  );
+
   // Session
   const { data: session } = useSession();
   const [showCalibrator, setShowCalibrator] = useState(false);
@@ -389,8 +395,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         // ----- WATCH SIZING -----
         // Use handWidth (knuckle-to-knuckle) for accurate wrist proportions.
-        // handWidth * 1.05 matches a watch case sitting flush across the wrist.
-        const watchNaturalWidth = handWidth * 1.05;
+        // 88% of knuckle width with a 60px floor for natural watch sizing.
+        const watchNaturalWidth = Math.max(handWidth * 0.88, 60);
         const targetWatchWidth = watchNaturalWidth * liveScaleRef.current;
 
         if (smoothedWidthRef.current === null) {
@@ -403,7 +409,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         // ----- WATCH POSITION -----
         // Anchor: wrist landmark (0), then step slightly UP the forearm (toward elbow)
         // so the watch sits centered on the wrist crease, not on the palm.
-        const wristPlacementOffset = handDepth * 0.10;  // 10% of palm depth toward elbow
+        const wristPlacementOffset = handDepth * 0.40;  // 40% of palm depth toward elbow — places watch on forearm
 
         // liveX/YOffset are screen-space pixel offsets from the sliders (already intuitive).
         const targetX = wristPt.x + forearmDirX * wristPlacementOffset + liveXOffsetRef.current;
@@ -417,7 +423,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         // ----- PERSPECTIVE COMPRESSION -----
         const perspectiveRatio = handWidth / (handDepth || 1);
-        baseCompress = clamp(perspectiveRatio, 0.60, 1.0);
+        baseCompress = clamp(perspectiveRatio, 0.80, 1.0);
 
         // ----- SMOOTHING -----
         if (!smoothedPositionRef.current) {
@@ -615,13 +621,14 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
     try {
       // Watch try-on: prefer front/user-facing camera (wrist needs to face camera)
+      // Lower resolution + frame rate on mobile for performance
       const constraints: any = {
         video: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
           facingMode: deviceId ? undefined : { ideal: 'user' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
+          width: { ideal: isMobile ? 640 : 1280 },
+          height: { ideal: isMobile ? 480 : 720 },
+          frameRate: { ideal: isMobile ? 15 : 30 }
         },
         audio: false,
       };
@@ -686,7 +693,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       console.warn('Camera access denied or unavailable:', error);
       setCameraState('denied');
     }
-  }, [stopAllStreams, drawLoop, startDetectionLoop]);
+  }, [stopAllStreams, drawLoop, startDetectionLoop, isMobile]);
 
   // Initialize and load dependencies
   useEffect(() => {
@@ -722,7 +729,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         hands.setOptions({
           maxNumHands: 1,
-          modelComplexity: 1,
+          modelComplexity: isMobile ? 0 : 1,
           minDetectionConfidence: 0.55,
           minTrackingConfidence: 0.50,
         });
