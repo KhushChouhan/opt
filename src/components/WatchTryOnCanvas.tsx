@@ -127,16 +127,16 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
   // Live overrides
   const [liveScale, setLiveScale] = useState<number>(
-    product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0
+    product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.20
   );
   const [liveXOffset, setLiveXOffset] = useState<number>(
-    product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0
+    product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : -10.0
   );
   const [liveYOffset, setLiveYOffset] = useState<number>(
-    product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0
+    product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 15.0
   );
   const [liveRotationOffset, setLiveRotationOffset] = useState<number>(
-    product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0
+    product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 90.0
   );
 
   // Decoupled refs for values to prevent closure staleness in loop
@@ -151,10 +151,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   useEffect(() => { liveRotationOffsetRef.current = liveRotationOffset; }, [liveRotationOffset]);
 
   useEffect(() => {
-    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
-    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
-    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
-    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.20);
+    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : -10.0);
+    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 15.0);
+    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 90.0);
   }, [product]);
 
   // Temporal smoothing refs
@@ -1190,10 +1190,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               <div className="flex items-center justify-between pt-2 border-t border-gray-800">
                 <button
                   onClick={() => {
-                    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0);
-                    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0);
-                    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0);
-                    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0);
+                    setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.20);
+                    setLiveXOffset(product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : -10.0);
+                    setLiveYOffset(product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 15.0);
+                    setLiveRotationOffset(product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 90.0);
                     setManualScale(1.0);
                     setManualRotation(0);
                   }}
