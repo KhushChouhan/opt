@@ -97,8 +97,8 @@ function computeAssetBBox(img: HTMLImageElement): BBox {
 
 // Helper functions to resolve watch calibration defaults based on left/right hand
 const getWatchScale = (val: any) => {
-  const num = val !== null && val !== undefined ? Number(val) : 1.45;
-  return num === 1.0 ? 1.45 : num;
+  const num = val !== null && val !== undefined ? Number(val) : 1.50;
+  return num === 1.0 ? 1.50 : num;
 };
 const getWatchXOffset = (val: any) => {
   const num = val !== null && val !== undefined ? Number(val) : -9.0;
