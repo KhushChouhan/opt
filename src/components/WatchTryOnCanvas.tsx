@@ -234,6 +234,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     latestHandResults.current = results;
   }, []);
 
+
   // High-performance decoupled draw loop
   const drawLoop = useCallback(() => {
     try {
@@ -385,62 +386,40 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         const forearmDirX = (wristPt.x - palmCenter.x) / (handDepth || 1);
         const forearmDirY = (wristPt.y - palmCenter.y) / (handDepth || 1);
 
-        // Use stable hand scale (maximum dimension of palm) to prevent shrinking/shifting during tilt
-        const handScale = Math.max(handWidth, handDepth);
 
-        // Watch position: place on the wrist crease (15% offset down the forearm)
-        const wristPlacementOffset = handScale * 0.15;
-        
-        // Dynamically scale offsets based on hand scale (distance from camera)
-        const offsetScale = handScale / 120.0;
-
-        // Load database default offsets
-        const defaultXOffset = product.overlay_x_offset !== null && product.overlay_x_offset !== undefined ? Number(product.overlay_x_offset) : 0.0;
-        const defaultYOffset = product.overlay_y_offset !== null && product.overlay_y_offset !== undefined ? Number(product.overlay_y_offset) : 0.0;
-        const defaultRotationOffset = product.overlay_rotation_offset !== null && product.overlay_rotation_offset !== undefined ? Number(product.overlay_rotation_offset) : 0.0;
-
-        // Calculate active user overrides (sliders)
-        const userAdjustmentX = liveXOffsetRef.current - defaultXOffset;
-        const userAdjustmentY = liveYOffsetRef.current - defaultYOffset;
-        const userAdjustmentRotation = liveRotationOffsetRef.current - defaultRotationOffset;
-
-        // Scale offsets dynamically
-        const scaledDefaultX = defaultXOffset * offsetScale;
-        const scaledUserAdjustmentX = userAdjustmentX * offsetScale;
-        const scaledDefaultY = defaultYOffset * offsetScale;
-        const scaledUserAdjustmentY = userAdjustmentY * offsetScale;
-
-        // Mirror ONLY the database default horizontal shift and rotation for the right hand,
-        // but apply user adjustments directly in screen space to keep sliders intuitive.
-        const handRelativeXOffset = (isRightHand ? -scaledDefaultX : scaledDefaultX) + scaledUserAdjustmentX;
-        const handRelativeYOffset = scaledDefaultY + scaledUserAdjustmentY; // Y shift is not mirrored
-        const handRelativeRotationOffset = (isRightHand ? -defaultRotationOffset : defaultRotationOffset) + userAdjustmentRotation;
-
-        const targetX = wristPt.x + forearmDirX * wristPlacementOffset + handRelativeXOffset;
-        const targetY = wristPt.y + forearmDirY * wristPlacementOffset + handRelativeYOffset;
-
-        // Watch width: stable scaling based on maximum dimension of hand/palm (handScale) but normalized to correct size (scale down by 0.80)
-        const wristWidth = handScale * 0.80 * 1.10;
-        const targetWatchWidth = wristWidth * liveScaleRef.current;
+        // ----- WATCH SIZING -----
+        // Use handWidth (knuckle-to-knuckle) for accurate wrist proportions.
+        // handWidth * 1.05 matches a watch case sitting flush across the wrist.
+        const watchNaturalWidth = handWidth * 1.05;
+        const targetWatchWidth = watchNaturalWidth * liveScaleRef.current;
 
         if (smoothedWidthRef.current === null) {
           smoothedWidthRef.current = targetWatchWidth;
         } else {
-          // Responsive smoothing synchronized with position tracking (60% new frame weight)
           smoothedWidthRef.current = smoothedWidthRef.current * 0.40 + targetWatchWidth * 0.60;
         }
         watchWidth = smoothedWidthRef.current;
 
-        // Watch rotation: direct perpendicular mapping to forearm direction.
-        // This is extremely stable and works for both hands/orientations without flipping.
-        const targetAngle = Math.atan2(forearmDirY, forearmDirX) - Math.PI / 2 + (handRelativeRotationOffset * Math.PI) / 180;
+        // ----- WATCH POSITION -----
+        // Anchor: wrist landmark (0), then step slightly UP the forearm (toward elbow)
+        // so the watch sits centered on the wrist crease, not on the palm.
+        const wristPlacementOffset = handDepth * 0.10;  // 10% of palm depth toward elbow
 
-        // Perspective compression: flatten the watch when wrist is angled
-        // Use ratio of visible knuckle width to hand depth as perspective indicator
+        // liveX/YOffset are screen-space pixel offsets from the sliders (already intuitive).
+        const targetX = wristPt.x + forearmDirX * wristPlacementOffset + liveXOffsetRef.current;
+        const targetY = wristPt.y + forearmDirY * wristPlacementOffset + liveYOffsetRef.current;
+
+        // ----- WATCH ROTATION -----
+        // Angle perpendicular to forearm. Works identically for left and right hands.
+        const rawAngle = Math.atan2(forearmDirY, forearmDirX) - Math.PI / 2;
+        const rotOffsetRad = (liveRotationOffsetRef.current * Math.PI) / 180;
+        const targetAngle = rawAngle + rotOffsetRad;
+
+        // ----- PERSPECTIVE COMPRESSION -----
         const perspectiveRatio = handWidth / (handDepth || 1);
-        baseCompress = clamp(perspectiveRatio, 0.65, 1.0);
+        baseCompress = clamp(perspectiveRatio, 0.60, 1.0);
 
-        // Smoothed position tracking (more responsive than before)
+        // ----- SMOOTHING -----
         if (!smoothedPositionRef.current) {
           smoothedPositionRef.current = { x: targetX, y: targetY };
           smoothedAngleRef.current = targetAngle;
