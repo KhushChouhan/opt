@@ -9,12 +9,12 @@
     "overlay_image_url": "/images/overlays/product3try.png",
     "stock": 1,
     "created_at": "2026-06-19T13:08:05.580721+00:00",
-    "overlay_scale": 1,
-    "overlay_y_offset": 0,
-    "overlay_x_offset": 0,
+    "overlay_scale": null,
+    "overlay_y_offset": null,
+    "overlay_x_offset": null,
     "lens_image_url": null,
     "reflection_image_url": null,
-    "overlay_rotation_offset": 0
+    "overlay_rotation_offset": null
   },
   {
     "id": "a2278890-3a18-47fd-a35e-ff6e1631d4c2",
@@ -26,12 +26,12 @@
     "overlay_image_url": "/images/overlays/product4try.png",
     "stock": 1,
     "created_at": "2026-06-19T13:12:26.407638+00:00",
-    "overlay_scale": 1,
-    "overlay_y_offset": 0,
-    "overlay_x_offset": 0,
+    "overlay_scale": null,
+    "overlay_y_offset": null,
+    "overlay_x_offset": null,
     "lens_image_url": null,
     "reflection_image_url": null,
-    "overlay_rotation_offset": 0
+    "overlay_rotation_offset": null
   },
   {
     "id": "dc77fec6-217d-423b-8ef0-ce94340861e6",
@@ -60,12 +60,12 @@
     "overlay_image_url": "/images/overlays/product5try.png",
     "stock": 1,
     "created_at": "2026-06-19T13:14:51.172051+00:00",
-    "overlay_scale": 1,
-    "overlay_y_offset": 0,
-    "overlay_x_offset": 0,
+    "overlay_scale": null,
+    "overlay_y_offset": null,
+    "overlay_x_offset": null,
     "lens_image_url": null,
     "reflection_image_url": null,
-    "overlay_rotation_offset": 0
+    "overlay_rotation_offset": null
   },
   {
     "id": "a5f18bb3-7cc1-4773-a218-f5c0405dfbd8",
@@ -130,10 +130,10 @@
     "created_at": "2026-06-19T13:36:51.210779+00:00",
     "overlay_scale": null,
     "overlay_y_offset": null,
-    "overlay_x_offset": 0,
+    "overlay_x_offset": null,
     "lens_image_url": null,
     "reflection_image_url": null,
-    "overlay_rotation_offset": 0
+    "overlay_rotation_offset": null
   },
   {
     "id": "b4d64eb9-a936-4cd3-9ffb-fbc9cf673af9",
@@ -145,12 +145,12 @@
     "overlay_image_url": "/images/overlays/product1try.png",
     "stock": 1,
     "created_at": "2026-06-19T12:01:39.236729+00:00",
-    "overlay_scale": 1,
-    "overlay_y_offset": 0,
-    "overlay_x_offset": 0,
+    "overlay_scale": null,
+    "overlay_y_offset": null,
+    "overlay_x_offset": null,
     "lens_image_url": null,
     "reflection_image_url": null,
-    "overlay_rotation_offset": 0
+    "overlay_rotation_offset": null
   },
   {
     "id": "653145dd-4249-4403-a525-b691f3b4a67f",
@@ -164,10 +164,10 @@
     "created_at": "2026-06-19T13:36:51.519716+00:00",
     "overlay_scale": null,
     "overlay_y_offset": null,
-    "overlay_x_offset": 0,
+    "overlay_x_offset": null,
     "lens_image_url": null,
     "reflection_image_url": null,
-    "overlay_rotation_offset": 0
+    "overlay_rotation_offset": null
   },
   {
     "id": "b0224ba2-f174-4eea-ada0-112cd70300d4",
@@ -247,12 +247,12 @@
     "overlay_image_url": "/images/overlays/product2try.png",
     "stock": 1,
     "created_at": "2026-06-19T12:01:39.297549+00:00",
-    "overlay_scale": 1,
-    "overlay_y_offset": 0,
-    "overlay_x_offset": 0,
+    "overlay_scale": null,
+    "overlay_y_offset": null,
+    "overlay_x_offset": null,
     "lens_image_url": null,
     "reflection_image_url": null,
-    "overlay_rotation_offset": 0
+    "overlay_rotation_offset": null
   },
   {
     "id": "e78c8a8f-af14-4f2e-8081-05539236fbeb",
@@ -315,12 +315,12 @@
     "overlay_image_url": "/images/overlays/MP000000026544067_437Wx649H_202505110203561-removebg-preview.png",
     "stock": 10,
     "created_at": "2026-06-25T12:45:35.484Z",
-    "overlay_scale": 0.75,
-    "overlay_y_offset": 0,
-    "overlay_x_offset": 0,
+    "overlay_scale": null,
+    "overlay_y_offset": null,
+    "overlay_x_offset": null,
     "lens_image_url": null,
     "reflection_image_url": null,
-    "overlay_rotation_offset": -80
+    "overlay_rotation_offset": null
   },
   {
     "id": "cdfd59a2-d245-47d3-bf3c-ce826775c6e8",
