@@ -34,8 +34,8 @@ const CARE = [
 ];
 
 const SOCIALS = [
-  { icon: Facebook, href: 'https://facebook.com', label: 'Facebook' },
-  { icon: Instagram, href: 'https://instagram.com/hariyana.watch.opticals', label: 'Instagram' },
+  { icon: Facebook, href: 'https://www.facebook.com/haryanawatch1?mibextid=ZbWKwL', label: 'Facebook' },
+  { icon: Instagram, href: 'https://hariyana-watch-opticals.vercel.app/products?category=sunglasses', label: 'Instagram' },
   { icon: WhatsApp, href: 'https://wa.me/919828207999', label: 'WhatsApp' },
   { icon: Youtube, href: 'https://youtube.com', label: 'YouTube' },
 ];
@@ -59,7 +59,7 @@ export default function Footer() {
                 Follow Us On Instagram
               </span>
               <a
-                href="https://instagram.com/hariyana.watch.opticals"
+                href="https://hariyana-watch-opticals.vercel.app/products?category=sunglasses"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-display text-2xl sm:text-3xl text-white font-medium hover:text-[#c7a14e] transition-colors block tracking-wide"
@@ -72,7 +72,7 @@ export default function Footer() {
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3.5 w-full lg:w-auto justify-items-center">
               {/* Card 1: Watch */}
               <a
-                href="https://instagram.com/hariyana.watch.opticals"
+                href="https://hariyana-watch-opticals.vercel.app/products?category=sunglasses"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
@@ -88,7 +88,7 @@ export default function Footer() {
 
               {/* Card 2: Sunglasses */}
               <a
-                href="https://instagram.com/hariyana.watch.opticals"
+                href="https://hariyana-watch-opticals.vercel.app/products?category=sunglasses"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
@@ -104,7 +104,7 @@ export default function Footer() {
 
               {/* Card 3: Optical Frames */}
               <a
-                href="https://instagram.com/hariyana.watch.opticals"
+                href="https://hariyana-watch-opticals.vercel.app/products?category=sunglasses"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
@@ -120,7 +120,7 @@ export default function Footer() {
 
               {/* Card 4: Store interior cinematic */}
               <a
-                href="https://instagram.com/hariyana.watch.opticals"
+                href="https://hariyana-watch-opticals.vercel.app/products?category=sunglasses"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
@@ -136,7 +136,7 @@ export default function Footer() {
 
               {/* Card 5: Store interior */}
               <a
-                href="https://instagram.com/hariyana.watch.opticals"
+                href="https://hariyana-watch-opticals.vercel.app/products?category=sunglasses"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[120px] lg:w-24 xl:w-28"
@@ -152,7 +152,7 @@ export default function Footer() {
 
               {/* Card 6: View More Instagram Logo */}
               <a
-                href="https://instagram.com/hariyana.watch.opticals"
+                href="https://hariyana-watch-opticals.vercel.app/products?category=sunglasses"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="relative aspect-square rounded-xl overflow-hidden border border-[#c7a14e]/30 bg-gradient-to-br from-[#0b131e] to-[#050c14] hover:border-[#c7a14e] transition-colors flex flex-col items-center justify-center gap-1 p-2 group w-full max-w-[120px] lg:w-24 xl:w-28"

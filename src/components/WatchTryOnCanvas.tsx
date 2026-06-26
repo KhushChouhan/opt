@@ -170,6 +170,12 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   const [loadingMessage, setLoadingMessage] = useState('Initializing virtual mirror...');
   const [handDetected, setHandDetected] = useState(false);
   const [showAdjustPanel, setShowAdjustPanel] = useState(false);
+  const [isMirror, setIsMirror] = useState(false);
+
+  const isMirrorRef = useRef(isMirror);
+  useEffect(() => {
+    isMirrorRef.current = isMirror;
+  }, [isMirror]);
 
   // Camera Selection States
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -233,42 +239,40 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     try {
       const canvas = canvasRef.current;
       if (!canvas) return;
+
+      const currentCameraState = cameraStateRef.current;
+
+      // Dynamically resize canvas to match video or fallback image dimensions
+      if (currentCameraState === 'active' && videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+        const vw = videoRef.current.videoWidth;
+        const vh = videoRef.current.videoHeight;
+        if (canvas.width !== vw || canvas.height !== vh) {
+          canvas.width = vw;
+          canvas.height = vh;
+          console.log('Canvas resized dynamically in drawLoop:', vw, vh);
+        }
+      } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
+        const img = uploadedImageRef.current;
+        if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          console.log('Canvas resized dynamically to uploaded image:', img.naturalWidth, img.naturalHeight);
+        }
+      }
+
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
       const width = canvas.width;
       const height = canvas.height;
-      const currentCameraState = cameraStateRef.current;
 
-      // Draw webcam feed or uploaded photo (mirrored if front camera)
+      // 1. Draw fallback uploaded photo or clear canvas for transparent overlay mode
       let drawW = width;
       let drawH = height;
       let offsetX = 0;
       let offsetY = 0;
-      let isMirror = false; // Default to false since watch try-on defaults to rear camera
 
-      if (currentCameraState === 'active') {
-        const activeDevice = devices.find((d) => d.deviceId === selectedDeviceId);
-        if (activeDevice) {
-          const label = activeDevice.label.toLowerCase();
-          if (label.includes('front') || label.includes('user') || label.includes('integrated') || label.includes('selfie') || label.includes('webcam')) {
-            isMirror = true;
-          }
-        } else if (devices.length > 0) {
-          const label = devices[0].label.toLowerCase();
-          if (label.includes('front') || label.includes('user') || label.includes('integrated') || label.includes('selfie') || label.includes('webcam')) {
-            isMirror = true;
-          }
-        }
-      }
-
-      ctx.save();
-      if (isMirror) {
-        ctx.translate(width, 0);
-        ctx.scale(-1, 1);
-      }
-
-      if (currentCameraState === 'active' && videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0) {
+      if (currentCameraState === 'active' && videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
         const vw = videoRef.current.videoWidth;
         const vh = videoRef.current.videoHeight;
         const scale = Math.max(width / vw, height / vh);
@@ -276,7 +280,8 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         drawH = vh * scale;
         offsetX = (width - drawW) / 2;
         offsetY = (height - drawH) / 2;
-        ctx.drawImage(videoRef.current, offsetX, offsetY, drawW, drawH);
+        
+        ctx.clearRect(0, 0, width, height);
       } else if (currentCameraState === 'fallback' && uploadedImageRef.current) {
         const img = uploadedImageRef.current;
         const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
@@ -284,19 +289,20 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         drawH = img.naturalHeight * scale;
         offsetX = (width - drawW) / 2;
         offsetY = (height - drawH) / 2;
+        
+        ctx.save();
+        ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+        ctx.restore();
       } else {
-        ctx.fillStyle = '#0F1B30';
-        ctx.fillRect(0, 0, width, height);
+        ctx.clearRect(0, 0, width, height);
       }
-      ctx.restore();
 
       // Draw overlay based on landmarks or manual sliders
       const results = latestHandResults.current;
-      const confidence = results && results.multiHandLandmarks ? results.multiHandedness?.[0]?.score || 0.8 : 0;
       const hasHandTracking =
         (currentCameraState === 'active' || currentCameraState === 'fallback') &&
-        results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && confidence >= 0.4;
+        results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
 
       let drawX = 0;
       let drawY = 0;
@@ -316,57 +322,87 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         const handedness = results.multiHandedness[0];
         isRightHand = handedness.label === 'Right';
 
+        // Coordinate mapping helpers
+        // IMPORTANT: MediaPipe hand landmarks are always in the original (un-mirrored) video space.
+        // When the video is CSS-mirrored (scaleX(-1)), landmark x=0 appears on the RIGHT of the screen.
+        // So for mirrored mode: canvas x = width - (offsetX + lm.x * drawW)
+        // For non-mirrored mode: canvas x = offsetX + lm.x * drawW
         const getX = (lm: any) => {
-          if (isMirror) {
+          if (currentCameraState === 'fallback') {
+            // Uploaded image: no mirroring applied
+            return lm.x * width;
+          }
+          // Live camera: account for CSS mirror transform
+          if (isMirrorRef.current) {
             return width - (offsetX + lm.x * drawW);
           } else {
             return offsetX + lm.x * drawW;
           }
         };
-        const getY = (lm: any) => offsetY + lm.y * drawH;
-
-        const wrist = { x: getX(landmarks[0]), y: getY(landmarks[0]) };
-        const indexMCP = { x: getX(landmarks[5]), y: getY(landmarks[5]) };
-        const pinkyMCP = { x: getX(landmarks[17]), y: getY(landmarks[17]) };
-
-        const knuckleCenter = {
-          x: (indexMCP.x + pinkyMCP.x) / 2,
-          y: (indexMCP.y + pinkyMCP.y) / 2
+        const getY = (lm: any) => {
+          if (currentCameraState === 'fallback') {
+            return lm.y * height;
+          }
+          return offsetY + lm.y * drawH;
         };
 
-        const dx_width = indexMCP.x - pinkyMCP.x;
-        const dy_width = indexMCP.y - pinkyMCP.y;
-        handWidth = Math.sqrt(dx_width * dx_width + dy_width * dy_width);
-        const dx_depth = knuckleCenter.x - wrist.x;
-        const dy_depth = knuckleCenter.y - wrist.y;
+        // Key landmarks for wrist detection
+        const wristPt = { x: getX(landmarks[0]), y: getY(landmarks[0]) };          // Wrist center
+        const indexMCP = { x: getX(landmarks[5]), y: getY(landmarks[5]) };          // Index finger base
+        const middleMCP = { x: getX(landmarks[9]), y: getY(landmarks[9]) };         // Middle finger base
+        const ringMCP = { x: getX(landmarks[13]), y: getY(landmarks[13]) };         // Ring finger base
+        const pinkyMCP = { x: getX(landmarks[17]), y: getY(landmarks[17]) };        // Pinky base
+        // Thumb CMC (landmark 1) available if needed for more advanced wrist width estimation
+
+        // Palm center: average of all MCP joints
+        const palmCenter = {
+          x: (indexMCP.x + middleMCP.x + ringMCP.x + pinkyMCP.x) / 4,
+          y: (indexMCP.y + middleMCP.y + ringMCP.y + pinkyMCP.y) / 4
+        };
+
+        // Measure hand width (across knuckles) and depth (wrist to palm)
+        const dx_knuckles = indexMCP.x - pinkyMCP.x;
+        const dy_knuckles = indexMCP.y - pinkyMCP.y;
+        handWidth = Math.sqrt(dx_knuckles * dx_knuckles + dy_knuckles * dy_knuckles);
+
+        const dx_depth = palmCenter.x - wristPt.x;
+        const dy_depth = palmCenter.y - wristPt.y;
         const handDepth = Math.sqrt(dx_depth * dx_depth + dy_depth * dy_depth);
 
-        const wristWidth = handWidth * 0.82;
-        const normalizedPalmDepth = clamp(handDepth, handWidth * 1.35, handWidth * 2.35);
-        const rawTargetWidth = wristWidth * 0.72 + normalizedPalmDepth * 0.12;
-        const targetWidth = clamp(rawTargetWidth, handWidth * 0.68, handWidth * 1.04) * 0.92 * liveScaleRef.current;
+        // Forearm direction: from palm center toward wrist crease
+        const forearmDirX = (wristPt.x - palmCenter.x) / (handDepth || 1);
+        const forearmDirY = (wristPt.y - palmCenter.y) / (handDepth || 1);
+
+        // Use stable hand scale (maximum dimension of palm) to prevent shrinking/shifting during tilt
+        const handScale = Math.max(handWidth, handDepth);
+
+        // Watch position: place on the wrist crease (15% offset down the forearm)
+        const wristPlacementOffset = handScale * 0.15;
+        const targetX = wristPt.x + forearmDirX * wristPlacementOffset + liveXOffsetRef.current;
+        const targetY = wristPt.y + forearmDirY * wristPlacementOffset + liveYOffsetRef.current;
+
+        // Watch width: proportional to hand width for natural sizing
+        const wristWidth = handWidth * 1.10;
+        const targetWatchWidth = wristWidth * liveScaleRef.current;
 
         if (smoothedWidthRef.current === null) {
-          smoothedWidthRef.current = targetWidth;
+          smoothedWidthRef.current = targetWatchWidth;
         } else {
-          smoothedWidthRef.current = smoothedWidthRef.current * 0.70 + targetWidth * 0.30;
+          // Responsive smoothing synchronized with position tracking (60% new frame weight)
+          smoothedWidthRef.current = smoothedWidthRef.current * 0.40 + targetWatchWidth * 0.60;
         }
         watchWidth = smoothedWidthRef.current;
 
-        const forearmDirectionX = dx_depth / (handDepth || 1);
-        const forearmDirectionY = dy_depth / (handDepth || 1);
-        const forearmOffset = clamp(handDepth * 0.12, watchWidth * 0.22, watchWidth * 0.46);
+        // Watch rotation: direct perpendicular mapping to forearm direction.
+        // This is extremely stable and works for both hands/orientations without flipping.
+        const targetAngle = Math.atan2(forearmDirY, forearmDirX) - Math.PI / 2 + (liveRotationOffsetRef.current * Math.PI) / 180;
 
-        const targetX = wrist.x - forearmDirectionX * forearmOffset + liveXOffsetRef.current;
-        const targetY = wrist.y - forearmDirectionY * forearmOffset + liveYOffsetRef.current;
+        // Perspective compression: flatten the watch when wrist is angled
+        // Use ratio of visible knuckle width to hand depth as perspective indicator
+        const perspectiveRatio = handWidth / (handDepth || 1);
+        baseCompress = clamp(perspectiveRatio, 0.65, 1.0);
 
-        const knuckleVector = isRightHand
-          ? { x: pinkyMCP.x - indexMCP.x, y: pinkyMCP.y - indexMCP.y }
-          : { x: indexMCP.x - pinkyMCP.x, y: indexMCP.y - pinkyMCP.y };
-
-        const targetAngle = Math.atan2(knuckleVector.y, knuckleVector.x) + (liveRotationOffsetRef.current * Math.PI) / 180;
-        baseCompress = Math.min(1.0, Math.max(0.72, handWidth / (handDepth || 1)));
-
+        // Smoothed position tracking (more responsive than before)
         if (!smoothedPositionRef.current) {
           smoothedPositionRef.current = { x: targetX, y: targetY };
           smoothedAngleRef.current = targetAngle;
@@ -374,13 +410,14 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           const prevPos = smoothedPositionRef.current;
           const prevAngle = smoothedAngleRef.current ?? targetAngle;
 
-          const smoothedX = prevPos.x * 0.55 + targetX * 0.45;
-          const smoothedY = prevPos.y * 0.55 + targetY * 0.45;
+          // More responsive smoothing: 40% previous + 60% new
+          const smoothedX = prevPos.x * 0.40 + targetX * 0.60;
+          const smoothedY = prevPos.y * 0.40 + targetY * 0.60;
 
           let angleDiff = targetAngle - prevAngle;
           while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
           while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-          const smoothedAngle = prevAngle + angleDiff * 0.35;
+          const smoothedAngle = prevAngle + angleDiff * 0.50;
 
           smoothedPositionRef.current = { x: smoothedX, y: smoothedY };
           smoothedAngleRef.current = smoothedAngle;
@@ -399,7 +436,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       } else if (
         (currentCameraState === 'active' || currentCameraState === 'fallback') &&
         lastKnownTrackedStateRef.current !== null &&
-        consecutiveLostFramesRef.current < 25
+        consecutiveLostFramesRef.current < 40
       ) {
         consecutiveLostFramesRef.current += 1;
         drawTrackingActive = true;
@@ -431,17 +468,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           ctx.translate(drawX, drawY);
           ctx.rotate(drawAngle);
 
-          if (isRightHand) {
-            ctx.scale(-1, 1);
-          }
+          // We do NOT horizontally mirror the watch overlay so the watch dial text is always readable (not backward).
 
-          // Soft contact shadow
+          // Soft contact shadow centered under the watch case
           ctx.save();
           ctx.scale(baseCompress, 1);
-          if (ctx.filter !== undefined) ctx.filter = 'blur(10px)';
-          ctx.fillStyle = `rgba(0, 0, 0, ${0.20 * baseCompress})`;
+          if (ctx.filter !== undefined) ctx.filter = 'blur(8px)';
+          ctx.fillStyle = `rgba(0, 0, 0, ${0.22 * baseCompress})`;
           ctx.beginPath();
-          ctx.ellipse(0, watchHeight * 0.28, watchWidth * 0.45, watchHeight * 0.1, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, watchWidth * 0.45, watchWidth * 0.45, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
 
@@ -513,32 +548,44 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handDetected]);
 
-  // Asynchronous detection loop
+  // Asynchronous detection loop — runs at ~30fps independently of the draw loop
   const startDetectionLoop = useCallback(() => {
     let isDetecting = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const runDetection = async () => {
       const currentCameraState = cameraStateRef.current;
 
-      if (currentCameraState === 'active' && videoRef.current && handsRef.current && !isDetecting) {
-        if (videoRef.current.readyState >= 2) {
-          isDetecting = true;
-          try {
-            await handsRef.current.send({ image: videoRef.current });
-          } catch (err) {
-            console.error('Hands frame processing error:', err);
-          } finally {
-            isDetecting = false;
-          }
+      if (
+        currentCameraState === 'active' &&
+        videoRef.current &&
+        handsRef.current &&
+        !isDetecting &&
+        !videoRef.current.paused &&
+        !videoRef.current.ended &&
+        videoRef.current.readyState >= 3   // HAVE_FUTURE_DATA — reliable frame available
+      ) {
+        isDetecting = true;
+        try {
+          await handsRef.current.send({ image: videoRef.current });
+        } catch (err) {
+          console.error('Hands frame processing error:', err);
+        } finally {
+          isDetecting = false;
         }
       }
 
       if (cameraStateRef.current === 'active' || cameraStateRef.current === 'loading') {
-        setTimeout(runDetection, 10);
+        timeoutId = setTimeout(runDetection, 33); // ~30 fps
       }
     };
 
     runDetection();
+
+    // Return cleanup so callers can stop the loop
+    return () => {
+      if (timeoutId !== null) clearTimeout(timeoutId);
+    };
   }, []);
 
   // Start the camera
@@ -550,10 +597,11 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     setHandDetected(false);
 
     try {
+      // Watch try-on: prefer front/user-facing camera (wrist needs to face camera)
       const constraints: any = {
         video: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
-          facingMode: deviceId ? undefined : { ideal: 'environment' },
+          facingMode: deviceId ? undefined : { ideal: 'user' },
           width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 }
@@ -566,11 +614,24 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       navigator.mediaDevices.enumerateDevices().then((devicesList) => {
         const videoDevices = devicesList.filter((d) => d.kind === 'videoinput');
         setDevices(videoDevices);
-        if (!deviceId && videoDevices.length > 0) {
-          const defaultDevice = videoDevices.find(
-            (d) => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('integrated')
+        
+        let activeDev = deviceId ? videoDevices.find((d) => d.deviceId === deviceId) : null;
+        if (!activeDev && videoDevices.length > 0) {
+          // Prefer front/selfie/integrated camera for wrist try-on
+          activeDev = videoDevices.find(
+            (d) => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('integrated') || d.label.toLowerCase().includes('selfie') || d.label.toLowerCase().includes('user') || d.label.toLowerCase().includes('facetime')
           ) || videoDevices[0];
-          setSelectedDeviceId(defaultDevice.deviceId);
+          setSelectedDeviceId(activeDev.deviceId);
+        }
+        
+        if (activeDev) {
+          const label = activeDev.label.toLowerCase();
+          const isBackCamera = label.includes('back') || label.includes('rear') || label.includes('environment');
+          // Front cameras should be mirrored visually; back cameras should NOT be
+          setIsMirror(!isBackCamera);
+        } else {
+          // Default: assume front camera, mirror ON
+          setIsMirror(true);
         }
       }).catch((e) => console.warn('Could not enumerate media devices:', e));
 
@@ -578,6 +639,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         videoRef.current.srcObject = stream;
         videoRef.current.setAttribute('playsinline', 'true');
         videoRef.current.setAttribute('muted', 'true');
+        videoRef.current.setAttribute('autoplay', 'true');
         videoRef.current.muted = true;
 
         videoRef.current.onloadedmetadata = async () => {
@@ -587,6 +649,16 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           } catch (playErr) {
             console.error('Autoplay blocked or failed:', playErr);
           }
+
+          // Safari/WebKit keep-alive: periodically call play() to prevent video suspension
+          const keepAliveInterval = setInterval(() => {
+            if (videoRef.current && videoRef.current.paused && cameraStateRef.current === 'active') {
+              videoRef.current.play().catch(() => {});
+            }
+            if (cameraStateRef.current !== 'active') {
+              clearInterval(keepAliveInterval);
+            }
+          }, 2000);
 
           if (renderFrameId.current) cancelAnimationFrame(renderFrameId.current);
           renderFrameId.current = requestAnimationFrame(drawLoop);
@@ -626,18 +698,28 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         if (!HandsClass) throw new Error('MediaPipe Hands library not loaded.');
 
         const hands = new HandsClass({
+          // Do NOT add query params (?v=1) here — MediaPipe's wasm loader passes
+          // this exact path to fetch(), so query strings break .tflite/.data loading
           locateFile: (file: string) => `/libs/mediapipe/${file}`,
         });
 
         hands.setOptions({
           maxNumHands: 1,
           modelComplexity: 1,
-          minDetectionConfidence: 0.45,
-          minTrackingConfidence: 0.45,
+          minDetectionConfidence: 0.55,
+          minTrackingConfidence: 0.50,
         });
 
         hands.onResults(handleHandResults);
         handsRef.current = hands;
+
+        // Pre-initialize the model (downloads wasm + tflite once, warms up GPU)
+        setLoadingMessage('Warming up hand detection...');
+        try {
+          await hands.initialize();
+        } catch (initErr) {
+          console.warn('hands.initialize() failed (non-fatal):', initErr);
+        }
 
         startWebcam();
       } catch (err) {
@@ -680,6 +762,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     stopAllStreams();
     latestHandResults.current = null;
     setHandDetected(false);
+    setIsMirror(false);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -691,23 +774,39 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         const canvas = canvasRef.current;
         if (canvas) {
-          setManualPosition({ x: canvas.width * 0.5, y: canvas.height * 0.65 });
+          const width = canvas.width;
+          const height = canvas.height;
+          setManualPosition({ x: width * 0.5, y: height * 0.65 });
           setManualScale(1.0);
           setManualRotation(0);
+
+          // Force draw photo immediately to canvas so it is ready before Hands runs
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+            const drawW = img.naturalWidth * scale;
+            const drawH = img.naturalHeight * scale;
+            const offsetX = (width - drawW) / 2;
+            const offsetY = (height - drawH) / 2;
+            ctx.clearRect(0, 0, width, height);
+            ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+          }
         }
 
         if (renderFrameId.current) cancelAnimationFrame(renderFrameId.current);
         renderFrameId.current = requestAnimationFrame(drawLoop);
 
+        // Run hands on uploaded static image (drawn onto the canvas at 640x480)
         setTimeout(async () => {
-          if (handsRef.current) {
+          const canvas = canvasRef.current;
+          if (handsRef.current && canvas) {
             try {
-              await handsRef.current.send({ image: img });
+              await handsRef.current.send({ image: canvas });
             } catch (err) {
               console.error('Error running hands on static image:', err);
             }
           }
-        }, 300);
+        }, 150);
       };
     };
     reader.readAsDataURL(file);
@@ -820,7 +919,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               <div className="absolute inset-0 z-30 bg-[#0B1422] flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <RefreshCw className="w-8 h-8 sm:w-10 sm:h-10 text-[#C9A84C] animate-spin" />
                 <p className="text-xs sm:text-sm font-semibold text-gray-300">{loadingMessage}</p>
-                <p className="text-[10px] text-gray-500 max-w-xs">Point your wrist at the camera for automatic detection</p>
+                <p className="text-[10px] text-gray-500 max-w-xs">Hold your wrist flat and open-palm toward the camera</p>
               </div>
             )}
 
@@ -850,12 +949,23 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               </div>
             )}
 
-            {/* Hidden video */}
+            {/* Video element - visible but behind canvas to prevent browser suspension */}
             <video
               ref={videoRef}
               width={640}
               height={480}
-              style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', opacity: 0.01, zIndex: -10, pointerEvents: 'none' }}
+              autoPlay
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                zIndex: 1,
+                pointerEvents: 'none',
+                transform: isMirror ? 'scaleX(-1)' : 'none'
+              }}
               playsInline
               muted
             />
@@ -872,7 +982,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleMouseUpOrLeave}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+                position: 'relative',
+                zIndex: 2,
+                backgroundColor: cameraState === 'active' ? 'transparent' : '#0F1B30'
+              }}
               className={`select-none ${cameraState === 'fallback' || cameraState === 'denied' || (cameraState === 'active' && !handDetected) ? 'cursor-move' : ''}`}
             />
 
@@ -880,7 +998,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
             {cameraState === 'active' && (
               <div className="absolute top-3 left-3 z-20 bg-black/65 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-white/10 text-[10px] uppercase font-bold tracking-wider text-white flex items-center space-x-1.5">
                 <span className={`w-2 h-2 rounded-full ${handDetected ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-                <span>{handDetected ? 'Wrist Locked ✓' : 'Show your wrist...'}</span>
+                <span>{handDetected ? 'Wrist Locked ✓' : 'Hold wrist flat toward camera'}</span>
               </div>
             )}
 

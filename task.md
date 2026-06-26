@@ -1,0 +1,13 @@
+- [x] Prevent Safari camera suspension in `GlassesTryOnCanvas.tsx`
+- [x] Prevent Safari camera suspension in `WatchTryOnCanvas.tsx`
+- [x] Implement CDN locateFile in `GlassesTryOnCanvas.tsx`
+- [x] Implement CDN locateFile in `WatchTryOnCanvas.tsx`
+- [x] Upgrade Upload Selfie logic in `GlassesTryOnCanvas.tsx`
+- [x] Upgrade Upload Selfie logic in `WatchTryOnCanvas.tsx`
+- [x] Update Facebook and Instagram links in `Footer.tsx`
+- [x] Refactor Watch Wrist auto-fit algorithms (handScale, stable rotation, centered shadow)
+- [x] Keep Watch Face readable (disable horizontal scale mirroring)
+- [x] Eliminate unused catch variables in try/catch to satisfy ESLint
+- [x] Implement transparent canvas overlay architecture to prevent browser suspension of covered video elements
+- [x] Run Next.js production build and TypeScript checks (passed successfully)
+- [x] Delete Titan Workwear NT2649WL01 (Mocha leather strap watch) from Supabase and backup files
