@@ -476,40 +476,6 @@
     "overlay_rotation_offset": null
   },
   {
-    "id": "bb1370c6-52f2-4e4d-bc4b-e2b2a4a66e1e",
-    "name": "Ray-Ban Meta Wayfarer RW4008 601/ST53",
-    "category": "sunglasses",
-    "price": 39900,
-    "description": "Ray-Ban Meta smart glasses - Model: RW4008 601/ST53 | Lens width: 53 mm | Storage: 32 GB | Includes: Charging case, cleaning cloth | Premium smart sunglasses with integrated open-ear speakers, 12MP camera, and Meta AI voice control in a classic matte black Wayfarer frame.",
-    "image_url": "/images/hero_sunglasses.png",
-    "overlay_image_url": "/images/overlays/sunglasses_wayfarer.png",
-    "stock": 10,
-    "created_at": "2026-06-25T20:16:36.039Z",
-    "overlay_scale": 1,
-    "overlay_x_offset": 0,
-    "overlay_y_offset": 0,
-    "overlay_rotation_offset": 0,
-    "lens_image_url": null,
-    "reflection_image_url": null
-  },
-  {
-    "id": "87f5bf66-f260-4419-8ae1-583f6028d27e",
-    "name": "Ray-Ban Meta Headliner RW4012 601/5S53",
-    "category": "sunglasses",
-    "price": 39900,
-    "description": "Ray-Ban Meta smart glasses - Model: RW4012 601/5S53 | Lens width: 53 mm | Storage: 32 GB | Includes: Charging case, cleaning cloth | Smart glasses featuring a rounded, modern Headliner frame with a shiny black finish, transitions lenses, and hands-free video streaming.",
-    "image_url": "/images/hero_sunglasses.png",
-    "overlay_image_url": "/images/overlays/sunglasses_fashion.png",
-    "stock": 10,
-    "created_at": "2026-06-25T20:16:36.047Z",
-    "overlay_scale": 1.05,
-    "overlay_x_offset": 0,
-    "overlay_y_offset": 0,
-    "overlay_rotation_offset": 0,
-    "lens_image_url": null,
-    "reflection_image_url": null
-  },
-  {
     "id": "06b4c9ae-bfdb-48ee-9b64-26fa8c2c334a",
     "name": "Ray-Ban Meta Wayfarer Shiny Smoke",
     "category": "sunglasses",
@@ -644,5 +610,22 @@
     "overlay_rotation_offset": 0,
     "lens_image_url": null,
     "reflection_image_url": null
+  },
+  {
+    "id": "12f074ba-0dee-49bd-9bc3-0df8220e2bf0",
+    "name": "RAY-BAN META GLASSES (Gen 1)",
+    "category": "sunglasses",
+    "price": 39900,
+    "description": "Ray-Ban Meta smart glasses (Gen 1) | Model: RW4006 | Matte Black Wayfarer Frame | Clear Lenses | High-tech smart glasses featuring dual 5MP cameras, open-ear audio speakers, touch control, and seamless social sharing.",
+    "image_url": "/images/rayban_meta_glasses_gen1.png",
+    "overlay_image_url": "/images/overlays/rayban_meta_glasses_gen1.png",
+    "stock": 10,
+    "created_at": "2026-06-27T09:49:47.417804+00:00",
+    "overlay_scale": 1,
+    "overlay_y_offset": 0,
+    "overlay_x_offset": 0,
+    "lens_image_url": null,
+    "reflection_image_url": null,
+    "overlay_rotation_offset": 0
   }
 ]
