@@ -763,8 +763,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         if (!active) return;
 
         const img = new Image();
+        if (product.overlay_image_url.startsWith('http://') || product.overlay_image_url.startsWith('https://')) {
+          img.crossOrigin = 'anonymous';
+        }
         img.src = product.overlay_image_url;
-        img.crossOrigin = 'anonymous';
         img.onload = () => {
           overlayImageRef.current = img;
           assetBBoxRef.current = computeAssetBBox(img);

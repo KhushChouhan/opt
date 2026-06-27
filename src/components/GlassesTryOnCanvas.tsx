@@ -163,7 +163,9 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
     // Load overlay image with cache-busting to prevent cached non-CORS response errors
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    if (activeUrl.startsWith('http://') || activeUrl.startsWith('https://')) {
+      img.crossOrigin = 'anonymous';
+    }
     img.src = activeUrl.includes('?')
       ? `${activeUrl}&${cb}`
       : `${activeUrl}?${cb}`;
@@ -231,7 +233,9 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     // Load optional lens image with cache-busting
     if (product.lens_image_url) {
       const lensImg = new Image();
-      lensImg.crossOrigin = 'anonymous';
+      if (product.lens_image_url.startsWith('http://') || product.lens_image_url.startsWith('https://')) {
+        lensImg.crossOrigin = 'anonymous';
+      }
       lensImg.src = product.lens_image_url.includes('?')
         ? `${product.lens_image_url}&${cb}`
         : `${product.lens_image_url}?${cb}`;
@@ -248,7 +252,9 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
     // Load optional reflection image with cache-busting
     if (product.reflection_image_url) {
       const reflImg = new Image();
-      reflImg.crossOrigin = 'anonymous';
+      if (product.reflection_image_url.startsWith('http://') || product.reflection_image_url.startsWith('https://')) {
+        reflImg.crossOrigin = 'anonymous';
+      }
       reflImg.src = product.reflection_image_url.includes('?')
         ? `${product.reflection_image_url}&${cb}`
         : `${product.reflection_image_url}?${cb}`;
