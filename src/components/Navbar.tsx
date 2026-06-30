@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { motion, useScroll, useMotionValueEvent } from 'framer-motion';
 import {
   Phone, Star, Eye, ShieldCheck, Search, Menu, X,
   ChevronDown, Watch, Glasses, LogOut, Shield,
 } from 'lucide-react';
+import Modal from '@/components/ui/Modal';
 
 interface NavItem {
   label: string;
@@ -26,7 +27,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'All Watches', href: '/products?category=watches' },
       { label: 'Chronographs', href: '/products?category=watches' },
       { label: 'Automatic', href: '/products?category=watches' },
-      { label: 'Smart Watches', href: '/products?category=watches' },
+      { label: 'Smart Watches', href: '/products?category=smart-watches' },
     ],
   },
   {
@@ -39,15 +40,18 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Lenses', href: '/products?category=glasses' },
     ],
   },
-  { label: 'Brands', href: '/#brands' },
-  { label: 'Collections', href: '/#categories' },
-  { label: 'About Us', href: '/#about' },
-  { label: 'Contact', href: '/#contact' },
+  { label: 'Blog', href: '/blog' },
+  { label: 'About Us', href: '/about' },
+  { label: 'Contact', href: '/contact' },
 ];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const isActive = (href: string) => pathname === href;
 
@@ -55,14 +59,48 @@ export default function Navbar() {
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
 
+  // Auto-close mobile drawer when user scrolls the page
+  const lastScrollY = React.useRef(0);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      lastScrollY.current = window.scrollY;
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      if (isOpen) {
+        const diff = Math.abs(window.scrollY - lastScrollY.current);
+        if (diff > 25) {
+          setIsOpen(false);
+        }
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isOpen]);
+
   useMotionValueEvent(scrollY, 'change', (latest) => {
     const previous = scrollY.getPrevious() ?? 0;
+    if (isOpen) {
+      setHidden(false);
+      return;
+    }
     if (latest > previous && latest > 150) {
       setHidden(true);
     } else {
       setHidden(false);
     }
   });
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    setIsSearchOpen(false);
+    setSearchQuery('');
+  };
 
   return (
     <motion.header
@@ -78,9 +116,9 @@ export default function Navbar() {
       <div className="bg-gradient-to-r from-[#9e782f] via-[#c7a14e] to-[#9e782f] text-[#050c14] border-b border-black/5 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-9 text-[10px] sm:text-[11px] font-bold tracking-widest uppercase">
-            <a href="tel:+919876543210" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+            <a href="tel:+919828207999" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
               <Phone className="w-3.5 h-3.5" />
-              <span>+91 98765 43210</span>
+              <span>+91 98282-07999</span>
             </a>
             <div className="hidden md:flex items-center gap-1.5">
               <Star className="w-3.5 h-3.5 fill-current" />
@@ -158,14 +196,14 @@ export default function Navbar() {
             {/* Right actions */}
             <div className="hidden lg:flex items-center gap-6">
               <span className="w-px h-9 bg-[#c7a14e]/20" aria-hidden="true" />
-              <Link
-                href="/products"
+              <button
+                onClick={() => setIsSearchOpen(true)}
                 aria-label="Search products"
                 className="flex flex-col items-center gap-0.5 text-[#c7a14e] hover:text-[#e8d9a0] transition-colors"
               >
                 <Search className="w-5 h-5" />
                 <span className="text-[10px] font-semibold uppercase tracking-wider">Search</span>
-              </Link>
+              </button>
               {session && (
                 <>
                   <Link
@@ -207,19 +245,27 @@ export default function Navbar() {
               <Link
                 key={item.label}
                 href={item.href}
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push(item.href);
+                  setTimeout(() => {
+                    setIsOpen(false);
+                  }, 150);
+                }}
                 className="block px-3 py-2.5 rounded-md text-sm font-semibold uppercase tracking-wider text-gray-200 hover:text-[#c7a14e] hover:bg-white/5 transition-colors"
               >
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/products"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-semibold uppercase tracking-wider text-[#c7a14e] hover:bg-white/5"
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                setIsSearchOpen(true);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-semibold uppercase tracking-wider text-[#c7a14e] hover:bg-white/5 text-left"
             >
               <Search className="w-4 h-4" /> Search
-            </Link>
+            </button>
             {session && (
               <div className="flex gap-2 pt-2 border-t border-white/10 mt-2">
                 <Link href="/admin" onClick={() => setIsOpen(false)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold border border-[#c7a14e]/40 text-[#c7a14e]">
@@ -233,6 +279,37 @@ export default function Navbar() {
           </div>
         )}
       </nav>
+
+      {/* Search Modal */}
+      <Modal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        title="Search Products"
+      >
+        <form onSubmit={handleSearchSubmit} className="p-6 space-y-4">
+          <p className="text-sm text-gray-400 font-light">
+            Looking for a specific watch model, brand, or eyewear frame? Type it below:
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              required
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, brand, material..."
+              className="flex-1 bg-[#0b131e] border border-[#c7a14e]/20 rounded-md px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#c7a14e]/60"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="bg-[#c7a14e] hover:bg-[#e8d9a0] text-[#050c14] px-5 py-3 rounded-md font-bold text-xs uppercase tracking-wider transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <Search className="w-4 h-4" />
+              <span>Search</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
     </motion.header>
   );
 }

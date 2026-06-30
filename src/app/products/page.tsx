@@ -9,6 +9,7 @@ import { Glasses, Watch, Search, SlidersHorizontal, RefreshCw, X, Check, Wallet,
 import { buildWhatsAppUrl, WHATSAPP_PRIMARY } from '@/utils/whatsapp';
 import Button from '@/components/ui/Button';
 import { Card, CardContent, CardFooter } from '@/components/ui/Card';
+import CheckoutModal from '@/components/CheckoutModal';
 
 interface Product {
   id: string;
@@ -19,6 +20,7 @@ interface Product {
   image_url: string;
   overlay_image_url: string;
   stock: number;
+  brand?: string;
 }
 
 // Color Swatch type definition
@@ -43,6 +45,12 @@ const getActualCategory = (product: Product): string => {
     if (product.description.includes('[Category: wallets]')) return 'wallets';
     if (product.description.includes('[Category: accessories]')) return 'accessories';
   }
+  if (product.category === 'watches') {
+    const isSmart = product.name.toLowerCase().includes('smart') || 
+                    product.description?.toLowerCase().includes('smartwatch') || 
+                    product.description?.toLowerCase().includes('smart watch');
+    if (isSmart) return 'smart-watches';
+  }
   return product.category;
 };
 
@@ -51,13 +59,18 @@ function CatalogContent() {
   const searchParams = useSearchParams();
   
   // Grid column choice layout state: 2, 3, or 4 columns on desktop
-  const [gridCols, setGridCols] = useState<number>(3);
+  const [gridCols, setGridCols] = useState<number>(4);
   
   // Slide-out filter drawer state
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
+
+  // Buy Now Checkout states
+  const [checkoutProduct, setCheckoutProduct] = useState<{ id: string; name: string; price: number } | null>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   
   // Faceted filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
   const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
@@ -67,13 +80,27 @@ function CatalogContent() {
   // SWR Fetching
   const { data: products, error, isLoading, mutate } = useSWR<Product[]>('/api/products');
 
-  // Handle category initial state from URL query
+  // Handle category and brand initial state from URL query
   useEffect(() => {
     const cat = searchParams.get('category');
-    if (cat && ['glasses', 'sunglasses', 'watches', 'belts', 'perfumes', 'wallets', 'accessories'].includes(cat)) {
+    if (cat && ['glasses', 'sunglasses', 'watches', 'smart-watches', 'belts', 'perfumes', 'wallets', 'accessories'].includes(cat)) {
       setSelectedCategories([cat]);
     } else {
       setSelectedCategories([]);
+    }
+
+    const brand = searchParams.get('brand');
+    if (brand) {
+      setSelectedBrand(brand);
+    } else {
+      setSelectedBrand(null);
+    }
+
+    const search = searchParams.get('search');
+    if (search) {
+      setSearchQuery(search);
+    } else {
+      setSearchQuery('');
     }
   }, [searchParams]);
 
@@ -195,7 +222,15 @@ function CatalogContent() {
           });
         }
 
-        return matchesSearch && matchesCategory && matchesStock && matchesPrice && matchesColor && matchesMaterial;
+        // 7. Brand Filter
+        let matchesBrand = true;
+        if (selectedBrand) {
+          const targetBrandClean = selectedBrand.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const productBrand = (product.brand || product.name.split(' ')[0] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          matchesBrand = productBrand.includes(targetBrandClean) || targetBrandClean.includes(productBrand);
+        }
+
+        return matchesSearch && matchesCategory && matchesStock && matchesPrice && matchesColor && matchesMaterial && matchesBrand;
       })
     : [];
 
@@ -215,6 +250,7 @@ function CatalogContent() {
     { value: 'glasses', label: 'Eyeglasses', icon: Glasses },
     { value: 'sunglasses', label: 'Sunglasses', icon: Glasses },
     { value: 'watches', label: 'Watches', icon: Watch },
+    { value: 'smart-watches', label: 'Smart Watches', icon: Watch },
     { value: 'belts', label: 'Belts', icon: ShoppingBag },
     { value: 'perfumes', label: 'Perfumes', icon: Sparkles },
     { value: 'wallets', label: 'Wallets', icon: Wallet },
@@ -227,7 +263,8 @@ function CatalogContent() {
     (inStockOnly ? 1 : 0) +
     selectedPrices.length +
     selectedColors.length +
-    selectedMaterials.length;
+    selectedMaterials.length +
+    (selectedBrand ? 1 : 0);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative">
@@ -292,20 +329,6 @@ function CatalogContent() {
           {/* Desktop Grid Layout Selector */}
           <div className="hidden lg:flex items-center space-x-1 border border-gray-700 rounded-md p-1 bg-[#0B1422]/55">
             <button
-              onClick={() => setGridCols(2)}
-              className={`p-1.5 rounded transition-all ${
-                gridCols === 2
-                  ? 'bg-[#C9A84C] text-[#0B1422]'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-              title="2 Columns Grid"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="3" width="7" height="18" rx="1" />
-                <rect x="14" y="3" width="7" height="18" rx="1" />
-              </svg>
-            </button>
-            <button
               onClick={() => setGridCols(3)}
               className={`p-1.5 rounded transition-all ${
                 gridCols === 3
@@ -364,6 +387,22 @@ function CatalogContent() {
               <button onClick={() => handleCategoryToggle(cat)} className="hover:text-white"><X className="w-3 h-3" /></button>
             </span>
           ))}
+
+          {selectedBrand && (
+            <span className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30 px-2.5 py-1 rounded">
+              <span>Brand: {selectedBrand}</span>
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams(window.location.search);
+                  params.delete('brand');
+                  router.replace(`/products?${params.toString()}`);
+                }}
+                className="hover:text-white"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
 
           {inStockOnly && (
             <span className="flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/30 px-2.5 py-1 rounded">
@@ -461,9 +500,7 @@ function CatalogContent() {
           initial="hidden"
           animate="show"
           className={`grid gap-8 transition-all duration-300 ${
-            gridCols === 2
-              ? 'grid-cols-1 md:grid-cols-2'
-              : gridCols === 4
+            gridCols === 4
               ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
               : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
           }`}
@@ -516,7 +553,7 @@ function CatalogContent() {
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                       priority={false}
-                      className="object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="object-contain p-4 transition-transform duration-700 group-hover:scale-105"
                     />
                     
                     {isOutofStock && (
@@ -538,7 +575,7 @@ function CatalogContent() {
                         onClick={handleAction}
                         className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 px-5 py-2.5 bg-[#C9A84C] hover:bg-[#C9A84C]/90 text-[#0B1422] font-bold text-xs uppercase tracking-wider rounded-md shadow-lg"
                       >
-                        {hasTryOn ? 'Instant Mirror Try-On' : 'Inquire on WhatsApp'}
+                        {hasTryOn ? 'Instant Mirror Try-On' : 'Buy on WhatsApp'}
                       </button>
                     </div>
                   </div>
@@ -556,9 +593,17 @@ function CatalogContent() {
                     
                     <div className="flex items-baseline justify-between mt-2 pt-3 border-t border-white/5">
                       <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Luxury Price</span>
-                      <span className="text-lg font-bold text-[#C9A84C]">
-                        ₹{product.price.toLocaleString('en-IN')}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-lg font-bold text-[#C9A84C]">
+                          ₹{Math.round(product.price * 0.8).toLocaleString('en-IN')}
+                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[11px] text-gray-500 line-through">
+                            ₹{product.price.toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-[10px] text-[#25D366] font-bold">20% Off</span>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
 
@@ -569,12 +614,25 @@ function CatalogContent() {
                         Out of Stock
                       </Button>
                     ) : (
-                      <Button
-                        onClick={handleAction}
-                        className="w-full font-bold uppercase tracking-wider text-xs"
-                      >
-                        {hasTryOn ? 'Virtual Try On →' : 'Inquire Now →'}
-                      </Button>
+                      <div className="flex flex-col space-y-2 w-full">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCheckoutProduct({ id: product.id, name: product.name, price: Math.round(product.price * 0.8) });
+                            setIsCheckoutOpen(true);
+                          }}
+                          className="w-full font-bold uppercase tracking-wider text-xs bg-[#C9A84C] text-[#0B1422] hover:bg-[#e8d9a0]"
+                        >
+                          Buy Now
+                        </Button>
+                        <Button
+                          onClick={handleAction}
+                          variant="outline"
+                          className="w-full font-bold uppercase tracking-wider text-xs border-gray-700 text-gray-300 hover:text-white hover:bg-white/5"
+                        >
+                          {hasTryOn ? 'Virtual Try On →' : 'Buy on WhatsApp →'}
+                        </Button>
+                      </div>
                     )}
                   </CardFooter>
                 </Card>
@@ -761,6 +819,13 @@ function CatalogContent() {
 
         </div>
       </div>
+
+      {/* Checkout Modal Dialog */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        product={checkoutProduct}
+      />
 
     </div>
   );

@@ -95,51 +95,6 @@ async function runSeed() {
   console.log('Seeding demo products...');
   const demoProducts = [
     {
-      name: 'Titan Classic Rectangular',
-      category: 'glasses',
-      price: 1499.00,
-      description: 'Elegant rectangular eyeglasses with a matte black metal frame. Perfect for daily office wear.',
-      image_url: '/images/hero_glasses.png',
-      overlay_image_url: '/images/overlays/glasses_classic.png',
-      stock: 15
-    },
-    {
-      name: 'Ray-Ban Aviator Optical',
-      category: 'glasses',
-      price: 4500.00,
-      description: 'Timeless gold metal wireframe aviator eyeglasses. Light, comfortable, and durable.',
-      image_url: '/images/hero_glasses.png',
-      overlay_image_url: '/images/overlays/glasses_gold.png',
-      stock: 8
-    },
-    {
-      name: 'Fastrack Sporty Sunglasses',
-      category: 'sunglasses',
-      price: 2199.00,
-      description: 'Aero-dynamic sports sunglasses with UV protection and a sleek wrap-around profile.',
-      image_url: '/images/hero_sunglasses.png',
-      overlay_image_url: '/images/overlays/first_3.png',
-      stock: 20
-    },
-    {
-      name: 'Ray-Ban Wayfarer Classic',
-      category: 'sunglasses',
-      price: 8999.00,
-      description: 'The iconic wayfarer sunglasses with green classic G-15 tinted lenses. Absolute style statement.',
-      image_url: '/images/hero_sunglasses.png',
-      overlay_image_url: '/images/overlays/first_1.png',
-      stock: 5
-    },
-    {
-      name: 'Ray-Ban New Wayfarer Classic sunglasses',
-      category: 'sunglasses',
-      price: 14090.00,
-      description: 'Aero-dynamic sports sunglasses with UV protection and a sleek wrap-around profile.',
-      image_url: '/images/hero_sunglasses.png',
-      overlay_image_url: '/images/overlays/first_2.png',
-      stock: 12
-    },
-    {
       name: 'Titan Karishma 1648SM01',
       category: 'watches',
       price: 2695.00,

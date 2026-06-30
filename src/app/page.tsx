@@ -1,15 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import useSWR from 'swr';
 import {
   ShieldCheck, BadgeCheck, CreditCard, RefreshCw, Truck,
   Watch, Glasses, ArrowRight, ChevronLeft, ChevronRight,
-  Camera, ScanFace, Heart, Star, Upload
+  Camera, ScanFace, Star, Upload, ShoppingCart
 } from 'lucide-react';
 import { buildWhatsAppUrl, WHATSAPP_PRIMARY } from '@/utils/whatsapp';
 import ShowroomLegacySection from '@/components/ShowroomLegacySection';
+import CheckoutModal from '@/components/CheckoutModal';
 
 /* ---------------- Section heading ---------------- */
 function Heading({ eyebrow, title }: { eyebrow: string; title: string }) {
@@ -33,7 +36,7 @@ const TRUST = [
 
 const CATEGORIES = [
   { title: 'Watches', image: '/images/luxury_watches.png', href: '/products?category=watches' },
-  { title: 'Smart Watches', image: '/images/luxury_smartwatch.png', href: '/products?category=watches' },
+  { title: 'Smart Watches', image: '/images/luxury_smartwatch.png', href: '/products?category=smart-watches' },
   { title: 'Sunglasses', image: '/images/luxury_sunglasses.png', href: '/products?category=sunglasses' },
   { title: 'Optical Frames', image: '/images/luxury_optical_frames.png', href: '/products?category=glasses' },
   { title: 'Perfumes', image: '/images/luxury_perfumes.png', href: '/products?category=perfumes' },
@@ -71,6 +74,25 @@ export default function Home() {
     carouselRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
   };
 
+  // SWR products fetching for live best sellers
+  const { data: products } = useSWR<any[]>('/api/products');
+  const [checkoutProduct, setCheckoutProduct] = useState<any>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // Fallback to static list if SWR hasn't resolved yet
+  const bestSellersList = products && products.length > 0
+    ? products.filter(p => ['watches', 'sunglasses', 'glasses'].includes(p.category)).slice(0, 6)
+    : BEST_SELLERS.map((p, idx) => ({
+        id: `mock-${idx}`,
+        name: p.name,
+        brand: p.brand,
+        price: p.price,
+        image_url: p.image,
+        category: p.category,
+        description: `${p.brand} premium product.`,
+        stock: 5
+      }));
+
   return (
     <div className="bg-[#050c14] text-white overflow-hidden">
       {/* ============ HERO ============ */}
@@ -82,11 +104,11 @@ export default function Home() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-right"
+          className="object-cover object-[75%_center] md:object-right transition-all duration-700"
         />
         {/* Left fade for text legibility */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050c14] via-[#050c14]/75 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050c14]/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050c14] via-[#050c14]/90 sm:via-[#050c14]/70 to-transparent z-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050c14] via-transparent to-transparent z-0" />
 
         {/* Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-16 md:py-24">
@@ -122,15 +144,20 @@ export default function Home() {
       </section>
 
       {/* ============ TRUST BAR ============ */}
-      <section className="border-y border-[#c7a14e]/15 bg-[#0b131e]/60 py-6">
+      <section className="border-y border-[#c7a14e]/15 bg-[#0b131e]/40 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-y-8 md:gap-y-0 divide-y md:divide-y-0 md:divide-x divide-[#c7a14e]/15">
-            {TRUST.map((t) => (
-              <div key={t.title} className="flex items-center gap-3.5 justify-center px-4">
-                <t.icon className="w-7 h-7 text-[#c7a14e] flex-shrink-0" strokeWidth={1.5} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {TRUST.map((t, idx) => (
+              <div 
+                key={t.title} 
+                className={`flex flex-col sm:flex-row items-center gap-3.5 text-center sm:text-left justify-center sm:justify-start p-4 rounded-xl border border-white/5 bg-[#0b131e]/30 hover:border-[#c7a14e]/20 transition-all duration-300 ${
+                  idx === 4 ? 'col-span-2 sm:col-span-1' : ''
+                }`}
+              >
+                <t.icon className="w-8 h-8 text-[#c7a14e] flex-shrink-0" strokeWidth={1.5} />
                 <div>
-                  <p className="text-[10px] font-bold text-white uppercase tracking-wider leading-tight">{t.title}</p>
-                  <p className="text-[9.5px] text-gray-400 mt-1">{t.sub}</p>
+                  <p className="text-[11px] sm:text-xs font-bold text-white uppercase tracking-wider leading-tight">{t.title}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">{t.sub}</p>
                 </div>
               </div>
             ))}
@@ -141,7 +168,7 @@ export default function Home() {
       {/* ============ SHOP BY CATEGORY ============ */}
       <section id="categories" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Heading eyebrow="Shop by Category" title="Find Your Perfect Style" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {CATEGORIES.map((c) => (
             <Link
               key={c.title}
@@ -152,14 +179,14 @@ export default function Home() {
                 src={c.image}
                 alt={c.title}
                 fill
-                sizes="(max-width:1024px) 50vw, 25vw"
+                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#050c14] via-[#050c14]/30 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <h3 className="font-display text-2xl font-bold text-white">{c.title}</h3>
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#c7a14e] mt-1.5 group-hover:gap-2.5 transition-all">
-                  Explore Collection <ArrowRight className="w-4 h-4" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050c14] via-[#050c14]/75 to-transparent z-10" />
+              <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 z-20">
+                <h3 className="font-display text-xl sm:text-2xl font-bold text-white leading-normal tracking-wide drop-shadow-md pb-0.5">{c.title}</h3>
+                <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#c7a14e] mt-1 group-hover:gap-2.5 transition-all drop-shadow-sm">
+                  Explore Collection <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
             </Link>
@@ -196,8 +223,8 @@ export default function Home() {
                   <div className="w-14 h-14 rounded-full border border-[#c7a14e]/45 bg-[#0b131e] flex items-center justify-center text-[#c7a14e] shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all hover:border-[#c7a14e]">
                     <Upload className="w-5 h-5" strokeWidth={1.5} />
                   </div>
-                  <p className="text-[9.5px] font-bold text-[#c7a14e] uppercase tracking-wider mt-4 leading-tight">1. UPLOAD PHOTO</p>
-                  <p className="text-[9px] text-[#B8C0CC] mt-2 leading-snug font-light max-w-[100px] sm:max-w-[120px]">Upload or take a clear photo</p>
+                  <p className="text-[11px] sm:text-[13px] font-bold text-[#c7a14e] uppercase tracking-wider mt-4 leading-tight">1. UPLOAD PHOTO</p>
+                  <p className="text-[10.5px] sm:text-[12px] text-[#B8C0CC] mt-2 leading-snug font-light max-w-[100px] sm:max-w-[120px]">Upload or take a clear photo</p>
                 </div>
 
                 {/* Connector 1 */}
@@ -208,8 +235,8 @@ export default function Home() {
                   <div className="w-14 h-14 rounded-full border border-[#c7a14e]/45 bg-[#0b131e] flex items-center justify-center text-[#c7a14e] shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all hover:border-[#c7a14e]">
                     <ScanFace className="w-5 h-5" strokeWidth={1.5} />
                   </div>
-                  <p className="text-[9.5px] font-bold text-[#c7a14e] uppercase tracking-wider mt-4 leading-tight">2. AI DETECTS FACE</p>
-                  <p className="text-[9px] text-[#B8C0CC] mt-2 leading-snug font-light max-w-[100px] sm:max-w-[120px]">Our AI detects your face instantly</p>
+                  <p className="text-[11px] sm:text-[13px] font-bold text-[#c7a14e] uppercase tracking-wider mt-4 leading-tight">2. AI DETECTS FACE</p>
+                  <p className="text-[10.5px] sm:text-[12px] text-[#B8C0CC] mt-2 leading-snug font-light max-w-[100px] sm:max-w-[120px]">Our AI detects your face instantly</p>
                 </div>
 
                 {/* Connector 2 */}
@@ -220,8 +247,8 @@ export default function Home() {
                   <div className="w-14 h-14 rounded-full border border-[#c7a14e]/45 bg-[#0b131e] flex items-center justify-center text-[#c7a14e] shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all hover:border-[#c7a14e]">
                     <Glasses className="w-5 h-5" strokeWidth={1.5} />
                   </div>
-                  <p className="text-[9.5px] font-bold text-[#c7a14e] uppercase tracking-wider mt-4 leading-tight">3. SEE REAL-TIME PREVIEW</p>
-                  <p className="text-[9px] text-[#B8C0CC] mt-2 leading-snug font-light max-w-[100px] sm:max-w-[120px]">Try frames in real-time before you buy</p>
+                  <p className="text-[11px] sm:text-[13px] font-bold text-[#c7a14e] uppercase tracking-wider mt-4 leading-tight">3. SEE REAL-TIME PREVIEW</p>
+                  <p className="text-[10.5px] sm:text-[12px] text-[#B8C0CC] mt-2 leading-snug font-light max-w-[100px] sm:max-w-[120px]">Try frames in real-time before you buy</p>
                 </div>
 
               </div>
@@ -298,40 +325,78 @@ export default function Home() {
             className="flex gap-5 overflow-x-auto scroll-smooth pb-4 snap-x"
             style={{ scrollbarWidth: 'none' }}
           >
-            {BEST_SELLERS.map((p) => (
-              <div
-                key={p.name}
-                onClick={() => inquire(`${p.brand} ${p.name}`)}
-                className="cursor-pointer snap-start flex-shrink-0 w-[220px] rounded-xl border border-white/10 bg-[#0b131e]/90 hover:border-[#c7a14e]/50 hover:shadow-[0_4px_25px_rgba(0,0,0,0.4)] transition-all duration-300 group flex flex-col justify-between overflow-hidden"
-              >
-                <div className="relative aspect-square w-full bg-transparent overflow-hidden">
-                  <Image 
-                    src={p.image} 
-                    alt={p.name} 
-                    fill 
-                    sizes="220px" 
-                    className="object-contain p-6 group-hover:scale-105 transition-transform duration-500" 
-                  />
-                </div>
-                <div className="p-4 pt-0">
-                  <p className="text-[11px] font-semibold text-white uppercase tracking-wider">{p.brand}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5 font-normal truncate">{p.name}</p>
-                  <div className="flex items-center justify-between mt-2.5">
-                    <span className="text-xs font-semibold text-white">₹{p.price.toLocaleString('en-IN')}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Heart click action
-                      }}
-                      aria-label="Add to wishlist"
-                      className="text-[#c7a14e] hover:text-white transition-colors p-1"
-                    >
-                      <Heart className="w-3.5 h-3.5 fill-none" strokeWidth={2} />
-                    </button>
+            {bestSellersList.map((p: any) => {
+              const actualBrand = p.brand || p.name.split(' ')[0];
+              const actualName = p.name;
+              const hasTryOn = ['glasses', 'sunglasses', 'watches'].includes(p.category);
+              const tryOnLink = p.category === 'watches'
+                ? `/try-on/watches/${p.id}`
+                : `/try-on/glasses/${p.id}`;
+
+              return (
+                <div
+                  key={p.id}
+                  className="snap-start flex-shrink-0 w-[240px] rounded-xl border border-white/10 bg-[#0b131e]/90 hover:border-[#c7a14e]/50 hover:shadow-[0_4px_25px_rgba(0,0,0,0.4)] transition-all duration-300 group flex flex-col justify-between overflow-hidden"
+                >
+                  <div className="relative aspect-square w-full bg-transparent overflow-hidden">
+                    <Image 
+                      src={p.image_url} 
+                      alt={p.name} 
+                      fill 
+                      sizes="240px" 
+                      className="object-contain p-6 group-hover:scale-105 transition-transform duration-500" 
+                    />
+                  </div>
+                  <div className="p-4 pt-0 flex flex-col justify-between flex-grow">
+                    <div>
+                      <p className="text-[11px] font-semibold text-[#c7a14e] uppercase tracking-wider">{actualBrand}</p>
+                      <p className="text-[12px] text-white mt-0.5 font-bold truncate leading-snug line-clamp-1">{actualName}</p>
+                    </div>
+                    <div className="flex flex-col gap-0.5 mt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white">₹{Math.round(p.price * 0.8).toLocaleString('en-IN')}</span>
+                        <span className="text-[9px] text-[#c7a14e] uppercase tracking-widest font-semibold">{p.category}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[9px]">
+                        <span className="text-gray-500 line-through">₹{p.price.toLocaleString('en-IN')}</span>
+                        <span className="text-[#25D366] font-bold">20% Off</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3.5 space-y-1.5">
+                      {!p.id.startsWith('mock-') ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCheckoutProduct({ id: p.id, name: p.name, price: Math.round(p.price * 0.8) });
+                            setIsCheckoutOpen(true);
+                          }}
+                          className="w-full py-2 bg-[#c7a14e] text-[#050c14] hover:bg-[#e8d9a0] text-[10px] font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1 shadow-md"
+                        >
+                          <ShoppingCart className="w-3 h-3" /> Buy Now
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => inquire(`${actualBrand} ${actualName}`)}
+                          className="w-full py-2 bg-[#c7a14e] text-[#050c14] hover:bg-[#e8d9a0] text-[10px] font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1 shadow-md"
+                        >
+                          Buy on WhatsApp
+                        </button>
+                      )}
+                      
+                      {hasTryOn && !p.id.startsWith('mock-') && (
+                        <Link
+                          href={tryOnLink}
+                          className="block w-full py-1.5 border border-[#c7a14e]/30 text-gray-300 hover:text-white text-[10px] font-bold uppercase tracking-wider rounded text-center transition-colors hover:bg-[#c7a14e]/10"
+                        >
+                          Try On AR
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <button
             onClick={() => scrollCarousel(1)}
@@ -350,38 +415,34 @@ export default function Home() {
         <Heading eyebrow="What Our Customers Say" title="Trusted By Thousands" />
         <div className="grid md:grid-cols-3 gap-6">
           {REVIEWS.map((r) => (
-            <div key={r.name} className="rounded-xl border border-white/10 bg-[#0b131e]/90 p-5 sm:p-6 flex items-center gap-4 sm:gap-5 hover:border-[#c7a14e]/35 hover:shadow-[0_4px_25px_rgba(0,0,0,0.3)] transition-all duration-300">
-              {/* Profile Image with Gold Ring */}
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-[#c7a14e]/40 p-1 flex-shrink-0">
-                <div className="relative w-full h-full rounded-full overflow-hidden">
-                  <Image
-                    src={r.image}
-                    alt={r.name}
-                    fill
-                    sizes="(max-width: 640px) 80px, 96px"
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-
-              {/* Review Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex gap-0.5 mb-1.5">
+            <div key={r.name} className="rounded-xl border border-white/10 bg-[#0b131e]/90 p-6 flex flex-col justify-between hover:border-[#c7a14e]/35 hover:shadow-[0_4px_25px_rgba(0,0,0,0.3)] transition-all duration-300 min-h-[160px]">
+              <div>
+                <div className="flex gap-0.5 mb-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-[#c7a14e] text-[#c7a14e]" />
+                    <Star key={i} className="w-4 h-4 fill-[#c7a14e] text-[#c7a14e]" />
                   ))}
                 </div>
-                <p className="text-xs sm:text-sm text-gray-300 leading-relaxed font-light">
+                <p className="text-sm text-gray-300 leading-relaxed font-light italic">
                   &ldquo;{r.quote}&rdquo;
                 </p>
-                <p className="text-xs sm:text-sm font-semibold text-white/95 mt-2">
-                  &mdash; {r.name}
-                </p>
               </div>
+              <p className="text-sm font-semibold text-white/95 mt-4 pt-3 border-t border-white/5">
+                &mdash; {r.name}
+              </p>
             </div>
           ))}
         </div>
       </section>
+
+
+
+      {/* Checkout Modal Dialog */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        product={checkoutProduct}
+      />
+
     </div>
   );
 }

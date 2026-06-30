@@ -5,11 +5,12 @@ import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import { useSession } from 'next-auth/react';
-import { Camera, Upload, Check, AlertCircle, RefreshCw, MessageCircle, HelpCircle, Sliders, Flame, X } from 'lucide-react';
+import { Camera, Upload, Check, AlertCircle, RefreshCw, MessageCircle, HelpCircle, Sliders, Flame, X, ShoppingCart } from 'lucide-react';
 import { loadScript } from '@/lib/loadScript';
 import Button from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { buildWhatsAppUrl, WHATSAPP_STORE } from '@/utils/whatsapp';
+import CheckoutModal from '@/components/CheckoutModal';
 
 // Feature flags for try-on fitting engine A/B testing and local calibration debugging
 const USE_NEW_FITTING_ENGINE = true;
@@ -64,6 +65,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   const [selectedOverlayId, setSelectedOverlayId] = useState<string>('default');
   const [showAdjustPanel, setShowAdjustPanel] = useState(false);
   const [isMirror, setIsMirror] = useState(true);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   const isMirrorRef = useRef(isMirror);
   useEffect(() => {
@@ -1031,7 +1033,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
   // WhatsApp Inquiry
   const handleInquiry = () => {
-    const msg = `Hi Hariyana Watch & Opticals! 👋\n\nI'm interested in purchasing:\n\n*${product.name}*\nPrice: ₹${product.price.toLocaleString('en-IN')}\n\nPlease share availability and more details. Thank you!`;
+    const msg = `Hi Hariyana Watch & Opticals! 👋\n\nI'm interested in purchasing:\n\n*${product.name}*\nPrice: ₹${Math.round(product.price * 0.8).toLocaleString('en-IN')} (after 20% discount)\n\nPlease share availability and more details. Thank you!`;
     const url = buildWhatsAppUrl(msg, WHATSAPP_STORE);
     window.open(url, '_blank');
   };
@@ -1280,11 +1282,19 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
                 <h2 className="font-luxury text-xl sm:text-2xl font-bold text-white mt-3 leading-snug">
                   {product.name}
                 </h2>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-xl sm:text-2xl font-bold text-[#C9A84C]">
-                    ₹{product.price.toLocaleString('en-IN')}
-                  </span>
-                  <span className="text-xs text-gray-500">incl. taxes</span>
+                <div className="mt-2 flex flex-col items-start gap-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl sm:text-2xl font-bold text-[#C9A84C]">
+                      ₹{Math.round(product.price * 0.8).toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs text-gray-500">incl. taxes</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-500 line-through">
+                      ₹{product.price.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs text-[#25D366] font-bold">20% Off</span>
+                  </div>
                 </div>
               </div>
 
@@ -1357,20 +1367,35 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
                 <NextImage src={product.image_url} alt={product.name} fill sizes="(max-width: 1024px) 100vw, 300px" className="object-contain p-2" />
               </div>
 
-              <div className="pt-1 space-y-2">
+              <div className="pt-1 space-y-2.5">
+                <Button
+                  onClick={() => setIsCheckoutOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs bg-[#C9A84C] text-[#050c14] hover:bg-[#e8d9a0] border-transparent"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  Buy Now
+                </Button>
                 <Button
                   onClick={handleInquiry}
-                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent"
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs border-gray-700 text-gray-300 hover:text-white hover:bg-white/5"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  Inquire on WhatsApp
+                  <MessageCircle className="w-4 h-4 text-[#25D366]" />
+                  Buy on WhatsApp
                 </Button>
-                <p className="text-[10px] text-gray-500 text-center">Click to chat directly on WhatsApp</p>
+                <p className="text-[10px] text-gray-500 text-center">Instant checkout or chat directly on WhatsApp</p>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Checkout Modal Dialog */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        product={{ ...product, price: Math.round(product.price * 0.8) }}
+      />
 
     </div>
   );

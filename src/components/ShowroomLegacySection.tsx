@@ -536,7 +536,7 @@ export default function ShowroomLegacySection() {
               </div>
 
               <Link
-                href="/#about"
+                href="/about"
                 className="group/btn inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-[#C9A55C] transition-colors duration-300 hover:text-white font-sans"
               >
                 <span>KNOW MORE ABOUT US</span>
@@ -550,7 +550,7 @@ export default function ShowroomLegacySection() {
 
 
       {/* ── ROW 2: Flagship Store (66/34 Split) ── */}
-      <div id="contact" className="w-full bg-[#06111F] pt-8 pb-8">
+      <div id="contact" className="w-full bg-[#06111F] pt-0 pb-8">
         <div className="mx-auto w-full max-w-[1600px] px-4 lg:px-8">
           <div className="flex flex-col md:flex-row md:h-[220px] overflow-hidden border border-white/[0.06]">
 

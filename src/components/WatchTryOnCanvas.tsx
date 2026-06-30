@@ -5,11 +5,12 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import { useSession } from 'next-auth/react';
-import { Camera, Upload, AlertCircle, RefreshCw, MessageCircle, HelpCircle, Sliders, Flame, X } from 'lucide-react';
+import { Camera, Upload, AlertCircle, RefreshCw, MessageCircle, HelpCircle, Sliders, Flame, X, ShoppingCart } from 'lucide-react';
 import { loadScript } from '@/lib/loadScript';
 import Button from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { buildWhatsAppUrl, WHATSAPP_STORE } from '@/utils/whatsapp';
+import CheckoutModal from '@/components/CheckoutModal';
 
 interface Product {
   id: string;
@@ -114,6 +115,7 @@ const getWatchRotOffset = (val: any, isRightHand = true) => {
   const num = val !== null && val !== undefined ? Number(val) : fallback;
   return num === 0.0 ? fallback : num;
 };
+const getManualRotDefault = () => -5;
 
 interface WatchTryOnCanvasProps {
   product: Product;
@@ -195,6 +197,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   const [handDetected, setHandDetected] = useState(false);
   const [showAdjustPanel, setShowAdjustPanel] = useState(false);
   const [isMirror, setIsMirror] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   const isMirrorRef = useRef(isMirror);
   useEffect(() => {
@@ -208,7 +211,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
   // Fallback Manual Overlay States
   const [manualScale, setManualScale] = useState(1.0);
   const [manualPosition, setManualPosition] = useState({ x: 0, y: 0 });
-  const [manualRotation, setManualRotation] = useState(0);
+  const [manualRotation, setManualRotation] = useState(getManualRotDefault());
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
@@ -357,7 +360,15 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
         const landmarks = results.multiHandLandmarks[0];
         const handedness = results.multiHandedness[0];
-        isRightHand = handedness.label === 'Right';
+
+        // MediaPipe detects handedness in the RAW (un-mirrored) frame.
+        // Front camera (isMirror ON):
+        //   The video is CSS-mirrored for display, so what MediaPipe calls "Right"
+        //   visually appears as the user's LEFT hand on screen → flip needed.
+        // Back camera (isMirror OFF):
+        //   No CSS mirror, so MediaPipe's label directly matches what the user sees → no flip.
+        const rawIsRight = handedness.label === 'Right';
+        isRightHand = isMirrorRef.current ? !rawIsRight : rawIsRight;
 
         const currentHandSide = isRightHand ? 'Right' : 'Left';
         if (lastHandSideRef.current !== currentHandSide) {
@@ -472,7 +483,13 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
         // ── ROTATION ──────────────────────────────────────────────────────────
         // The watch angle is perpendicular to the forearm direction so straps point along the forearm.
         const rawAngle = Math.atan2(forearmDirY, forearmDirX) - Math.PI / 2;
-        const rotOffsetRad = (liveRotationOffsetRef.current * Math.PI) / 180;
+
+        // The rotation offset (+90° right / -95° left) was calibrated for a MIRRORED
+        // (front-camera) display where the X-axis is flipped by CSS scaleX(-1).
+        // On the back camera (no mirror / no X-flip), the same offset rotates the watch
+        // in the opposite direction — so we negate it for back camera.
+        const rotSign = isMirrorRef.current ? 1 : -1;
+        const rotOffsetRad = rotSign * (liveRotationOffsetRef.current * Math.PI) / 180;
         const targetAngle = rawAngle + rotOffsetRad;
 
         // ── PERSPECTIVE COMPRESSION ───────────────────────────────────────────
@@ -675,12 +692,13 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
     setHandDetected(false);
 
     try {
-      // Watch try-on: prefer front/user-facing camera (wrist needs to face camera)
-      // Lower resolution + frame rate on mobile for performance
+      // Watch try-on: use BACK camera (environment) so the user points the phone
+      // at their wrist — NOT the front/selfie camera which shows their face.
+      // Lower resolution + frame rate on mobile for performance.
       const constraints: any = {
         video: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
-          facingMode: deviceId ? undefined : { ideal: 'user' },
+          facingMode: deviceId ? undefined : { ideal: 'environment' },
           width: { ideal: isMobile ? 640 : 1280 },
           height: { ideal: isMobile ? 480 : 720 },
           frameRate: { ideal: isMobile ? 15 : 30 }
@@ -690,27 +708,39 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
+      // ── Reliable facing-mode detection via track settings API ────────────────
+      // track.getSettings().facingMode is far more reliable than label parsing
+      // (many Android phones just report 'camera 0', 'camera 1' with no facing info).
+      // 'user'        → front/selfie  → mirror ON
+      // 'environment' → back/rear     → mirror OFF
+      // Falls back to label heuristics only when facingMode is not reported.
+      try {
+        const track = stream.getVideoTracks()[0];
+        const settings = track?.getSettings?.() ?? {};
+        if (settings.facingMode) {
+          setIsMirror(settings.facingMode === 'user');
+        } else {
+          // Fallback: parse label text
+          const label = (track?.label ?? '').toLowerCase();
+          const isBackCamera = label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('facing back');
+          setIsMirror(!isBackCamera);
+        }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_e) {
+        setIsMirror(false); // default: assume back camera (environment) for watch try-on
+      }
+
       navigator.mediaDevices.enumerateDevices().then((devicesList) => {
         const videoDevices = devicesList.filter((d) => d.kind === 'videoinput');
         setDevices(videoDevices);
         
         let activeDev = deviceId ? videoDevices.find((d) => d.deviceId === deviceId) : null;
         if (!activeDev && videoDevices.length > 0) {
-          // Prefer front/selfie/integrated camera for wrist try-on
+          // Prefer back/rear camera for wrist try-on
           activeDev = videoDevices.find(
-            (d) => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('integrated') || d.label.toLowerCase().includes('selfie') || d.label.toLowerCase().includes('user') || d.label.toLowerCase().includes('facetime')
+            (d) => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear') || d.label.toLowerCase().includes('environment') || d.label.toLowerCase().includes('facing back')
           ) || videoDevices[0];
           setSelectedDeviceId(activeDev.deviceId);
-        }
-        
-        if (activeDev) {
-          const label = activeDev.label.toLowerCase();
-          const isBackCamera = label.includes('back') || label.includes('rear') || label.includes('environment');
-          // Front cameras should be mirrored visually; back cameras should NOT be
-          setIsMirror(!isBackCamera);
-        } else {
-          // Default: assume front camera, mirror ON
-          setIsMirror(true);
         }
       }).catch((e) => console.warn('Could not enumerate media devices:', e));
 
@@ -859,7 +889,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
           const height = canvas.height;
           setManualPosition({ x: width * 0.5, y: height * 0.65 });
           setManualScale(1.0);
-          setManualRotation(0);
+          setManualRotation(getManualRotDefault());
 
           // Force draw photo immediately to canvas so it is ready before Hands runs
           const ctx = canvas.getContext('2d');
@@ -978,7 +1008,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
   // WhatsApp Inquiry
   const handleInquiry = () => {
-    const msg = `Hi Hariyana Watch & Opticals! 👋\n\nI'm interested in purchasing:\n\n*${product.name}*\nPrice: ₹${product.price.toLocaleString('en-IN')}\n\nPlease share availability and more details. Thank you!`;
+    const msg = `Hi Hariyana Watch & Opticals! 👋\n\nI'm interested in purchasing:\n\n*${product.name}*\nPrice: ₹${Math.round(product.price * 0.8).toLocaleString('en-IN')} (after 20% discount)\n\nPlease share availability and more details. Thank you!`;
     const url = buildWhatsAppUrl(msg, WHATSAPP_STORE);
     window.open(url, '_blank');
   };
@@ -1092,7 +1122,9 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                 height: '100%',
                 objectFit: 'cover',
                 display: 'block',
-                position: 'relative',
+                position: 'absolute',
+                top: 0,
+                left: 0,
                 zIndex: 2,
                 backgroundColor: cameraState === 'active' ? 'transparent' : '#0F1B30'
               }}
@@ -1233,7 +1265,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                     setLiveYOffset(getWatchYOffset(product.overlay_y_offset, lastHandSideRef.current !== 'Left'));
                     setLiveRotationOffset(getWatchRotOffset(product.overlay_rotation_offset, lastHandSideRef.current !== 'Left'));
                     setManualScale(1.0);
-                    setManualRotation(0);
+                    setManualRotation(getManualRotDefault());
                     hasManuallyAdjustedRef.current = { scale: false, x: false, y: false, rotation: false };
                   }}
                   className="text-xs text-gray-400 hover:text-white transition-colors underline"
@@ -1299,11 +1331,19 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                 <h2 className="font-luxury text-xl sm:text-2xl font-bold text-white mt-3 leading-snug">
                   {product.name}
                 </h2>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-xl sm:text-2xl font-bold text-[#C9A84C]">
-                    ₹{product.price.toLocaleString('en-IN')}
-                  </span>
-                  <span className="text-xs text-gray-500">incl. taxes</span>
+                <div className="mt-2 flex flex-col items-start gap-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl sm:text-2xl font-bold text-[#C9A84C]">
+                      ₹{Math.round(product.price * 0.8).toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs text-gray-500">incl. taxes</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-500 line-through">
+                      ₹{product.price.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-xs text-[#25D366] font-bold">20% Off</span>
+                  </div>
                 </div>
               </div>
 
@@ -1362,22 +1402,38 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
               </div>
 
               {/* CTA - WhatsApp Inquiry */}
-              <div className="pt-1 space-y-2">
+              <div className="pt-1 space-y-2.5">
+                <Button
+                  onClick={() => setIsCheckoutOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs bg-[#C9A84C] text-[#050c14] hover:bg-[#e8d9a0] border-transparent"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  Buy Now
+                </Button>
                 <Button
                   onClick={handleInquiry}
-                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent"
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs border-gray-700 text-gray-300 hover:text-white hover:bg-white/5"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  Inquire on WhatsApp
+                  <MessageCircle className="w-4 h-4 text-[#25D366]" />
+                  Buy on WhatsApp
                 </Button>
                 <p className="text-[10px] text-gray-500 text-center">
-                  Click to chat directly on WhatsApp
+                  Instant checkout or chat directly on WhatsApp
                 </p>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Checkout Modal Dialog */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        product={{ ...product, price: Math.round(product.price * 0.8) }}
+      />
+
     </div>
   );
 }

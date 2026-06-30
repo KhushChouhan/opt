@@ -2,8 +2,6 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import bcrypt from 'bcryptjs';
-import fs from 'fs';
-import path from 'path';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,10 +12,8 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const logPath = path.resolve(process.cwd(), 'auth_debug.log');
-        
         const log = (msg: string) => {
-          fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${msg}\n`);
+          console.log(`[NextAuth Debug] [${new Date().toISOString()}] ${msg}`);
         };
 
         if (!credentials?.email || !credentials?.password) {
