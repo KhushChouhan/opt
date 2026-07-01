@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 function SuccessPageContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('id') || 'HWO-20260629-00125';
+  const dbId = searchParams.get('db_id') || '';
   const productName = searchParams.get('product') || 'Ray-Ban Aviator Sunglasses';
   const priceParam = searchParams.get('price') || '2499';
   const customerName = searchParams.get('name') || 'Rahul Sharma';
@@ -83,6 +84,26 @@ function SuccessPageContent() {
     }
 
     setValidationError('');
+
+    // Call confirm-payment API to store UTR and screenshot in the database
+    if (dbId) {
+      try {
+        setCopyStatus('Saving payment details to database...');
+        await fetch('/api/orders/confirm-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            db_id: dbId,
+            transaction_id: cleanUtr,
+            payment_screenshot: screenshot,
+          }),
+        });
+      } catch (err) {
+        console.error('Error calling confirm-payment API:', err);
+      }
+    }
 
     if (screenshot) {
       try {
@@ -303,7 +324,7 @@ I have successfully completed the UPI payment. Please find my receipt details ab
                 <div className="space-y-1">
                   <p className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">Merchant UPI</p>
                   <p className="text-white font-bold select-all bg-black/30 px-2 py-1.5 rounded border border-gray-800/80 inline-block font-mono text-xs">
-                    9828207999@paytm
+                    7014121856@ibl
                   </p>
                 </div>
                 <div className="text-xs text-gray-400 space-y-1.5">
@@ -463,7 +484,15 @@ I have successfully completed the UPI payment. Please find my receipt details ab
       </Card>
 
       {/* Footer Navigation */}
-      <div className="flex justify-center space-x-4">
+      <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
+        {dbId && (
+          <Link href={`/receipt/${dbId}`}>
+            <Button className="text-xs bg-[#C9A84C] text-[#050c14] hover:bg-[#e8d9a0] font-bold">
+              <FileText className="w-4 h-4 mr-2" />
+              View Payment Receipt
+            </Button>
+          </Link>
+        )}
         <Link href="/products">
           <Button variant="outline" className="text-xs">
             <ShoppingBag className="w-4 h-4 mr-2" />

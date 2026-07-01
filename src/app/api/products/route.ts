@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -34,7 +35,45 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(filteredProducts);
+    const parsedProducts = filteredProducts.map((p: any) => {
+      let pid = '';
+      let desc = p.description || '';
+      let discount = 0;
+      try {
+        const parsed = JSON.parse(p.description);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.pid) pid = parsed.pid;
+          if (parsed.desc) desc = parsed.desc;
+          if (parsed.discount) discount = parseFloat(parsed.discount) || 0;
+        }
+      } catch (e) {
+        // Not JSON
+      }
+
+      if (!pid) {
+        const match = desc.match(/\[PID:\s*(PID-\d+)\]$/);
+        if (match) {
+          pid = match[1];
+          desc = desc.replace(/\[PID:\s*(PID-\d+)\]$/, '').trim();
+        } else {
+          let hash = 0;
+          for (let i = 0; i < p.id.length; i++) {
+            hash = (hash << 5) - hash + p.id.charCodeAt(i);
+            hash |= 0;
+          }
+          pid = `PID-${String(Math.abs(hash) % 100000).padStart(6, '0')}`;
+        }
+      }
+
+      return {
+        ...p,
+        product_id: pid,
+        description: desc,
+        discount
+      };
+    });
+
+    return NextResponse.json(parsedProducts);
   } catch (error) {
     console.error('API products GET error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
@@ -50,7 +89,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, category, price, description, image_url, overlay_image_url, stock, lens_image_url, reflection_image_url, overlay_scale, overlay_x_offset, overlay_y_offset, overlay_rotation_offset } = body;
+    const { name, category, price, description, image_url, overlay_image_url, stock, lens_image_url, reflection_image_url, overlay_scale, overlay_x_offset, overlay_y_offset, overlay_rotation_offset, discount } = body;
 
     // Validation
     if (!name || name.trim().length === 0) {
@@ -69,6 +108,11 @@ export async function POST(request: NextRequest) {
     const parsedStock = parseInt(stock);
     if (isNaN(parsedStock) || parsedStock < 0) {
       return NextResponse.json({ error: 'Stock must be a non-negative whole number.' }, { status: 400 });
+    }
+
+    const parsedDiscount = discount !== undefined && discount !== null && discount !== '' ? parseFloat(discount) : 0;
+    if (isNaN(parsedDiscount) || parsedDiscount < 0 || parsedDiscount > 100) {
+      return NextResponse.json({ error: 'Discount must be a valid number between 0 and 100.' }, { status: 400 });
     }
 
     if (!image_url || !image_url.startsWith('http')) {
@@ -96,13 +140,46 @@ export async function POST(request: NextRequest) {
       dbDescription = `[Category: ${category}] ${cleanDesc}`;
     }
 
+    // Generate new unique Product ID by checking all existing PIDs
+    const { data: allProducts } = await supabaseAdmin
+      .from('products')
+      .select('description');
+    
+    let maxSuffix = 0;
+    if (allProducts) {
+      for (const p of allProducts) {
+        if (!p.description) continue;
+        try {
+          const parsed = JSON.parse(p.description);
+          if (parsed && typeof parsed === 'object' && parsed.pid) {
+            const num = parseInt(parsed.pid.replace('PID-', ''), 10);
+            if (!isNaN(num) && num > maxSuffix) maxSuffix = num;
+          }
+        } catch (e) {
+          const match = p.description.match(/\[PID:\s*PID-(\d+)\]$/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxSuffix) maxSuffix = num;
+          }
+        }
+      }
+    }
+    const nextPidNum = maxSuffix + 1;
+    const newPid = `PID-${String(nextPidNum).padStart(6, '0')}`;
+
+    const finalDesc = JSON.stringify({
+      pid: newPid,
+      desc: dbDescription,
+      discount: parsedDiscount
+    });
+
     const { data: newProduct, error } = await supabaseAdmin
       .from('products')
       .insert({
         name: name.trim(),
         category: dbCategory,
         price: parsedPrice,
-        description: dbDescription,
+        description: finalDesc,
         image_url: image_url.trim(),
         overlay_image_url: overlay_image_url.trim(),
         lens_image_url: lens_image_url?.trim() || null,
@@ -121,7 +198,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to record the product in database.' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, product: newProduct }, { status: 201 });
+    // Parse the newly created product to return a clean client object
+    let clientProductDesc = newProduct.description;
+    let clientProductId = newPid;
+    try {
+      const parsedNew = JSON.parse(newProduct.description);
+      if (parsedNew && typeof parsedNew === 'object' && parsedNew.pid) {
+        clientProductId = parsedNew.pid;
+        clientProductDesc = parsedNew.desc || '';
+      }
+    } catch (e) {}
+
+    return NextResponse.json({ 
+      success: true, 
+      product: {
+        ...newProduct,
+        product_id: clientProductId,
+        description: clientProductDesc
+      }
+    }, { status: 201 });
   } catch (error) {
     console.error('API products POST error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });

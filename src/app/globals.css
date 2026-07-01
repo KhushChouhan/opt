@@ -205,3 +205,40 @@ h1, h2, h3, h4, h5, h6, .font-display, .font-luxury {
   transform: translateY(0);
 }
 
+/* Print styles for A4 Tax Invoice */
+@media print {
+  body, html {
+    background-color: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm;
+    height: 297mm;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-card {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .print-border {
+    border-color: #000000 !important;
+  }
+  .print-bg-light {
+    background-color: #f9f9f9 !important;
+  }
+  .invoice-section {
+    page-break-inside: avoid !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 10mm 12mm;
+  }
+}
+

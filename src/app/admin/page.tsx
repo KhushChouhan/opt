@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import Image from 'next/image';
+import Link from 'next/link';
 import { 
   ClipboardList, 
   Package, 
@@ -16,7 +18,9 @@ import {
   AlertCircle, 
   RefreshCw, 
   Upload,
-  Phone
+  Phone,
+  FileText,
+  Image as ImageIcon
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -26,7 +30,7 @@ import Modal from '@/components/ui/Modal';
 interface Product {
   id: string;
   name: string;
-  category: 'glasses' | 'sunglasses' | 'watches' | 'belts' | 'perfumes' | 'wallets' | 'accessories';
+  category: 'glasses' | 'sunglasses' | 'watches' | 'smart-watches' | 'belts' | 'perfumes' | 'wallets' | 'accessories';
   price: number;
   description: string;
   image_url: string;
@@ -39,6 +43,8 @@ interface Product {
   overlay_rotation_offset?: number | null;
   stock: number;
   created_at: string;
+  product_id?: string;
+  discount?: number;
 }
 
 const getActualCategory = (product: Product): string => {
@@ -66,6 +72,7 @@ interface Order {
 export default function AdminDashboard() {
   // Tabs: 'orders' | 'products'
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
 
   // Fetching Data
   const { data: orders, error: ordersError, isLoading: ordersLoading, mutate: mutateOrders } = useSWR<Order[]>('/api/orders');
@@ -88,12 +95,35 @@ export default function AdminDashboard() {
     overlay_y_offset: '',
     overlay_rotation_offset: '',
     stock: '0',
+    discount: '0',
   });
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Cloudinary Upload States
   const [uploadingField, setUploadingField] = useState<'main' | 'overlay' | 'lens' | 'reflection' | null>(null);
+
+  // Filtered Orders for search
+  const filteredOrders = orders?.filter(o => {
+    const query = orderSearchQuery.toLowerCase().trim();
+    if (!query) return true;
+    
+    const oId = ((o as any).order_id || '').toLowerCase();
+    const inv = ((o as any).invoice_number || '').toLowerCase();
+    const pid = ((o as any).products?.product_id || '').toLowerCase();
+    const name = (o.customer_name || '').toLowerCase();
+    const phone = (o.phone || '').toLowerCase();
+    const email = (((o as any).customer_email) || '').toLowerCase();
+    const utr = (((o as any).transaction_id) || '').toLowerCase();
+
+    return oId.includes(query) ||
+           inv.includes(query) ||
+           pid.includes(query) ||
+           name.includes(query) ||
+           phone.includes(query) ||
+           email.includes(query) ||
+           utr.includes(query);
+  }) || [];
 
   // Status counters
   const totalOrders = orders ? orders.length : 0;
@@ -121,6 +151,25 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err);
       alert('Error updating order status. Please check your credentials.');
+    }
+  };
+
+  // Handle Delete Order
+  const handleDeleteOrder = async (orderId: string, orderDisplayId: string) => {
+    if (!confirm(`Are you sure you want to delete order ${orderDisplayId}? This action is permanent and cannot be undone.`)) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete order record.');
+      }
+      mutateOrders();
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting order. Please check your credentials.');
     }
   };
 
@@ -191,6 +240,7 @@ export default function AdminDashboard() {
       overlay_y_offset: '0.0',
       overlay_rotation_offset: '0.0',
       stock: '10',
+      discount: '0',
     });
     setFormError('');
     setIsProductModalOpen(true);
@@ -212,6 +262,7 @@ export default function AdminDashboard() {
       overlay_y_offset: product.overlay_y_offset !== undefined && product.overlay_y_offset !== null ? product.overlay_y_offset.toString() : '0.0',
       overlay_rotation_offset: product.overlay_rotation_offset !== undefined && product.overlay_rotation_offset !== null ? product.overlay_rotation_offset.toString() : '0.0',
       stock: product.stock.toString(),
+      discount: product.discount !== undefined && product.discount !== null ? product.discount.toString() : '0',
     });
     setFormError('');
     setIsProductModalOpen(true);
@@ -238,6 +289,13 @@ export default function AdminDashboard() {
 
     if (isNaN(parseInt(stock)) || parseInt(stock) < 0) {
       setFormError('Please enter a valid stock level.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const dVal = productForm.discount ? parseFloat(productForm.discount) : 0;
+    if (isNaN(dVal) || dVal < 0 || dVal > 100) {
+      setFormError('Discount rate must be a valid number between 0 and 100.');
       setIsSubmitting(false);
       return;
     }
@@ -417,11 +475,20 @@ export default function AdminDashboard() {
       <div>
         {activeTab === 'orders' ? (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-lg font-bold text-white font-luxury">Customer Order Logs</h2>
-              <Button variant="outline" size="sm" onClick={() => mutateOrders()} className="flex items-center">
-                <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
-              </Button>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <input
+                  type="text"
+                  placeholder="Search by ID, Customer, UTR, Email..."
+                  value={orderSearchQuery}
+                  onChange={(e) => setOrderSearchQuery(e.target.value)}
+                  className="bg-black/30 border border-gray-800 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#C9A84C] w-full sm:w-64"
+                />
+                <Button variant="outline" size="sm" onClick={() => mutateOrders()} className="flex items-center">
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
+                </Button>
+              </div>
             </div>
 
             {ordersLoading && (
@@ -442,41 +509,79 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {!ordersLoading && !ordersError && totalOrders > 0 && (
+            {!ordersLoading && !ordersError && totalOrders > 0 && filteredOrders.length === 0 && (
+              <div className="p-12 border border-dashed border-gray-800 rounded-lg text-center text-gray-500">
+                No orders matched your search query.
+              </div>
+            )}
+
+            {!ordersLoading && !ordersError && filteredOrders.length > 0 && (
               <div className="overflow-x-auto w-full glass-panel rounded-lg border border-gray-800">
-                <table className="w-full text-left border-collapse text-sm">
+                <table className="w-full text-left border-collapse text-xs sm:text-sm">
                   <thead>
-                    <tr className="bg-black/30 text-gray-400 border-b border-gray-800 text-xs font-bold uppercase tracking-wider">
+                    <tr className="bg-black/30 text-gray-400 border-b border-gray-800 text-[10px] font-bold uppercase tracking-wider">
                       <th className="p-4">Customer</th>
-                      <th className="p-4">Product</th>
-                      <th className="p-4">Contact</th>
-                      <th className="p-4">Address</th>
+                      <th className="p-4">Order / Invoice</th>
+                      <th className="p-4">Product (PID)</th>
+                      <th className="p-4">Contact / Address</th>
+                      <th className="p-4">Payment (UTR)</th>
                       <th className="p-4">Status</th>
-                      <th className="p-4">Date</th>
+                      <th className="p-4">Date &amp; Time</th>
                       <th className="p-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800/60">
-                    {orders?.map((order) => (
+                    {filteredOrders.map((order: any) => (
                       <tr key={order.id} className="hover:bg-white/2 transition-colors">
-                        <td className="p-4 font-bold text-white">{order.customer_name}</td>
-                        <td className="p-4">
+                        <td className="p-4 font-bold text-white">
                           <div className="flex flex-col">
-                            <span className="text-white font-semibold">{order.products?.name || 'Deleted Product'}</span>
-                            <span className="text-[10px] text-gray-500 capitalize">{order.products?.category} (₹{order.products?.price})</span>
+                            <span className="font-bold text-white">{order.customer_name}</span>
+                            <span className="text-[10px] text-gray-500">{order.customer_email || 'No Email'}</span>
                           </div>
                         </td>
                         <td className="p-4">
-                          <a href={`tel:+91${order.phone}`} className="flex items-center text-xs text-[#C9A84C] hover:underline">
-                            <Phone className="w-3.5 h-3.5 mr-1" />
-                            {order.phone}
-                          </a>
-                        </td>
-                        <td className="p-4 text-xs max-w-[200px] truncate" title={`${order.address}, PIN: ${order.pincode}`}>
-                          {order.address}, PIN: {order.pincode}
+                          <div className="flex flex-col font-mono">
+                            <span className="font-semibold text-white">{order.order_id}</span>
+                            <span className="text-[9px] text-gray-500">{order.invoice_number}</span>
+                          </div>
                         </td>
                         <td className="p-4">
-                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider border ${
+                          <div className="flex flex-col">
+                            <span className="text-white font-semibold">{order.products?.name || 'Deleted Product'}</span>
+                            <span className="text-[10px] text-gray-500 font-mono capitalize">
+                              {order.products?.product_id || 'PID-000000'} ({order.products?.category})
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex flex-col">
+                            <a href={`tel:+91${order.phone}`} className="flex items-center text-[11px] text-[#C9A84C] hover:underline font-semibold">
+                              <Phone className="w-3 h-3 mr-1" />
+                              {order.phone}
+                            </a>
+                            <span className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[150px]" title={`${order.address}, PIN: ${order.pincode}`}>
+                              {order.address}, PIN: {order.pincode}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-bold text-white">₹{(order.products?.price || 0).toLocaleString('en-IN')}</span>
+                            <span className="text-[9px] text-gray-400 font-mono">UTR: {order.transaction_id || 'None'}</span>
+                            {order.payment_screenshot && (
+                              <a 
+                                href={order.payment_screenshot} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-[9px] text-blue-400 hover:underline flex items-center gap-1 font-semibold"
+                              >
+                                <ImageIcon className="w-3 h-3" /> View Screenshot
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider border ${
                             order.status === 'pending' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
                             order.status === 'confirmed' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
                             'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
@@ -484,17 +589,27 @@ export default function AdminDashboard() {
                             {order.status}
                           </span>
                         </td>
-                        <td className="p-4 text-xs text-gray-500">
-                          {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        <td className="p-4">
+                          <div className="flex flex-col text-[10px]">
+                            <span className="text-white">
+                              {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            </span>
+                            <span className="text-gray-500 mt-0.5">
+                              {order.payment_time || new Date(order.created_at).toTimeString().slice(0, 5)}
+                            </span>
+                          </div>
                         </td>
-                        <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                        <td className="p-4 text-right space-x-1 whitespace-nowrap">
+                          <Link href={`/receipt/${order.id}`} target="_blank" className="inline-block p-1.5 rounded bg-[#C9A84C]/10 border border-[#C9A84C]/25 text-[#C9A84C] hover:bg-[#C9A84C]/20 transition-all mr-1.5" title="View Receipt">
+                            <FileText className="w-3.5 h-3.5" />
+                          </Link>
                           {order.status === 'pending' && (
                             <button
                               onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
                               className="p-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-all"
                               title="Confirm Order"
                             >
-                              <Check className="w-4 h-4" />
+                              <Check className="w-3.5 h-3.5" />
                             </button>
                           )}
                           {order.status === 'confirmed' && (
@@ -503,10 +618,16 @@ export default function AdminDashboard() {
                               className="p-1.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition-all"
                               title="Mark Delivered"
                             >
-                              <Truck className="w-4 h-4" />
+                              <Truck className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <span className="text-xs text-gray-600">—</span>
+                          <button
+                            onClick={() => handleDeleteOrder(order.id, order.order_id || order.id.slice(0, 8))}
+                            className="p-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all"
+                            title="Delete Order"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -574,17 +695,36 @@ export default function AdminDashboard() {
                         />
                       )}
                       <span className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/55 text-xs font-semibold rounded text-amber-500 border border-amber-500/20 capitalize">
-                        {getActualCategory(product) === 'glasses' ? 'Eyeglasses' : getActualCategory(product)}
+                        {getActualCategory(product) === 'glasses' 
+                          ? 'Eyeglasses' 
+                          : getActualCategory(product) === 'smart-watches'
+                          ? 'Smart Watches'
+                          : getActualCategory(product)}
                       </span>
                     </div>
 
                     <CardContent className="p-4 space-y-3">
-                      <h3 className="text-sm font-bold text-white truncate" title={product.name}>
+                      {product.product_id && (
+                        <div className="text-[9px] text-[#C9A84C]/80 font-mono tracking-widest font-bold">
+                          {product.product_id}
+                        </div>
+                      )}
+                      <h3 className="text-sm font-bold text-white truncate mt-0.5" title={product.name}>
                         {product.name}
                       </h3>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-gray-400">Price:</span>
-                        <span className="font-bold text-[#C9A84C]">₹{product.price}</span>
+                        <div className="flex items-center gap-1.5">
+                          {product.discount ? (
+                            <>
+                              <span className="text-gray-500 line-through text-[10px]">₹{product.price}</span>
+                              <span className="font-bold text-[#C9A84C]">₹{Math.round(product.price * (1 - product.discount / 100))}</span>
+                              <span className="text-[10px] text-emerald-400 font-bold">({product.discount}% OFF)</span>
+                            </>
+                          ) : (
+                            <span className="font-bold text-[#C9A84C]">₹{product.price}</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-gray-400">Current Stock:</span>
@@ -634,6 +774,7 @@ export default function AdminDashboard() {
                 { value: 'glasses', label: 'Eyeglasses' },
                 { value: 'sunglasses', label: 'Sunglasses' },
                 { value: 'watches', label: 'Watches' },
+                { value: 'smart-watches', label: 'Smart Watches' },
                 { value: 'belts', label: 'Belts' },
                 { value: 'perfumes', label: 'Perfumes' },
                 { value: 'wallets', label: 'Wallets' },
@@ -641,7 +782,7 @@ export default function AdminDashboard() {
               ]}
               required
               value={productForm.category}
-              onChange={(e) => setProductForm(prev => ({ ...prev, category: e.target.value as typeof prev.category }))}
+              onChange={(e) => setProductForm(prev => ({ ...prev, category: e.target.value as any }))}
             />
 
             <Input
@@ -664,7 +805,13 @@ export default function AdminDashboard() {
               onChange={(e) => setProductForm(prev => ({ ...prev, stock: e.target.value }))}
             />
             
-            <div className="self-end" />
+            <Input
+              label="Discount Rate (%)"
+              type="number"
+              placeholder="e.g. 20 (optional)"
+              value={productForm.discount}
+              onChange={(e) => setProductForm(prev => ({ ...prev, discount: e.target.value }))}
+            />
           </div>
 
           <Textarea

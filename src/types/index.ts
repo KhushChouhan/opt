@@ -45,6 +45,7 @@ export interface Product {
   overlay_image_url: string;
   stock: number;
   mrp?: number; // Original retail price for discount display
+  discount?: number;
   specs?: {
     frameWidth?: string;
     lensWidth?: string;

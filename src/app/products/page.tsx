@@ -14,13 +14,15 @@ import CheckoutModal from '@/components/CheckoutModal';
 interface Product {
   id: string;
   name: string;
-  category: 'glasses' | 'sunglasses' | 'watches' | 'belts' | 'perfumes' | 'wallets' | 'accessories';
+  category: 'glasses' | 'sunglasses' | 'watches' | 'smart-watches' | 'belts' | 'perfumes' | 'wallets' | 'accessories';
   price: number;
   description: string;
   image_url: string;
   overlay_image_url: string;
   stock: number;
   brand?: string;
+  product_id?: string;
+  discount?: number;
 }
 
 // Color Swatch type definition
@@ -583,6 +585,11 @@ function CatalogContent() {
                   {/* Details */}
                   <CardContent className="p-5 flex-grow flex flex-col justify-between z-10 relative bg-transparent">
                     <div>
+                      {product.product_id && (
+                        <div className="text-[9px] text-[#C9A84C]/80 font-mono tracking-widest uppercase font-semibold mb-1">
+                          {product.product_id}
+                        </div>
+                      )}
                       <h3 className="text-lg font-bold text-white mb-2 leading-snug font-luxury group-hover:text-[#C9A84C] transition-colors line-clamp-1">
                         {product.name}
                       </h3>
@@ -595,14 +602,16 @@ function CatalogContent() {
                       <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Luxury Price</span>
                       <div className="flex flex-col items-end">
                         <span className="text-lg font-bold text-[#C9A84C]">
-                          ₹{Math.round(product.price * 0.8).toLocaleString('en-IN')}
+                          ₹{(product.discount ? Math.round(product.price * (1 - product.discount / 100)) : product.price).toLocaleString('en-IN')}
                         </span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[11px] text-gray-500 line-through">
-                            ₹{product.price.toLocaleString('en-IN')}
-                          </span>
-                          <span className="text-[10px] text-[#25D366] font-bold">20% Off</span>
-                        </div>
+                        {product.discount ? (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[11px] text-gray-500 line-through">
+                              ₹{product.price.toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-[10px] text-[#25D366] font-bold">{product.discount}% Off</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </CardContent>
@@ -618,7 +627,11 @@ function CatalogContent() {
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setCheckoutProduct({ id: product.id, name: product.name, price: Math.round(product.price * 0.8) });
+                            setCheckoutProduct({ 
+                              id: product.id, 
+                              name: product.name, 
+                              price: product.discount ? Math.round(product.price * (1 - product.discount / 100)) : product.price 
+                            });
                             setIsCheckoutOpen(true);
                           }}
                           className="w-full font-bold uppercase tracking-wider text-xs bg-[#C9A84C] text-[#0B1422] hover:bg-[#e8d9a0]"

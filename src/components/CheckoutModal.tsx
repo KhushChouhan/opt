@@ -21,6 +21,7 @@ export default function CheckoutModal({ isOpen, onClose, product }: CheckoutModa
   const [formData, setFormData] = useState({
     customer_name: '',
     phone: '',
+    email: '',
     address: '',
     pincode: '',
   });
@@ -47,6 +48,9 @@ export default function CheckoutModal({ isOpen, onClose, product }: CheckoutModa
     if (!formData.phone || !phoneRegex.test(formData.phone.trim())) {
       newErrors.phone = 'Enter a valid 10-digit Indian phone number';
     }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = 'Enter a valid email address';
+    }
     if (!formData.address || formData.address.trim().length < 10) {
       newErrors.address = 'Address must be at least 10 characters';
     }
@@ -66,13 +70,8 @@ export default function CheckoutModal({ isOpen, onClose, product }: CheckoutModa
     setSubmitError('');
 
     try {
-      const orderNum = Math.floor(10000 + Math.random() * 90000);
-      const today = new Date();
-      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-      const orderId = `HWO-${dateStr}-${orderNum}`;
-
-      // Fire background database write (silent fallback)
-      fetch('/api/orders', {
+      // Send database write request
+      const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,43 +80,38 @@ export default function CheckoutModal({ isOpen, onClose, product }: CheckoutModa
           product_id: product.id,
           customer_name: formData.customer_name,
           phone: formData.phone,
+          email: formData.email,
           address: formData.address,
           pincode: formData.pincode,
         }),
-      }).catch(err => {
-        console.error('Silent DB write error:', err);
       });
+
+      const resData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resData.error || 'Failed to record your order.');
+      }
+
+      const orderId = resData.order_id || `HWO-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(10000 + Math.random() * 90000)}`;
+      const dbId = resData.order?.id || '';
 
       const queryParams = new URLSearchParams({
         id: orderId,
+        db_id: dbId,
         product: product.name,
         price: product.price.toString(),
         name: formData.customer_name,
         phone: formData.phone,
+        email: formData.email,
         address: formData.address,
         pincode: formData.pincode,
       });
 
       window.location.href = `/order-success?${queryParams.toString()}`;
       onClose();
-    } catch {
-      const orderNum = Math.floor(10000 + Math.random() * 90000);
-      const today = new Date();
-      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-      const orderId = `HWO-${dateStr}-${orderNum}`;
-
-      const queryParams = new URLSearchParams({
-        id: orderId,
-        product: product.name,
-        price: product.price.toString(),
-        name: formData.customer_name,
-        phone: formData.phone,
-        address: formData.address,
-        pincode: formData.pincode,
-      });
-
-      window.location.href = `/order-success?${queryParams.toString()}`;
-      onClose();
+    } catch (err: any) {
+      console.error('Order creation error:', err);
+      setSubmitError(err.message || 'An error occurred while placing your order. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -166,6 +160,17 @@ export default function CheckoutModal({ isOpen, onClose, product }: CheckoutModa
           error={errors.phone}
           disabled={loading}
           required
+        />
+
+        <Input
+          label="Email Address"
+          name="email"
+          type="email"
+          placeholder="your.email@example.com (optional)"
+          value={formData.email}
+          onChange={handleChange}
+          error={errors.email}
+          disabled={loading}
         />
 
         <Textarea

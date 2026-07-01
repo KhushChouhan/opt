@@ -3,6 +3,35 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { orderId: string } }
+) {
+  const { orderId } = params;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!orderId || !uuidRegex.test(orderId)) {
+    return NextResponse.json({ error: 'Invalid order reference key.' }, { status: 400 });
+  }
+
+  try {
+    const { data: order, error } = await supabaseAdmin
+      .from('orders')
+      .select('*, products(*)')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (error || !order) {
+      console.error('Error fetching specific order:', error);
+      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
+    }
+
+    return NextResponse.json(order);
+  } catch (error) {
+    console.error('API specific order GET error:', error);
+    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { orderId: string } }
@@ -42,6 +71,39 @@ export async function PATCH(
     return NextResponse.json({ success: true, order: updatedOrder });
   } catch (error) {
     console.error('API specific order PATCH error:', error);
+    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { orderId: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized access' }, { status: 401 });
+  }
+
+  const { orderId } = params;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!orderId || !uuidRegex.test(orderId)) {
+    return NextResponse.json({ error: 'Invalid order reference key.' }, { status: 400 });
+  }
+
+  try {
+    const { error } = await supabaseAdmin
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (error) {
+      console.error('Error deleting order:', error);
+      return NextResponse.json({ error: 'Failed to delete order record.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('API specific order DELETE error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 }

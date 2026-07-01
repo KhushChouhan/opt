@@ -102,6 +102,10 @@ export default function Navbar() {
     setSearchQuery('');
   };
 
+  if (pathname?.startsWith('/receipt/') || pathname?.startsWith('/verify/')) {
+    return null;
+  }
+
   return (
     <motion.header
       variants={{

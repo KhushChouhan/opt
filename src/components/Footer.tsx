@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { MapPin, Phone, Mail, Clock, ArrowRight } from 'lucide-react';
 import { Facebook, Instagram, WhatsApp, Youtube } from '@/components/icons/Social';
 
@@ -27,6 +28,7 @@ const CARE = [
 const INSTAGRAM_URL = "https://www.instagram.com/hariyana_watch_opticals49?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==";
 
 export default function Footer() {
+  const pathname = usePathname();
   const year = new Date().getFullYear();
   const [email, setEmail] = useState('');
 
@@ -50,6 +52,10 @@ Submitted via Hariyana Watch & Opticals Footer portal.`;
 
   // Base Column styling with vertical dividers on desktop
   const colClassName = "border-b border-[#c7a14e]/10 lg:border-b-0 lg:border-r border-[#c7a14e]/15 last:border-r-0 last:border-b-0 pb-8 lg:pb-0 px-0 lg:px-6 xl:px-8 first:lg:pl-0 flex flex-col justify-start items-center text-center";
+
+  if (pathname?.startsWith('/receipt/') || pathname?.startsWith('/verify/')) {
+    return null;
+  }
 
   return (
     <footer className="bg-[#050c14] border-t border-[#c7a14e]/15 text-gray-400">

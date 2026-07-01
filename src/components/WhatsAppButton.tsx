@@ -1,8 +1,13 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function WhatsAppButton() {
+  const pathname = usePathname();
+  if (pathname?.startsWith('/receipt/') || pathname?.startsWith('/verify/')) {
+    return null;
+  }
   const phoneNumber = '919828207999';
   const defaultText = encodeURIComponent(
     "Hello Hariyana Watch & Opticals, I visited your website and would like to inquire about your products."

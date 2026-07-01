@@ -27,6 +27,7 @@ interface Product {
   overlay_rotation_offset?: number | null;
   lens_image_url?: string | null;
   reflection_image_url?: string | null;
+  discount?: number;
 }
 
 interface BBox {
@@ -1008,7 +1009,10 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
 
   // WhatsApp Inquiry
   const handleInquiry = () => {
-    const msg = `Hi Hariyana Watch & Opticals! 👋\n\nI'm interested in purchasing:\n\n*${product.name}*\nPrice: ₹${Math.round(product.price * 0.8).toLocaleString('en-IN')} (after 20% discount)\n\nPlease share availability and more details. Thank you!`;
+    const discount = product.discount || 0;
+    const salePrice = discount > 0 ? Math.round(product.price * (1 - discount / 100)) : product.price;
+    const discountText = discount > 0 ? ` (after ${discount}% discount)` : '';
+    const msg = `Hi Hariyana Watch & Opticals! 👋\n\nI'm interested in purchasing:\n\n*${product.name}*\nPrice: ₹${salePrice.toLocaleString('en-IN')}${discountText}\n\nPlease share availability and more details. Thank you!`;
     const url = buildWhatsAppUrl(msg, WHATSAPP_STORE);
     window.open(url, '_blank');
   };
@@ -1334,16 +1338,18 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
                 <div className="mt-2 flex flex-col items-start gap-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-xl sm:text-2xl font-bold text-[#C9A84C]">
-                      ₹{Math.round(product.price * 0.8).toLocaleString('en-IN')}
+                      ₹{(product.discount ? Math.round(product.price * (1 - product.discount / 100)) : product.price).toLocaleString('en-IN')}
                     </span>
                     <span className="text-xs text-gray-500">incl. taxes</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-500 line-through">
-                      ₹{product.price.toLocaleString('en-IN')}
-                    </span>
-                    <span className="text-xs text-[#25D366] font-bold">20% Off</span>
-                  </div>
+                  {product.discount ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-gray-500 line-through">
+                        ₹{product.price.toLocaleString('en-IN')}
+                      </span>
+                      <span className="text-xs text-[#25D366] font-bold">{product.discount}% Off</span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -1431,7 +1437,7 @@ export default function WatchTryOnCanvas({ product }: WatchTryOnCanvasProps) {
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
-        product={{ ...product, price: Math.round(product.price * 0.8) }}
+        product={{ ...product, price: product.discount ? Math.round(product.price * (1 - product.discount / 100)) : product.price }}
       />
 
     </div>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -25,7 +26,39 @@ export async function GET(
       return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
     }
 
-    return NextResponse.json(product);
+    let pid = '';
+    let desc = product.description || '';
+    let discount = 0;
+    try {
+      const parsed = JSON.parse(product.description);
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.pid) pid = parsed.pid;
+        if (parsed.desc) desc = parsed.desc;
+        if (parsed.discount) discount = parseFloat(parsed.discount) || 0;
+      }
+    } catch (e) {}
+
+    if (!pid) {
+      const match = desc.match(/\[PID:\s*(PID-\d+)\]$/);
+      if (match) {
+        pid = match[1];
+        desc = desc.replace(/\[PID:\s*(PID-\d+)\]$/, '').trim();
+      } else {
+        let hash = 0;
+        for (let i = 0; i < product.id.length; i++) {
+          hash = (hash << 5) - hash + product.id.charCodeAt(i);
+          hash |= 0;
+        }
+        pid = `PID-${String(Math.abs(hash) % 100000).padStart(6, '0')}`;
+      }
+    }
+
+    return NextResponse.json({
+      ...product,
+      product_id: pid,
+      description: desc,
+      discount
+    });
   } catch (error) {
     console.error('API specific product GET error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
@@ -50,7 +83,7 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const { name, category, price, description, image_url, overlay_image_url, stock, lens_image_url, reflection_image_url, overlay_scale, overlay_x_offset, overlay_y_offset, overlay_rotation_offset } = body;
+    const { name, category, price, description, image_url, overlay_image_url, stock, lens_image_url, reflection_image_url, overlay_scale, overlay_x_offset, overlay_y_offset, overlay_rotation_offset, discount } = body;
 
     // Validation
     if (!name || name.trim().length === 0) {
@@ -69,6 +102,11 @@ export async function PUT(
     const parsedStock = parseInt(stock);
     if (isNaN(parsedStock) || parsedStock < 0) {
       return NextResponse.json({ error: 'Stock must be a non-negative whole number.' }, { status: 400 });
+    }
+
+    const parsedDiscount = discount !== undefined && discount !== null && discount !== '' ? parseFloat(discount) : 0;
+    if (isNaN(parsedDiscount) || parsedDiscount < 0 || parsedDiscount > 100) {
+      return NextResponse.json({ error: 'Discount must be a valid number between 0 and 100.' }, { status: 400 });
     }
 
     if (!image_url || !image_url.startsWith('http')) {
@@ -96,13 +134,50 @@ export async function PUT(
       dbDescription = `[Category: ${category}] ${cleanDesc}`;
     }
 
+    // Fetch existing product to read its persistent PID
+    const { data: existingProduct } = await supabaseAdmin
+      .from('products')
+      .select('description')
+      .eq('id', productId)
+      .maybeSingle();
+
+    let pid = '';
+    if (existingProduct && existingProduct.description) {
+      try {
+        const parsed = JSON.parse(existingProduct.description);
+        if (parsed && typeof parsed === 'object' && parsed.pid) {
+          pid = parsed.pid;
+        }
+      } catch (e) {
+        const match = existingProduct.description.match(/\[PID:\s*PID-(\d+)\]$/);
+        if (match) {
+          pid = match[1];
+        }
+      }
+    }
+
+    if (!pid) {
+      let hash = 0;
+      for (let i = 0; i < productId.length; i++) {
+        hash = (hash << 5) - hash + productId.charCodeAt(i);
+        hash |= 0;
+      }
+      pid = `PID-${String(Math.abs(hash) % 100000).padStart(6, '0')}`;
+    }
+
+    const finalDesc = JSON.stringify({
+      pid: pid,
+      desc: dbDescription,
+      discount: parsedDiscount
+    });
+
     const { data: updatedProduct, error } = await supabaseAdmin
       .from('products')
       .update({
         name: name.trim(),
         category: dbCategory,
         price: parsedPrice,
-        description: dbDescription,
+        description: finalDesc,
         image_url: image_url.trim(),
         overlay_image_url: overlay_image_url.trim(),
         lens_image_url: lens_image_url?.trim() || null,
@@ -122,7 +197,15 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update product details in database.' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, product: updatedProduct });
+    return NextResponse.json({
+      success: true,
+      product: {
+        ...updatedProduct,
+        product_id: pid,
+        description: dbDescription,
+        discount: parsedDiscount
+      }
+    });
   } catch (error) {
     console.error('API specific product PUT error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
