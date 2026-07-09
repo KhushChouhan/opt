@@ -59,9 +59,45 @@ export default async function GlassesTryOnPage({ params }: PageProps) {
     notFound();
   }
 
+  let pid = '';
+  let desc = product.description || '';
+  let discount = 0;
+  try {
+    const parsed = JSON.parse(product.description);
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.pid) pid = parsed.pid;
+      if (parsed.desc) desc = parsed.desc;
+      if (parsed.discount) discount = parseFloat(parsed.discount) || 0;
+    }
+  } catch {
+    // Not JSON
+  }
+
+  if (!pid) {
+    const match = desc.match(/\[PID:\s*(PID-\d+)\]$/);
+    if (match) {
+      pid = match[1];
+      desc = desc.replace(/\[PID:\s*(PID-\d+)\]$/, '').trim();
+    } else {
+      let hash = 0;
+      for (let i = 0; i < product.id.length; i++) {
+        hash = (hash << 5) - hash + product.id.charCodeAt(i);
+        hash |= 0;
+      }
+      pid = `PID-${String(Math.abs(hash) % 100000).padStart(6, '0')}`;
+    }
+  }
+
+  const parsedProduct = {
+    ...product,
+    product_id: pid,
+    description: desc,
+    discount
+  };
+
   return (
     <div className="bg-[#050c14] min-h-screen py-6">
-      <GlassesTryOnCanvas product={product} />
+      <GlassesTryOnCanvas product={parsedProduct} />
     </div>
   );
 }

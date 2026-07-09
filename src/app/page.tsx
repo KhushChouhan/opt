@@ -354,13 +354,29 @@ export default function Home() {
                     </div>
                     <div className="flex flex-col gap-0.5 mt-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white">₹{Math.round(p.price * 0.8).toLocaleString('en-IN')}</span>
-                        <span className="text-[9px] text-[#c7a14e] uppercase tracking-widest font-semibold">{p.category}</span>
+                        {(() => {
+                          const discount = p.discount !== undefined ? p.discount : (p.id.startsWith('mock-') ? 20 : 0);
+                          const salePrice = discount > 0 ? Math.round(p.price * (1 - discount / 100)) : p.price;
+                          return (
+                            <>
+                              <span className="text-xs font-bold text-white">₹{salePrice.toLocaleString('en-IN')}</span>
+                              <span className="text-[9px] text-[#c7a14e] uppercase tracking-widest font-semibold">{p.category}</span>
+                            </>
+                          );
+                        })()}
                       </div>
-                      <div className="flex items-center gap-1.5 text-[9px]">
-                        <span className="text-gray-500 line-through">₹{p.price.toLocaleString('en-IN')}</span>
-                        <span className="text-[#25D366] font-bold">20% Off</span>
-                      </div>
+                      {(() => {
+                        const discount = p.discount !== undefined ? p.discount : (p.id.startsWith('mock-') ? 20 : 0);
+                        if (discount > 0) {
+                          return (
+                            <div className="flex items-center gap-1.5 text-[9px]">
+                              <span className="text-gray-500 line-through">₹{p.price.toLocaleString('en-IN')}</span>
+                              <span className="text-[#25D366] font-bold">{discount}% Off</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                     
                     <div className="mt-3.5 space-y-1.5">
@@ -368,7 +384,9 @@ export default function Home() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setCheckoutProduct({ id: p.id, name: p.name, price: Math.round(p.price * 0.8) });
+                            const discount = p.discount !== undefined ? p.discount : 0;
+                            const salePrice = discount > 0 ? Math.round(p.price * (1 - discount / 100)) : p.price;
+                            setCheckoutProduct({ id: p.id, name: p.name, price: salePrice });
                             setIsCheckoutOpen(true);
                           }}
                           className="w-full py-2 bg-[#c7a14e] text-[#050c14] hover:bg-[#e8d9a0] text-[10px] font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1 shadow-md"

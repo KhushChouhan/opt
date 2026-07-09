@@ -104,9 +104,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Stock must be a non-negative whole number.' }, { status: 400 });
     }
 
-    const parsedDiscount = discount !== undefined && discount !== null && discount !== '' ? parseFloat(discount) : 0;
-    if (isNaN(parsedDiscount) || parsedDiscount < 0 || parsedDiscount > 100) {
-      return NextResponse.json({ error: 'Discount must be a valid number between 0 and 100.' }, { status: 400 });
+    let parsedDiscount = 0;
+    let discountProvided = false;
+    if (discount !== undefined && discount !== null && discount !== '') {
+      parsedDiscount = parseFloat(discount);
+      if (isNaN(parsedDiscount) || parsedDiscount < 0 || parsedDiscount > 100) {
+        return NextResponse.json({ error: 'Discount must be a valid number between 0 and 100.' }, { status: 400 });
+      }
+      discountProvided = true;
     }
 
     if (!image_url || !image_url.startsWith('http')) {
@@ -127,6 +132,18 @@ export async function PUT(
 
     let dbCategory = category;
     let dbDescription = description?.trim() || '';
+    try {
+      const parsed = JSON.parse(dbDescription);
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.desc !== undefined) {
+          dbDescription = parsed.desc;
+        } else if (parsed.description !== undefined) {
+          dbDescription = parsed.description;
+        }
+      }
+    } catch (e) {
+      // Not JSON
+    }
 
     if (['belts', 'perfumes', 'wallets', 'accessories'].includes(category)) {
       dbCategory = 'glasses';
@@ -142,11 +159,15 @@ export async function PUT(
       .maybeSingle();
 
     let pid = '';
+    let existingDiscount = 0;
     if (existingProduct && existingProduct.description) {
       try {
         const parsed = JSON.parse(existingProduct.description);
-        if (parsed && typeof parsed === 'object' && parsed.pid) {
-          pid = parsed.pid;
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.pid) pid = parsed.pid;
+          if (parsed.discount !== undefined) {
+            existingDiscount = parseFloat(parsed.discount) || 0;
+          }
         }
       } catch (e) {
         const match = existingProduct.description.match(/\[PID:\s*PID-(\d+)\]$/);
@@ -154,6 +175,10 @@ export async function PUT(
           pid = match[1];
         }
       }
+    }
+
+    if (!discountProvided) {
+      parsedDiscount = existingDiscount;
     }
 
     if (!pid) {
