@@ -5,6 +5,7 @@ import Providers from '@/components/Providers';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import HeritageLaunchAlert from '@/components/HeritageLaunchAlert';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -33,7 +34,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
-      <body className="antialiased min-h-screen flex flex-col bg-[#050c14] text-[#f3f4f6] font-sans">
+      <body className="antialiased min-h-screen flex flex-col bg-[#FCF8F4] text-[#121212] font-sans">
         <Providers>
           <Navbar />
           <main className="flex-grow">
@@ -41,6 +42,7 @@ export default function RootLayout({
           </main>
           <Footer />
           <WhatsAppButton />
+          <HeritageLaunchAlert />
         </Providers>
       </body>
     </html>

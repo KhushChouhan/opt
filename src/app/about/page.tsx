@@ -22,12 +22,12 @@ const WHY_CHOOSE_US = [
 
 export default function AboutPage() {
   return (
-    <div className="bg-[#050c14] min-h-screen text-white pb-24 relative overflow-hidden">
+    <div className="site-light-page relative overflow-hidden pb-24">
       {/* Luxury Grid Overlay background */}
       <div className="absolute inset-0 luxury-grid-overlay" />
 
       {/* Hero Header */}
-      <section className="relative py-24 border-b border-[#c7a14e]/15 bg-[#0b131e]/25">
+      <section className="site-light-hero relative border-b py-24">
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-[#c7a14e] animate-pulse" />
@@ -179,7 +179,7 @@ export default function AboutPage() {
 
       {/* Bottom Store Locator strip */}
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
-        <div className="glass-panel rounded-xl p-5 border border-[#c7a14e]/20 flex flex-col md:flex-row items-center justify-between gap-5 bg-gradient-to-r from-[#0b131e] to-[#070e17]">
+        <div className="site-light-card rounded-xl border p-5 flex flex-col md:flex-row items-center justify-between gap-5">
           <div className="flex items-center gap-3.5">
             <div className="p-3 bg-[#c7a14e]/10 border border-[#c7a14e]/20 text-[#c7a14e] rounded-full">
               <MapPin className="w-5 h-5 animate-bounce" />
@@ -193,7 +193,7 @@ export default function AboutPage() {
             href="https://maps.app.goo.gl/Ao5XF84qxdaMoFxL8"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-6 py-2.5 bg-[#c7a14e] hover:bg-[#e8d9a0] text-[#050c14] text-[10px] font-bold uppercase tracking-wider rounded-md transition-colors"
+            className="site-light-cta rounded-md px-6 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors"
           >
             Get Directions
           </a>

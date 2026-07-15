@@ -49,7 +49,7 @@ ${name}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter name"
-              className="w-full bg-[#050c14]/80 border border-gray-800 rounded-md px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#c7a14e] transition-colors"
+              className="site-light-input w-full rounded-md border px-3.5 py-2.5 text-xs transition-colors focus:outline-none sm:text-sm"
             />
           </div>
           <div className="space-y-1.5">
@@ -60,7 +60,7 @@ ${name}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Enter phone"
-              className="w-full bg-[#050c14]/80 border border-gray-800 rounded-md px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#c7a14e] transition-colors"
+              className="site-light-input w-full rounded-md border px-3.5 py-2.5 text-xs transition-colors focus:outline-none sm:text-sm"
             />
           </div>
         </div>
@@ -74,7 +74,7 @@ ${name}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter email"
-              className="w-full bg-[#050c14]/80 border border-gray-800 rounded-md px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#c7a14e] transition-colors"
+              className="site-light-input w-full rounded-md border px-3.5 py-2.5 text-xs transition-colors focus:outline-none sm:text-sm"
             />
           </div>
           <div className="space-y-1.5">
@@ -85,7 +85,7 @@ ${name}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Enter subject"
-              className="w-full bg-[#050c14]/80 border border-gray-800 rounded-md px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#c7a14e] transition-colors"
+              className="site-light-input w-full rounded-md border px-3.5 py-2.5 text-xs transition-colors focus:outline-none sm:text-sm"
             />
           </div>
         </div>
@@ -97,14 +97,14 @@ ${name}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="How can we help you?"
-            className="w-full flex-grow min-h-[160px] bg-[#050c14]/80 border border-gray-800 rounded-md px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#c7a14e] transition-colors resize-none"
+            className="site-light-input min-h-[160px] w-full flex-grow resize-none rounded-md border px-3.5 py-2.5 text-xs transition-colors focus:outline-none sm:text-sm"
           />
         </div>
       </div>
 
       <button
         type="submit"
-        className="w-full bg-gradient-to-r from-[#c7a14e] to-[#9e782f] text-[#050c14] py-3.5 px-6 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wider hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer mt-4"
+        className="site-light-cta mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md px-6 py-3.5 text-xs font-bold uppercase tracking-wider shadow-lg transition-all sm:text-sm"
       >
         <Send className="w-3.5 h-3.5" />
         <span>Submit Query</span>

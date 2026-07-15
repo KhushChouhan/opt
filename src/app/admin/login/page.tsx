@@ -65,9 +65,9 @@ function LoginFormContent() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md border-[#c7a14e]/20 bg-[#0b131e]/80 shadow-2xl">
+      <Card className="admin-login-card w-full max-w-md border-[#c7a14e]/20 bg-[#0b131e]/80 shadow-2xl">
         <CardHeader className="text-center pb-2">
-          <div className="w-12 h-12 rounded-full bg-[#0d1522] border border-[#c7a14e]/30 flex items-center justify-center mx-auto mb-3">
+          <div className="admin-login-icon w-12 h-12 rounded-full border flex items-center justify-center mx-auto mb-3">
             <Shield className="w-6 h-6 text-[#c7a14e]" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-wider font-luxury text-white">

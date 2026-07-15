@@ -111,12 +111,12 @@ export default function BlogPage() {
   const regularPosts = ARTICLES.filter(a => !a.featured);
 
   return (
-    <div className="bg-[#050c14] min-h-screen text-white pb-20 relative overflow-hidden">
+    <div className="site-light-page relative overflow-hidden pb-20">
       {/* Luxury Grid Overlay background */}
       <div className="absolute inset-0 luxury-grid-overlay" />
 
       {/* Hero Header */}
-      <section className="relative py-20 border-b border-[#c7a14e]/15 bg-[#0b131e]/25">
+      <section className="site-light-hero relative border-b py-20">
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-[#c7a14e] animate-pulse" />
@@ -177,7 +177,7 @@ export default function BlogPage() {
 
                   <Button
                     onClick={() => setSelectedArticle(featuredPost)}
-                    className="self-start sm:self-auto bg-[#c7a14e] text-[#050c14] hover:bg-[#e8d9a0] font-bold text-[10px] tracking-wider uppercase flex items-center gap-1.5"
+                    className="site-light-cta self-start sm:self-auto flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
                   >
                     Read Article <ArrowRight className="w-3.5 h-3.5" />
                   </Button>

@@ -47,6 +47,18 @@ interface Product {
   discount?: number;
 }
 
+type ProductCollection = 'standard' | 'heritage';
+
+const HERITAGE_COLLECTION_MARKER = '[Collection: heritage]';
+
+const isHeritageCollection = (description?: string): boolean =>
+  Boolean(description && /\[Collection:\s*heritage\]/i.test(description));
+
+const stripManagedDescriptionMarkers = (description?: string): string =>
+  (description || '')
+    .replace(/\[(?:Collection:\s*heritage|Category:\s*(?:perfumes|belts|wallets|accessories))\]\s*/gi, '')
+    .trim();
+
 const getActualCategory = (product: Product): string => {
   if (product.description) {
     if (product.description.includes('[Category: perfumes]')) return 'perfumes';
@@ -84,6 +96,7 @@ export default function AdminDashboard() {
   const [productForm, setProductForm] = useState({
     name: '',
     category: 'glasses',
+    collection: 'standard' as ProductCollection,
     price: '',
     description: '',
     image_url: '',
@@ -229,6 +242,7 @@ export default function AdminDashboard() {
     setProductForm({
       name: '',
       category: 'glasses',
+      collection: 'standard',
       price: '',
       description: '',
       image_url: '',
@@ -251,8 +265,9 @@ export default function AdminDashboard() {
     setProductForm({
       name: product.name,
       category: getActualCategory(product),
+      collection: isHeritageCollection(product.description) ? 'heritage' : 'standard',
       price: product.price.toString(),
-      description: product.description || '',
+      description: stripManagedDescriptionMarkers(product.description),
       image_url: product.image_url,
       overlay_image_url: product.overlay_image_url,
       lens_image_url: product.lens_image_url || '',
@@ -351,11 +366,16 @@ export default function AdminDashboard() {
     try {
       const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
       const method = editingProduct ? 'PUT' : 'POST';
+      const { collection, ...productPayload } = productForm;
+      const cleanDescription = stripManagedDescriptionMarkers(productForm.description);
+      const description = collection === 'heritage'
+        ? `${HERITAGE_COLLECTION_MARKER}${cleanDescription ? ` ${cleanDescription}` : ''}`
+        : cleanDescription;
 
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productForm),
+        body: JSON.stringify({ ...productPayload, description }),
       });
 
       const data = await response.json();
@@ -393,10 +413,10 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="admin-dashboard space-y-8">
       {/* Stats Cards Dashboard HUD */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <Card className="bg-[#0F1B30]/40 border-gray-800">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <Card className="admin-stat-card bg-[#0F1B30]/40 border-gray-800">
           <CardContent className="p-5 flex items-center space-x-4">
             <div className="p-3 bg-[#1A2742] rounded-md border border-[#C9A84C]/20 text-[#C9A84C]">
               <ClipboardList className="w-5 h-5" />
@@ -408,7 +428,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0F1B30]/40 border-gray-800">
+        <Card className="admin-stat-card bg-[#0F1B30]/40 border-gray-800">
           <CardContent className="p-5 flex items-center space-x-4">
             <div className="p-3 bg-amber-500/10 rounded-md border border-amber-500/20 text-amber-500">
               <Clock className="w-5 h-5" />
@@ -420,7 +440,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0F1B30]/40 border-gray-800">
+        <Card className="admin-stat-card bg-[#0F1B30]/40 border-gray-800">
           <CardContent className="p-5 flex items-center space-x-4">
             <div className="p-3 bg-emerald-500/10 rounded-md border border-emerald-500/20 text-emerald-500">
               <TrendingUp className="w-5 h-5" />
@@ -432,7 +452,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-[#0F1B30]/40 border-gray-800">
+        <Card className="admin-stat-card bg-[#0F1B30]/40 border-gray-800">
           <CardContent className="p-5 flex items-center space-x-4">
             <div className="p-3 bg-blue-500/10 rounded-md border border-blue-500/20 text-blue-500">
               <Package className="w-5 h-5" />
@@ -446,10 +466,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs Controller */}
-      <div className="flex border-b border-gray-800">
+      <div className="mobile-rail flex overflow-x-auto border-b border-gray-800">
         <button
           onClick={() => setActiveTab('orders')}
-          className={`flex items-center space-x-2 px-6 py-3 border-b-2 text-sm font-semibold uppercase tracking-wider transition-all ${
+          className={`flex shrink-0 items-center space-x-2 px-4 sm:px-6 py-3 border-b-2 text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all ${
             activeTab === 'orders'
               ? 'border-[#C9A84C] text-[#C9A84C]'
               : 'border-transparent text-gray-400 hover:text-white'
@@ -460,7 +480,7 @@ export default function AdminDashboard() {
         </button>
         <button
           onClick={() => setActiveTab('products')}
-          className={`flex items-center space-x-2 px-6 py-3 border-b-2 text-sm font-semibold uppercase tracking-wider transition-all ${
+          className={`flex shrink-0 items-center space-x-2 px-4 sm:px-6 py-3 border-b-2 text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all ${
             activeTab === 'products'
               ? 'border-[#C9A84C] text-[#C9A84C]'
               : 'border-transparent text-gray-400 hover:text-white'
@@ -517,7 +537,7 @@ export default function AdminDashboard() {
 
             {!ordersLoading && !ordersError && filteredOrders.length > 0 && (
               <div className="overflow-x-auto w-full glass-panel rounded-lg border border-gray-800">
-                <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                <table className="min-w-[980px] w-full text-left border-collapse text-xs sm:text-sm">
                   <thead>
                     <tr className="bg-black/30 text-gray-400 border-b border-gray-800 text-[10px] font-bold uppercase tracking-wider">
                       <th className="p-4">Customer</th>
@@ -638,9 +658,9 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
               <h2 className="text-lg font-bold text-white font-luxury">Catalog Stock Control</h2>
-              <Button onClick={openAddProductModal} className="flex items-center text-xs">
+              <Button onClick={openAddProductModal} className="flex w-full items-center text-xs sm:w-auto">
                 <Plus className="w-4 h-4 mr-1.5" /> Add New Product
               </Button>
             </div>
@@ -666,7 +686,7 @@ export default function AdminDashboard() {
             {!productsLoading && !productsError && products && products.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {products.map((product) => (
-                  <Card key={product.id} className="bg-[#0F1B30]/40 border-gray-800 relative">
+                  <Card key={product.id} className="admin-product-card bg-[#0F1B30]/40 border-gray-800 relative">
                     <div className="absolute top-2 right-2 z-10 flex space-x-1">
                       <button
                         onClick={() => openEditProductModal(product)}
@@ -767,7 +787,7 @@ export default function AdminDashboard() {
             onChange={(e) => setProductForm(prev => ({ ...prev, name: e.target.value }))}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
               label="Department Category"
               options={[
@@ -778,7 +798,7 @@ export default function AdminDashboard() {
                 { value: 'belts', label: 'Belts' },
                 { value: 'perfumes', label: 'Perfumes' },
                 { value: 'wallets', label: 'Wallets' },
-                { value: 'accessories', label: 'Accessories' },
+                { value: 'accessories', label: 'Other Accessories' },
               ]}
               required
               value={productForm.category}
@@ -795,7 +815,18 @@ export default function AdminDashboard() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <Select
+            label="Collection"
+            options={[
+              { value: 'standard', label: 'Standard Collection' },
+              { value: 'heritage', label: 'Antique / Heritage Collection' },
+            ]}
+            required
+            value={productForm.collection}
+            onChange={(e) => setProductForm(prev => ({ ...prev, collection: e.target.value as ProductCollection }))}
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label="Starting Stock Units"
               type="number"
@@ -826,7 +857,7 @@ export default function AdminDashboard() {
             <span className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
               Product Listing Image (Showcase)
             </span>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 type="text"
                 placeholder="https://res.cloudinary.com/... or Upload image"
@@ -835,7 +866,7 @@ export default function AdminDashboard() {
                 onChange={(e) => setProductForm(prev => ({ ...prev, image_url: e.target.value }))}
                 className="flex-grow"
               />
-              <label className="flex items-center justify-center px-4 bg-[#1A2742] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+              <label className="flex min-w-[100px] w-full items-center justify-center rounded-md border border-gray-700 bg-[#1A2742] px-4 text-center text-white cursor-pointer transition-all hover:bg-[#253258] sm:w-auto">
                 {uploadingField === 'main' ? (
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C9A84C]" />
                 ) : (
@@ -865,7 +896,7 @@ export default function AdminDashboard() {
             <span className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
               Transparent Overlay Image (PNG for virtual Try-On)
             </span>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 type="text"
                 placeholder="https://res.cloudinary.com/... or Upload transparent PNG"
@@ -874,7 +905,7 @@ export default function AdminDashboard() {
                 onChange={(e) => setProductForm(prev => ({ ...prev, overlay_image_url: e.target.value }))}
                 className="flex-grow"
               />
-              <label className="flex items-center justify-center px-4 bg-[#1A2742] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+              <label className="flex min-w-[100px] w-full items-center justify-center rounded-md border border-gray-700 bg-[#1A2742] px-4 text-center text-white cursor-pointer transition-all hover:bg-[#253258] sm:w-auto">
                 {uploadingField === 'overlay' ? (
                   <RefreshCw className="w-4 h-4 animate-spin text-[#C9A84C]" />
                 ) : (
@@ -906,7 +937,7 @@ export default function AdminDashboard() {
                 <span className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
                   Optional Lens Image (PNG overlay, e.g. custom tint)
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     type="text"
                     placeholder="https://res.cloudinary.com/... or Upload lens PNG"
@@ -914,7 +945,7 @@ export default function AdminDashboard() {
                     onChange={(e) => setProductForm(prev => ({ ...prev, lens_image_url: e.target.value }))}
                     className="flex-grow"
                   />
-                  <label className="flex items-center justify-center px-4 bg-[#1A2742] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+                  <label className="flex min-w-[100px] w-full items-center justify-center rounded-md border border-gray-700 bg-[#1A2742] px-4 text-center text-white cursor-pointer transition-all hover:bg-[#253258] sm:w-auto">
                     {uploadingField === 'lens' ? (
                       <RefreshCw className="w-4 h-4 animate-spin text-[#C9A84C]" />
                     ) : (
@@ -944,7 +975,7 @@ export default function AdminDashboard() {
                 <span className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
                   Optional Reflection Image (PNG overlay, e.g. custom reflections)
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     type="text"
                     placeholder="https://res.cloudinary.com/... or Upload reflection PNG"
@@ -952,7 +983,7 @@ export default function AdminDashboard() {
                     onChange={(e) => setProductForm(prev => ({ ...prev, reflection_image_url: e.target.value }))}
                     className="flex-grow"
                   />
-                  <label className="flex items-center justify-center px-4 bg-[#1A2742] hover:bg-[#253258] border border-gray-700 text-white rounded-md cursor-pointer transition-all min-w-[100px] text-center">
+                  <label className="flex min-w-[100px] w-full items-center justify-center rounded-md border border-gray-700 bg-[#1A2742] px-4 text-center text-white cursor-pointer transition-all hover:bg-[#253258] sm:w-auto">
                     {uploadingField === 'reflection' ? (
                       <RefreshCw className="w-4 h-4 animate-spin text-[#C9A84C]" />
                     ) : (
