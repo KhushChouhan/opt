@@ -379,85 +379,10 @@ export default function Home() {
           <Link href="/products" data-bump="true" className="absolute right-0 hidden items-center gap-1 rounded-[5px] border border-[#D9B48D] bg-[#FBF1E8] px-3 py-2 text-[9px] font-bold uppercase sm:flex" style={{ color: C.accent }}>View All <ArrowRight className="w-3 h-3"/></Link>
         </div>
 
-<<<<<<< HEAD
-              return (
-                <div
-                  key={p.id}
-                  className="snap-start flex-shrink-0 w-[240px] rounded-xl border border-white/10 bg-[#0b131e]/90 hover:border-[#c7a14e]/50 hover:shadow-[0_4px_25px_rgba(0,0,0,0.4)] transition-all duration-300 group flex flex-col justify-between overflow-hidden"
-                >
-                  <div className="relative aspect-square w-full bg-transparent overflow-hidden">
-                    <Image 
-                      src={p.image_url} 
-                      alt={p.name} 
-                      fill 
-                      sizes="240px" 
-                      className="object-contain p-6 group-hover:scale-105 transition-transform duration-500" 
-                    />
-                  </div>
-                  <div className="p-4 pt-0 flex flex-col justify-between flex-grow">
-                    <div>
-                      <p className="text-[11px] font-semibold text-[#c7a14e] uppercase tracking-wider">{actualBrand}</p>
-                      <p className="text-[12px] text-white mt-0.5 font-bold truncate leading-snug line-clamp-1">{actualName}</p>
-                    </div>
-                    <div className="flex flex-col gap-0.5 mt-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white">₹{Math.round(p.price * 0.8).toLocaleString('en-IN')}</span>
-                        <span className="text-[9px] text-[#c7a14e] uppercase tracking-widest font-semibold">{p.category}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[9px]">
-                        <span className="text-gray-500 line-through">₹{p.price.toLocaleString('en-IN')}</span>
-                        <span className="text-[#25D366] font-bold">20% Off</span>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3.5 space-y-1.5">
-                      {!p.id.startsWith('mock-') ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCheckoutProduct({ id: p.id, name: p.name, price: Math.round(p.price * 0.8) });
-                            setIsCheckoutOpen(true);
-                          }}
-                          className="w-full py-2 bg-[#c7a14e] text-[#050c14] hover:bg-[#e8d9a0] text-[10px] font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1 shadow-md"
-                        >
-                          <ShoppingCart className="w-3 h-3" /> Buy Now
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => inquire(`${actualBrand} ${actualName}`)}
-                          className="w-full py-2 bg-[#c7a14e] text-[#050c14] hover:bg-[#e8d9a0] text-[10px] font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1 shadow-md"
-                        >
-                          Buy on WhatsApp
-                        </button>
-                      )}
-                      
-                      {hasTryOn && !p.id.startsWith('mock-') && (
-                        <Link
-                          href={tryOnLink}
-                          className="block w-full py-1.5 border border-[#c7a14e]/30 text-gray-300 hover:text-white text-[10px] font-bold uppercase tracking-wider rounded text-center transition-colors hover:bg-[#c7a14e]/10"
-                        >
-                          Try On AR
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <button
-            onClick={() => scrollCarousel(1)}
-            aria-label="Scroll right"
-            className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-[#0b131e] border border-[#c7a14e]/30 items-center justify-center text-[#c7a14e] hover:bg-[#c7a14e] hover:text-[#050c14] transition-colors"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-=======
         <button type="button" onClick={() => scrollTrending(-1)} aria-label="Previous trending styles" className="absolute left-1 top-[58%] z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#EADEC9] bg-white shadow-sm md:flex"><ChevronLeft className="h-4 w-4" /></button>
         <button type="button" onClick={() => scrollTrending(1)} aria-label="Next trending styles" className="absolute right-1 top-[58%] z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#EADEC9] bg-white shadow-sm md:flex"><ChevronRight className="h-4 w-4" /></button>
         <div ref={trendingCarouselRef} className="mobile-rail -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 text-left sm:-mx-8 sm:px-8 md:mx-0 md:grid md:grid-cols-5 md:gap-4 md:overflow-visible md:px-0 md:text-center">
           {TRENDING_STYLES.map((item) => <TrendingVideoCard key={item.name} item={item} />)}
->>>>>>> 902d8ad (UI redesign: navbar fixes, color updates, cleanup unused files, logo resize)
         </div>
       </section>
 
