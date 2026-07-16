@@ -93,7 +93,11 @@ export default async function WatchTryOnPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(200,102,32,0.08),_transparent_30%),linear-gradient(180deg,_#FFFDFC_0%,_#FCF8F4_100%)] py-4 text-[#121212] sm:py-6">
+<<<<<<< HEAD
       <WatchTryOnCanvas product={parsedProduct} />
+=======
+      <WatchTryOnCanvas product={product} />
+>>>>>>> fe9a45569368096d0ee202f3426dbc8223b63e16
     </div>
   );
 }
