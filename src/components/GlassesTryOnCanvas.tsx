@@ -1043,10 +1043,10 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+    <div className="tryon-theme mx-auto max-w-6xl px-3 py-4 sm:px-4 sm:py-8">
       {/* Back to catalog */}
       <div className="mb-4">
-        <Link href="/products" className="text-sm text-gray-400 hover:text-[#C9A84C] transition-colors flex items-center gap-1.5">
+        <Link href="/products" className="flex items-center gap-1.5 text-sm font-semibold text-[#62574E] transition-colors hover:text-[#C86620]">
           ← Back to Catalog
         </Link>
       </div>
@@ -1057,14 +1057,14 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           
           {/* Camera Device Selector — only show when multiple cameras exist */}
           {cameraState === 'active' && devices.length > 1 && (
-            <div className="flex items-center justify-between bg-[#0F1B30]/80 p-2.5 rounded-lg border border-[#C9A84C]/20 text-xs">
+            <div className="tryon-surface flex items-center justify-between rounded-lg border p-2.5 text-xs">
               <span className="text-gray-300 font-semibold uppercase tracking-wider flex items-center">
                 <Camera className="w-3.5 h-3.5 text-[#C9A84C] mr-1.5" /> Camera:
               </span>
               <select
                 value={selectedDeviceId}
                 onChange={handleDeviceChange}
-                className="bg-[#1A2742] border border-gray-700 text-white rounded px-2 py-1 focus:outline-none focus:border-[#C9A84C] text-xs"
+                className="tryon-control rounded border px-2 py-1 text-xs focus:outline-none"
               >
                 {devices.map((device, idx) => (
                   <option key={device.deviceId} value={device.deviceId}>
@@ -1076,7 +1076,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
           )}
 
           {/* Canvas Wrapper — portrait on mobile, landscape on desktop */}
-          <div className="relative w-full bg-[#0F1B30] rounded-xl overflow-hidden shadow-2xl border border-white/5 aspect-[3/4] sm:aspect-[4/3]">
+          <div className="tryon-camera relative aspect-[3/4] w-full overflow-hidden rounded-xl border border-[#271E18]/15 bg-[#0F1B30] shadow-[0_18px_45px_rgba(66,39,17,0.18)] sm:aspect-[4/3]">
             {/* Loading Cover */}
             {cameraState === 'loading' && (
               <div className="absolute inset-0 z-30 bg-[#0B1422] flex flex-col items-center justify-center p-6 text-center space-y-4">
@@ -1186,7 +1186,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
 
           {/* Tip bar */}
-          <div className="p-3 sm:p-4 bg-[#0F1B30]/60 rounded-lg border border-white/5 flex items-start sm:items-center gap-3">
+          <div className="tryon-surface flex items-start gap-3 rounded-lg border p-3 sm:items-center sm:p-4">
             <HelpCircle className="w-4 h-4 text-[#C9A84C] shrink-0 mt-0.5 sm:mt-0" />
             <p className="text-xs text-gray-400 leading-relaxed">
               <span className="text-white font-semibold">Tip:</span> Face the camera directly for automatic detection. Use the <span className="text-[#C9A84C]">Adjust</span> button to fine-tune the fit.
@@ -1195,13 +1195,13 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
           {/* Adjustment Panel (collapsible) */}
           {showAdjustPanel && cameraState !== 'loading' && (
-            <div className="p-4 sm:p-5 bg-[#0F1B30]/90 backdrop-blur-md rounded-xl border border-[#C9A84C]/20 shadow-xl space-y-4">
+            <div className="tryon-surface space-y-4 rounded-xl border p-4 shadow-xl sm:p-5">
               <div className="flex items-center justify-between border-b border-gray-800 pb-3">
                 <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider flex items-center">
                   <Sliders className="w-3.5 h-3.5 mr-2" />
                   {faceDetected ? 'Fine-tune Glasses Fit' : 'Manual Placement'}
                 </h4>
-                <button onClick={() => setShowAdjustPanel(false)} className="text-gray-500 hover:text-white transition-colors">
+                <button onClick={() => setShowAdjustPanel(false)} className="text-gray-500 transition-colors hover:text-[#C86620]">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1255,7 +1255,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               )}
 
               <div className="flex items-center justify-between pt-2 border-t border-gray-800">
-                <button onClick={() => { setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0); setLiveXOffset(0); setLiveYOffset(0); setLiveRotationOffset(0); setManualScale(1.0); setManualRotation(0); }} className="text-xs text-gray-400 hover:text-white transition-colors underline">Reset to defaults</button>
+                <button onClick={() => { setLiveScale(product.overlay_scale !== null && product.overlay_scale !== undefined ? Number(product.overlay_scale) : 1.0); setLiveXOffset(0); setLiveYOffset(0); setLiveRotationOffset(0); setManualScale(1.0); setManualRotation(0); }} className="text-xs text-gray-400 underline transition-colors hover:text-[#C86620]">Reset to defaults</button>
                 {showCalibrator && (
                   <button
                     onClick={async () => {
@@ -1277,7 +1277,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
 
         {/* Product Details Panel (Right column) */}
         <div className="lg:col-span-4 space-y-4">
-          <Card className="border-gray-800 bg-[#0F1B30]/50">
+          <Card className="tryon-surface overflow-hidden border">
             <CardContent className="p-4 sm:p-6 space-y-5">
               <div>
                 <span className="px-2 py-0.5 bg-[#1A2742] border border-[#C9A84C]/20 text-[#C9A84C] text-[10px] font-bold uppercase tracking-widest rounded">
@@ -1376,7 +1376,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
               <div className="pt-1 space-y-2.5">
                 <Button
                   onClick={() => setIsCheckoutOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs bg-[#C9A84C] text-[#050c14] hover:bg-[#e8d9a0] border-transparent"
+                  className="tryon-primary-cta w-full border-transparent py-3 text-xs font-bold uppercase tracking-wider"
                 >
                   <ShoppingCart className="w-4 h-4" />
                   Buy Now
@@ -1384,7 +1384,7 @@ export default function GlassesTryOnCanvas({ product }: GlassesTryOnCanvasProps)
                 <Button
                   onClick={handleInquiry}
                   variant="outline"
-                  className="w-full flex items-center justify-center gap-2 py-3 font-bold uppercase tracking-wider text-xs border-gray-700 text-gray-300 hover:text-white hover:bg-white/5"
+                  className="tryon-secondary-cta w-full py-3 text-xs font-bold uppercase tracking-wider"
                 >
                   <MessageCircle className="w-4 h-4 text-[#25D366]" />
                   Buy on WhatsApp

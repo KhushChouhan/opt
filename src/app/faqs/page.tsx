@@ -138,12 +138,12 @@ export default function FAQsPage() {
   };
 
   return (
-    <div className="bg-[#050c14] min-h-screen text-gray-300 pb-20 relative overflow-hidden">
+    <div className="site-light-page relative overflow-hidden pb-20">
       {/* Luxury Background Overlay */}
       <div className="absolute inset-0 luxury-grid-overlay opacity-80" />
 
       {/* Hero Header */}
-      <section className="relative py-20 border-b border-[#c7a14e]/15 bg-[#0b131e]/20 z-10">
+      <section className="site-light-hero relative z-10 border-b py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="font-display text-4xl sm:text-6xl font-bold tracking-wider text-white">
             Frequently Asked Questions

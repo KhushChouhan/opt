@@ -18,12 +18,12 @@ export const metadata: Metadata = {
 
 export default function WarrantyCarePage() {
   return (
-    <div className="bg-[#050c14] min-h-screen text-gray-300 pb-20 relative overflow-hidden">
+    <div className="site-light-page relative overflow-hidden pb-20">
       {/* Luxury Background Overlay */}
       <div className="absolute inset-0 luxury-grid-overlay opacity-80" />
 
       {/* Hero Header */}
-      <section className="relative py-20 border-b border-[#c7a14e]/15 bg-[#0b131e]/20 z-10">
+      <section className="site-light-hero relative z-10 border-b py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* Breadcrumb */}
           <nav className="flex justify-center items-center gap-2 text-xs text-gray-500 uppercase tracking-widest mb-4">
@@ -87,7 +87,7 @@ export default function WarrantyCarePage() {
         </div>
 
         {/* Claim process */}
-        <div className="p-6 sm:p-8 rounded-2xl border border-[#c7a14e]/20 bg-gradient-to-r from-[#0b131e]/80 to-[#070b12] space-y-6">
+        <div className="site-light-card space-y-6 rounded-2xl border p-6 sm:p-8">
           <div className="space-y-1">
             <span className="text-[10px] font-bold text-[#c7a14e] tracking-[0.2em] uppercase">PROCEDURE</span>
             <h3 className="font-display text-xl sm:text-2xl font-bold text-white">How to Claim Warranty</h3>

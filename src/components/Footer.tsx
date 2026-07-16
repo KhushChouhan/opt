@@ -1,352 +1,147 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MapPin, Phone, Mail, Clock, ArrowRight } from 'lucide-react';
-import { Facebook, Instagram, WhatsApp, Youtube } from '@/components/icons/Social';
+import { ArrowRight } from 'lucide-react';
+import { Facebook, Instagram, WhatsApp } from '@/components/icons/Social';
+import { buildWhatsAppUrl, WHATSAPP_STORE } from '@/utils/whatsapp';
 
-const SHOP = [
-  { label: 'Watches', href: '/products?category=watches' },
-  { label: 'Smart Watches', href: '/products?category=smart-watches' },
+const shopLinks = [
+  { label: 'EyeGlasses', href: '/products?category=glasses' },
   { label: 'Sunglasses', href: '/products?category=sunglasses' },
-  { label: 'Optical Frames', href: '/products?category=glasses' },
+  { label: 'Contact Lenses', href: '/products?category=contact-lenses' },
+  { label: 'Watches', href: '/products?category=watches' },
   { label: 'Accessories', href: '/products?category=accessories' },
-  { label: 'New Arrivals', href: '/products?new-arrivals=true' },
+  { label: 'Brands', href: '/brands' },
 ];
 
-const CARE = [
+const supportLinks = [
   { label: 'About Us', href: '/about' },
-  { label: 'Blog Journal', href: '/blog' },
-  { label: 'Contact Us', href: '/contact' },
+  { label: 'Store Locator', href: '/contact' },
+  { label: 'Track Order', href: '/contact' },
   { label: 'Returns & Exchange', href: '/returns-exchange' },
-  { label: 'Warranty Care', href: '/warranty-care' },
-  { label: 'FAQs', href: '/faqs' },
+  { label: 'FAQ', href: '/faqs' },
+  { label: 'Contact Us', href: '/contact' },
 ];
 
-const INSTAGRAM_URL = "https://www.instagram.com/hariyana_watch_opticals49?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==";
+const informationLinks = [
+  { label: 'Privacy Policy', href: '/privacy-policy' },
+  { label: 'Terms & Conditions', href: '/terms-conditions' },
+  { label: 'Shipping Policy', href: '/shipping-policy' },
+  { label: 'Warranty Policy', href: '/warranty-care' },
+];
 
 export default function Footer() {
   const pathname = usePathname();
-  const year = new Date().getFullYear();
   const [email, setEmail] = useState('');
 
-  const handleSubscribeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    const subjectText = "Hariyana Newsletter Subscription Request";
-    const bodyText = `Hello Hariyana Watch & Opticals team,
+  if (pathname?.startsWith('/receipt/') || pathname?.startsWith('/verify/')) return null;
 
-Please add my email address to your newsletter mailing list for updates on new arrivals, exclusive discounts, and store announcements.
+  const handleSubscribe = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!email.trim()) return;
 
-📧 Email to subscribe: ${email}
-
-------------------------------------------
-Submitted via Hariyana Watch & Opticals Footer portal.`;
-
-    const mailtoUrl = `mailto:hariyanaoptical49@gmail.com?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
-    window.location.href = mailtoUrl;
+    const subject = 'Hariyana Newsletter Subscription Request';
+    const body = `Please add ${email.trim()} to the Hariyana Watch & Opticals newsletter.`;
+    window.location.href = `mailto:hariyanaoptical49@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setEmail('');
   };
 
-  // Base Column styling with vertical dividers on desktop
-  const colClassName = "border-b border-[#c7a14e]/10 lg:border-b-0 lg:border-r border-[#c7a14e]/15 last:border-r-0 last:border-b-0 pb-8 lg:pb-0 px-0 lg:px-6 xl:px-8 first:lg:pl-0 flex flex-col justify-start items-center text-center";
-
-  if (pathname?.startsWith('/receipt/') || pathname?.startsWith('/verify/')) {
-    return null;
-  }
+  const linkClass = 'block text-[11px] leading-[1.8] text-[#303030] transition-colors hover:text-[#C86620] sm:text-[11.5px]';
+  const headingClass = 'mb-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.04em] text-[#171717] sm:text-[11.5px]';
+  const socialClass = 'flex h-8 w-8 items-center justify-center rounded-full border border-[#CFC8C0] bg-[#FCF8F4] text-[#252525] transition-colors hover:border-[#C86620] hover:text-[#C86620]';
 
   return (
-    <footer className="bg-[#050c14] border-t border-[#c7a14e]/15 text-gray-400">
-      {/* ============ INSTAGRAM FEED BANNER ============ */}
-      <div className="border-b border-[#c7a14e]/15 py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-            {/* Left side: text */}
-            <div className="flex-shrink-0 space-y-1.5 text-center lg:text-left">
-              <span className="text-[10px] font-bold text-[#c7a14e] tracking-[0.25em] uppercase block">
-                Follow Us On Instagram
-              </span>
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-display text-2xl sm:text-3xl text-white font-medium hover:text-[#c7a14e] transition-colors block tracking-wide animate-pulse"
-              >
-                @hariyana.watch.opticals
-              </a>
-            </div>
-
-            {/* Right side: 6 Instagram cards (Enlarged size) */}
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3.5 w-full lg:w-auto justify-items-center">
-              {/* Card 1: Watch */}
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[140px] lg:w-28 xl:w-32"
-              >
-                <Image
-                  src="/images/luxury_watches.png"
-                  alt="Watch"
-                  fill
-                  sizes="(max-width: 640px) 30vw, 140px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </a>
-
-              {/* Card 2: Sunglasses */}
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[140px] lg:w-28 xl:w-32"
-              >
-                <Image
-                  src="/images/luxury_sunglasses.png"
-                  alt="Sunglasses"
-                  fill
-                  sizes="(max-width: 640px) 30vw, 140px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </a>
-
-              {/* Card 3: Optical Frames */}
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[140px] lg:w-28 xl:w-32"
-              >
-                <Image
-                  src="/images/luxury_optical_frames.png"
-                  alt="Optical Frames"
-                  fill
-                  sizes="(max-width: 640px) 30vw, 140px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </a>
-
-              {/* Card 4: Store interior cinematic */}
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[140px] lg:w-28 xl:w-32"
-              >
-                <Image
-                  src="/images/store_interior_cinematic.png"
-                  alt="Showroom display"
-                  fill
-                  sizes="(max-width: 640px) 30vw, 140px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </a>
-
-              {/* Card 5: Store interior */}
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-[#070B12] hover:border-[#C9A84C]/40 transition-colors group w-full max-w-[140px] lg:w-28 xl:w-32"
-              >
-                <Image
-                  src="/images/store_interior.png"
-                  alt="Store showroom"
-                  fill
-                  sizes="(max-width: 640px) 30vw, 140px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </a>
-
-              {/* Card 6: View More Instagram Logo */}
-              <a
-                href={INSTAGRAM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative aspect-square rounded-xl overflow-hidden border border-[#c7a14e]/30 bg-gradient-to-br from-[#0b131e] to-[#050c14] hover:border-[#c7a14e] transition-colors flex flex-col items-center justify-center gap-1 p-2 group w-full max-w-[140px] lg:w-28 xl:w-32"
-              >
-                <Instagram className="w-5 h-5 text-[#c7a14e] group-hover:scale-110 transition-transform duration-300" />
-                <span className="text-[9px] font-bold text-[#c7a14e] uppercase tracking-widest mt-1">
-                  View More
-                </span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ============ MAIN FOOTER LINKS ============ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-y-10 lg:gap-x-0">
-          {/* Column 1: Brand block (Spans 2 columns) */}
-          <div className={`${colClassName} lg:col-span-2 items-center text-center lg:items-start lg:text-left`}>
-            <Image
-              src="/images/logo-dark.png"
-              alt="Hariyana Watch & Opticals"
-              width={565}
-              height={441}
-              className="h-28 sm:h-32 w-auto object-contain mb-4 animate-fade-in"
-            />
-            <p className="text-[15px] leading-relaxed max-w-[220px] mb-6">
-              Premium watches and eyewear for those who value time, style and trust.
+    <footer className="border-t border-[#EEE5DC] bg-[#FBF3EB] text-[#252525]">
+      <div className="mx-auto max-w-[1440px] px-5 pb-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-9">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-7 lg:grid-cols-[1.45fr_.72fr_.92fr_.78fr_1.2fr] lg:gap-12">
+          <div className="col-span-2 lg:col-span-1">
+            <Link href="/" aria-label="Hariyana Watch & Opticals home" className="inline-block">
+              <Image
+                src="/images/logo-footer.png"
+                alt="Hariyana Watch & Opticals"
+                width={1536}
+                height={1152}
+                className="h-auto w-[170px] object-contain mix-blend-multiply sm:w-[185px]"
+              />
+            </Link>
+            <p className="mt-3 max-w-[245px] text-[11px] leading-[1.65] text-[#343434] sm:text-[11.5px]">
+              See Better. Live Better.<br />
+              Premium eyewear and luxury watches<br className="hidden xl:block" /> for your every moment.
             </p>
-            {/* Social Icons (Slightly compact and perfectly centered) */}
-            <div className="flex items-center gap-3">
-              <a
-                href="https://www.facebook.com/Vinod271083"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook"
-                className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#c7a14e] hover:border-[#c7a14e]/40 transition-colors"
-              >
-                <Facebook className="w-5 h-5" />
+
+            <div className="mt-4 flex items-center gap-3">
+              <a href="https://www.instagram.com/hariyana_watch_opticals49" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className={socialClass}>
+                <Instagram className="h-4 w-4" />
+              </a>
+              <a href="https://www.facebook.com/Vinod271083" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className={socialClass}>
+                <Facebook className="h-4 w-4" />
               </a>
               <a
-                href={INSTAGRAM_URL}
+                href={buildWhatsAppUrl('Hello Hariyana Watch & Opticals, I visited your website and would like to know more about your products.', WHATSAPP_STORE)}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#c7a14e] hover:border-[#c7a14e]/40 transition-colors"
+                aria-label="Chat with Hariyana Watch & Opticals on WhatsApp"
+                className={`${socialClass} hover:border-[#25D366] hover:text-[#128C4B]`}
               >
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a
-                href="https://wa.me/919828207999"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="WhatsApp"
-                className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-gray-400 hover:text-[#25D366] hover:border-[#25D366]/40 transition-colors"
-              >
-                <WhatsApp className="w-5 h-5" />
-              </a>
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="YouTube"
-                className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500/40 transition-colors"
-              >
-                <Youtube className="w-5 h-5" />
+                <WhatsApp className="h-4 w-4" />
               </a>
             </div>
           </div>
 
-          {/* Column 2: Shop (Spans 2 columns) */}
-          <div className={`${colClassName} lg:col-span-2`}>
-            <h4 className="text-[#c7a14e] font-bold text-base uppercase tracking-[0.15em] mb-5">Shop</h4>
-            <ul className="space-y-3.5 text-[15px] flex flex-col items-center text-center w-full">
-              {SHOP.map((item) => (
-                <li key={item.label}>
-                  <Link href={item.href} className="hover:text-white transition-colors">
-                    {item.label}
-                  </Link>
-                </li>
+          <div>
+            <h3 className={headingClass}>Shop</h3>
+            <nav aria-label="Footer shop links">
+              {shopLinks.map((item) => (
+                <Link key={item.label} href={item.href} className={linkClass}>{item.label}</Link>
               ))}
-            </ul>
+            </nav>
           </div>
 
-          {/* Column 3: Customer Care (Spans 2 columns) */}
-          <div className={`${colClassName} lg:col-span-2`}>
-            <h4 className="text-[#c7a14e] font-bold text-base uppercase tracking-[0.15em] mb-5">Customer Care</h4>
-            <ul className="space-y-3.5 text-[15px] flex flex-col items-center text-center w-full">
-              {CARE.map((item) => (
-                <li key={item.label}>
-                  <Link href={item.href} className="hover:text-white transition-colors">
-                    {item.label}
-                  </Link>
-                </li>
+          <div>
+            <h3 className={headingClass}>Help &amp; Support</h3>
+            <nav aria-label="Footer support links">
+              {supportLinks.map((item) => (
+                <Link key={item.label} href={item.href} className={linkClass}>{item.label}</Link>
               ))}
-            </ul>
+            </nav>
           </div>
 
-          {/* Column 4: Contact Us (Spans 3 columns) */}
-          <div className={`${colClassName} lg:col-span-3`}>
-            <h4 className="text-[#c7a14e] font-bold text-base uppercase tracking-[0.15em] mb-5">Contact Us</h4>
-            <ul className="space-y-3.5 text-[15px] flex flex-col items-center text-center w-full">
-              <li className="flex flex-col items-center gap-1.5">
-                <MapPin className="w-5 h-5 text-[#C9A84C] flex-shrink-0" />
-                <a
-                  href="https://maps.app.goo.gl/Ao5XF84qxdaMoFxL8"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition-colors leading-relaxed"
-                >
-                  52 Main Bus Stand,<br />Hanumangarh Town, Rajasthan 335513
-                </a>
-              </li>
-              <li className="flex flex-col items-center gap-1.5">
-                <Phone className="w-5 h-5 text-[#C9A84C] flex-shrink-0" />
-                <div className="flex flex-col">
-                  <a href="tel:+919828207999" className="hover:text-white transition-colors">Vinod Kumar: 98282-07999</a>
-                  <a href="tel:+918526200444" className="hover:text-white transition-colors">Shop Line: 85262-00444</a>
-                </div>
-              </li>
-              <li className="flex flex-col items-center gap-1.5">
-                <Mail className="w-5 h-5 text-[#C9A84C] flex-shrink-0" />
-                <a href="mailto:hariyanaoptical49@gmail.com" className="hover:text-white transition-colors break-all">hariyanaoptical49@gmail.com</a>
-              </li>
-              <li className="flex flex-col items-center gap-1.5">
-                <Clock className="w-5 h-5 text-[#C9A84C] flex-shrink-0" />
-                <span className="leading-relaxed">10:00 AM &ndash; 8:00 PM<br />(All Days)</span>
-              </li>
-            </ul>
+          <div className="col-span-2 sm:col-span-1">
+            <h3 className={headingClass}>Information</h3>
+            <nav aria-label="Footer information links">
+              {informationLinks.map((item) => (
+                <Link key={item.label} href={item.href} className={linkClass}>{item.label}</Link>
+              ))}
+            </nav>
           </div>
 
-          {/* Column 5: Newsletter (Spans 3 columns for spacious text box display) */}
-          <div className="lg:col-span-3 pb-8 lg:pb-0 px-0 lg:pl-6 xl:pl-8 flex flex-col justify-start items-center text-center">
-            <h4 className="text-[#c7a14e] font-bold text-base uppercase tracking-[0.15em] mb-5">Newsletter</h4>
-            <p className="text-[15px] text-gray-400 leading-relaxed mb-4">
-              Subscribe for updates on new arrivals and exclusive offers.
+          <div className="col-span-2 sm:col-span-1">
+            <h3 className={headingClass}>Newsletter</h3>
+            <p className="max-w-[230px] text-[11px] leading-[1.6] text-[#343434] sm:text-[11.5px]">
+              Get updates on new arrivals,<br />offers &amp; more.
             </p>
-            <form
-              onSubmit={handleSubscribeSubmit}
-              className="flex w-full mt-2"
-            >
+            <form onSubmit={handleSubscribe} className="mt-4 flex h-[45px] w-full max-w-[285px] overflow-hidden rounded-[6px] border border-[#D9D0C7] bg-white">
               <input
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="Enter your email"
-                className="flex-1 min-w-0 bg-[#0b131e] border border-[#c7a14e]/20 rounded-l-md px-4 py-3 text-base text-white placeholder-gray-500 focus:outline-none focus:border-[#c7a14e]/60"
+                aria-label="Email address"
+                className="min-w-0 flex-1 bg-transparent px-4 text-[11px] text-[#222] outline-none placeholder:text-[#9C9C9C]"
               />
-              <button
-                type="submit"
-                aria-label="Subscribe"
-                className="bg-[#c7a14e] text-[#050c14] px-5 rounded-r-md hover:bg-[#e8d9a0] transition-colors flex items-center justify-center flex-shrink-0"
-              >
-                <ArrowRight className="w-4 h-4" />
+              <button type="submit" aria-label="Subscribe to newsletter" className="flex w-[49px] flex-shrink-0 items-center justify-center bg-[#D9883E] text-[#171717] transition-colors hover:bg-[#C86620] hover:text-white">
+                <ArrowRight className="h-[18px] w-[18px]" strokeWidth={1.8} />
               </button>
             </form>
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-[#c7a14e]/10 mt-16 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-gray-500">
-            <p>
-              &copy; {year} Hariyana Watch &amp; Opticals. All Rights Reserved.
-            </p>
-            <span className="hidden sm:inline">|</span>
-            <p className="text-xs">
-              Created by{' '}
-              <a
-                href="https://techprosolution.tech"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-[#C9A84C]/80 hover:text-[#E8D9A0] transition-colors"
-              >
-                Tech Pro Solutions
-              </a>
-            </p>
-          </div>
-          <div className="flex items-center gap-3 text-gray-500">
-            <Link href="/privacy-policy" className="hover:text-[#c7a14e] transition-colors">Privacy Policy</Link>
-            <span>|</span>
-            <Link href="/terms-conditions" className="hover:text-[#c7a14e] transition-colors">Terms &amp; Conditions</Link>
-          </div>
+        <div className="mt-6 border-t border-[#DED5CC] pt-4 text-[10px] text-[#3C3C3C] sm:mt-8 sm:pt-5 sm:text-[11px]">
+          <p>&copy; 2024 Hariyana Watch &amp; Opticals. All Rights Reserved.</p>
         </div>
       </div>
     </footer>

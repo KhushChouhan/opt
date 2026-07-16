@@ -3,242 +3,341 @@
 @tailwind utilities;
 
 :root {
-  --charcoal: #050c14;
-  --surface: #0b131e;
-  --gold: #c7a14e;
-  --gold-deep: #9e782f;
-  --gold-light: #e8d9a0;
-  --navy: #0d1522;
-  --navy-deep: #0b131e;
-  --muted: #1c2536;
-  --foreground: #f3f4f6;
-  --background: #050c14;
-  --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1);
+  --bg-main: #FCF8F4;
+  --bg-section: #FFFDFC;
+  --bg-card: #FFFFFF;
+  --primary: #062C1C;
+  --gold: #C86620;
+  --text-main: #121212;
+  --text-secondary: #56514D;
+  --border-color: #EADEC9;
+
+  --font-serif: Georgia, 'Times New Roman', serif;
+
+  --shadow-card: 0 8px 30px rgba(0,0,0,.06);
+  --shadow-hero: 0 20px 50px rgba(0,0,0,.08);
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--text-main);
+  background: var(--bg-main);
+  font-family: var(--font-sans);
   overflow-x: hidden;
-  font-family: var(--font-sans), 'DM Sans', sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6, .font-display, .font-luxury {
-  font-family: var(--font-display), 'Cormorant Garamond', serif;
+.mobile-rail {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
 }
 
-/* Section Padding Scale Utilities */
-.section-sm {
-  padding-top: 3rem; /* py-12 */
-  padding-bottom: 3rem;
-}
-.section-md {
-  padding-top: 5rem; /* py-20 */
-  padding-bottom: 5rem;
-}
-.section-lg {
-  padding-top: 7rem; /* py-28 */
-  padding-bottom: 7rem;
+.mobile-rail::-webkit-scrollbar {
+  display: none;
 }
 
-/* Glassmorphism utility card styles */
-.glass-panel {
-  background: rgba(11, 19, 30, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(199, 161, 78, 0.15);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-}
-
-.glass-panel-hover {
-  transition: all 0.3s var(--ease-luxury);
-}
-
-.glass-panel-hover:hover {
-  background: rgba(28, 37, 54, 0.85);
-  border-color: rgba(199, 161, 78, 0.35);
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px 0 rgba(199, 161, 78, 0.1);
-}
-
-/* Premium Button styling with gradient border animations */
-.btn-premium-gradient {
-  position: relative;
-  background: var(--surface);
-  border: 1px solid transparent;
-  background-clip: padding-box;
-  transition: all 0.3s var(--ease-luxury);
-}
-
-.btn-premium-gradient::before {
-  content: '';
-  position: absolute;
-  top: -1px; right: -1px; bottom: -1px; left: -1px;
-  z-index: -1;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #c7a14e, #0d1522, #c7a14e, #e8d9a0);
-  background-size: 300% 100%;
-  animation: border-flow 4s linear infinite;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
-}
-
-.btn-premium-gradient:hover::before {
-  opacity: 1;
-}
-
-.btn-premium-gradient:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(201, 168, 76, 0.15);
-}
-
-/* Micro-animations */
-@keyframes border-flow {
-  0% {
-    background-position: 0% 50%;
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  button:not(:disabled):not([data-no-bump]):not([class*="-translate"]),
+  [data-bump="true"] {
+    transform-origin: center;
+    transition: transform 300ms ease-out, box-shadow 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out, border-color 300ms ease-out;
   }
-  100% {
-    background-position: 300% 50%;
+
+  button:not(:disabled):not([data-no-bump]):not([class*="-translate"]):hover,
+  [data-bump="true"]:hover {
+    transform: translateY(-4px) scale(1.08) !important;
+    will-change: transform;
   }
 }
 
-@keyframes pulse-gold {
-  0%, 100% {
+@keyframes hero-content-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
     opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: .7;
-    transform: scale(1.05);
+    transform: translateX(0);
   }
 }
 
-.animate-pulse-gold {
-  animation: pulse-gold 2s infinite ease-in-out;
+.hero-content-enter {
+  animation: hero-content-enter 560ms ease-out both;
 }
 
-/* Camera scanline effect */
-.scanline {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: rgba(201, 168, 76, 0.4);
-  animation: scan 3s linear infinite;
-  z-index: 10;
-}
-
-@keyframes scan {
-  0% {
-    top: 0%;
-  }
-  50% {
-    top: 100%;
-  }
-  100% {
-    top: 0%;
+@media (prefers-reduced-motion: reduce) {
+  .hero-content-enter {
+    animation: none;
   }
 }
 
-/* Luxury Hatom-inspired Grid Lines Overlay */
-.luxury-grid-overlay {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(to right, rgba(199, 161, 78, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(199, 161, 78, 0.02) 1px, transparent 1px);
-  background-size: 80px 80px;
-  pointer-events: none;
-  z-index: 1;
+h1, h2, h3, .font-serif {
+  font-family: var(--font-serif);
 }
 
-/* Seamless Infinite Marquee keyframes */
-@keyframes marquee-infinite {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    transform: translate3d(-50%, 0, 0);
-  }
+.hover-card {
+  transition: all 0.3s ease;
 }
 
-.animate-marquee-infinite {
-  display: flex;
-  width: max-content;
-  animation: marquee-infinite 35s linear infinite;
+.hover-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: var(--shadow-card);
 }
 
-.animate-marquee-infinite:hover {
-  animation-play-state: paused;
+/* Custom styles for precise matching */
+.container-custom {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-left: 48px;
+  padding-right: 48px;
 }
 
-/* Glassmorphism custom scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.section-gap {
+  margin-top: 90px;
+  margin-bottom: 90px;
 }
 
-::-webkit-scrollbar-track {
-  background: #050c14;
+.btn-primary {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 6px;
+  background-color: var(--primary);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(199, 161, 78, 0.2);
-  border-radius: 4px;
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(199, 161, 78, 0.4);
+.btn-secondary {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 6px;
+  background-color: #FFFFFF;
+  color: var(--primary);
+  border: 1px solid #DADADA;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
 }
 
-/* Text reveal hover/reveal effects */
-.split-char {
-  display: inline-block;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: transform 0.8s var(--ease-luxury), opacity 0.8s ease;
+.btn-secondary:hover {
+  background-color: #F8F4ED;
+  transform: translateY(-2px);
 }
 
-.split-char.active {
-  opacity: 1;
-  transform: translateY(0);
+/* Shared light presentation for informational storefront pages. */
+.site-light-page {
+  min-height: 100vh;
+  background: var(--bg-main);
+  color: var(--text-secondary);
 }
 
-/* Print styles for A4 Tax Invoice */
-@media print {
-  body, html {
-    background-color: white !important;
-    color: black !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 210mm;
-    height: 297mm;
-  }
-  .no-print {
-    display: none !important;
-  }
-  .print-card {
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  .print-border {
-    border-color: #000000 !important;
-  }
-  .print-bg-light {
-    background-color: #f9f9f9 !important;
-  }
-  .invoice-section {
-    page-break-inside: avoid !important;
-  }
-  @page {
-    size: A4 portrait;
-    margin: 10mm 12mm 10mm 12mm;
-  }
+.site-light-page .luxury-grid-overlay {
+  display: none;
 }
 
+.site-light-page .site-light-hero {
+  border-color: var(--border-color);
+  background: linear-gradient(135deg, #fffdfb 0%, #fbf1e8 100%);
+}
+
+.site-light-page .font-display,
+.site-light-page .font-luxury {
+  font-family: var(--font-serif);
+}
+
+.site-light-page h1,
+.site-light-page h2,
+.site-light-page h3,
+.site-light-page h4,
+.site-light-page .text-white {
+  color: var(--primary);
+}
+
+.site-light-page .text-gray-300,
+.site-light-page .text-gray-400,
+.site-light-page .text-gray-500,
+.site-light-page .text-gray-600 {
+  color: var(--text-secondary);
+}
+
+.site-light-page [class~="text-[#c7a14e]"],
+.site-light-page [class~="text-[#C9A84C]"] {
+  color: var(--gold);
+}
+
+.site-light-page [class~="bg-[#c7a14e]"] {
+  background: var(--primary);
+  color: #fff;
+}
+
+.site-light-page .glass-panel,
+.site-light-page .site-light-card,
+.site-light-page [class~="bg-[#0b131e]/20"],
+.site-light-page [class~="bg-[#0b131e]/25"],
+.site-light-page [class~="bg-[#0b131e]/30"],
+.site-light-page [class~="bg-[#0b131e]/40"],
+.site-light-page [class~="bg-[#0b131e]/50"],
+.site-light-page [class~="bg-[#0a1628]/40"],
+.site-light-page [class~="bg-[#070b12]/20"] {
+  border-color: var(--border-color);
+  background-color: var(--bg-card);
+  box-shadow: 0 8px 30px rgba(80, 50, 25, 0.06);
+}
+
+.site-light-page .site-light-card {
+  background-image: none;
+}
+
+.site-light-page [class~="border-white/5"],
+.site-light-page [class~="border-white/10"],
+.site-light-page [class~="border-gray-700"],
+.site-light-page [class~="border-gray-800"] {
+  border-color: var(--border-color);
+}
+
+.site-light-page .site-light-input,
+.site-light-page [class~="bg-[#0F1B30]/80"],
+.site-light-page [class~="bg-[#050c14]/80"] {
+  border-color: #d9c8b9;
+  background: #fff;
+  color: var(--text-main);
+  box-shadow: 0 2px 10px rgba(80, 50, 25, 0.03);
+}
+
+.site-light-page .site-light-input::placeholder,
+.site-light-page [class~="bg-[#0F1B30]/80"]::placeholder,
+.site-light-page [class~="bg-[#050c14]/80"]::placeholder {
+  color: #968b82;
+}
+
+.site-light-page .site-light-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(200, 102, 32, 0.12);
+}
+
+.site-light-page .site-light-cta {
+  border-color: var(--primary);
+  background: var(--primary);
+  background-image: none;
+  color: #fff;
+}
+
+.site-light-page .site-light-cta:hover {
+  background: #0a3c28;
+}
+
+.site-light-page .text-red-400 {
+  color: #a94636;
+}
+
+.site-light-page .glass-panel button[aria-label="Close modal"]:hover {
+  background: #fbf1e8;
+  color: var(--primary);
+}
+
+/* Storefront theme for both camera try-on experiences. The camera stage stays
+   intentionally dark so the live feed and fitting overlays retain contrast. */
+.tryon-theme {
+  color: var(--text-main);
+}
+
+.tryon-theme .tryon-surface {
+  border-color: var(--border-color);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 32px rgba(78, 47, 24, 0.07);
+}
+
+.tryon-theme .tryon-control {
+  border-color: #d9c8b9;
+  background: var(--bg-main);
+  color: var(--text-main);
+  box-shadow: 0 1px 6px rgba(78, 47, 24, 0.05);
+}
+
+.tryon-theme .tryon-control:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(200, 102, 32, 0.12);
+}
+
+.tryon-theme .tryon-surface .text-white:not(.tryon-primary-cta),
+.tryon-theme .tryon-surface h2,
+.tryon-theme .tryon-surface h4 {
+  color: var(--primary);
+}
+
+.tryon-theme .tryon-surface .text-gray-300,
+.tryon-theme .tryon-surface .text-gray-400,
+.tryon-theme .tryon-surface .text-gray-500 {
+  color: var(--text-secondary);
+}
+
+.tryon-theme .tryon-surface [class~="text-[#C9A84C]"],
+.tryon-theme .tryon-surface [class~="text-[#E8D9A0]"] {
+  color: var(--gold);
+}
+
+.tryon-theme .tryon-surface [class~="border-gray-700"],
+.tryon-theme .tryon-surface [class~="border-gray-800"],
+.tryon-theme .tryon-surface [class~="border-gray-800/65"],
+.tryon-theme .tryon-surface [class~="border-white/5"] {
+  border-color: var(--border-color);
+}
+
+.tryon-theme .tryon-surface [class~="bg-[#1A2742]"] {
+  border-color: #d9c8b9;
+  background: #fbf1e8;
+  color: var(--primary);
+}
+
+.tryon-theme .tryon-surface [class~="bg-gray-800"],
+.tryon-theme .tryon-surface [class~="bg-gray-850"] {
+  background: #eadfd4;
+}
+
+.tryon-theme .tryon-surface [class~="bg-black/20"] {
+  background: linear-gradient(145deg, #fffdfb, #f7eee6);
+}
+
+.tryon-theme .tryon-surface input[type="range"] {
+  accent-color: var(--gold);
+}
+
+.tryon-theme .tryon-primary-cta {
+  border-color: var(--primary);
+  background: var(--primary);
+  background-image: none;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(6, 44, 28, 0.15);
+}
+
+.tryon-theme .tryon-primary-cta:hover {
+  background: #0a3c28;
+  box-shadow: 0 11px 24px rgba(6, 44, 28, 0.2);
+}
+
+.tryon-theme .tryon-secondary-cta {
+  border-color: #cfc0b2;
+  background: #fff;
+  color: var(--primary);
+  box-shadow: none;
+}
+
+.tryon-theme .tryon-secondary-cta:hover {
+  border-color: var(--gold);
+  background: #fbf1e8;
+  color: #8a491d;
+  box-shadow: none;
+}
