@@ -4,11 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { signOut, useSession } from 'next-auth/react';
 import { motion, useScroll, useMotionValueEvent } from 'framer-motion';
 import {
   Star, Search, Menu, X,
   ChevronDown,
-  CheckCircle, MapPin, Truck, HelpCircle, Gem
+  CheckCircle, Gem, LogOut, Shield
 } from 'lucide-react';
 
 interface NavItem {
@@ -66,8 +67,10 @@ export default function Navbar() {
   
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session } = useSession();
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
+  const isAdminPanel = pathname?.startsWith('/admin') ?? false;
 
   const lastScrollY = useRef(0);
 
@@ -115,16 +118,11 @@ export default function Navbar() {
     >
       {/* ─── Top Bar ─── */}
       <div className="flex h-[32px] items-center border-b sm:h-[36px]" style={{ backgroundColor: '#fdf9f6', borderColor: '#EFE5DA', color: '#111111' }}>
-        <div className="max-w-[1440px] w-full mx-auto px-4 sm:px-8 lg:px-12 flex items-center justify-between text-[10px] font-bold tracking-wide font-inter">
+        <div className="max-w-[1440px] w-full mx-auto px-4 sm:px-8 lg:px-12 flex items-center text-[10px] font-bold tracking-wide font-inter">
           <div className="flex min-w-0 items-center gap-6">
             <span className="flex items-center gap-1.5 whitespace-nowrap text-[9px] sm:text-[10px]"><CheckCircle className="w-[13px] h-[13px]" style={{color: '#C86620'}} strokeWidth={2.5}/> FREE EYE TEST AT ALL STORES</span>
             <span className="hidden md:flex items-center gap-1.5"><Star className="w-[14px] h-[14px]" style={{color: '#C86620'}} strokeWidth={2.5}/> 100% AUTHENTIC PRODUCTS</span>
             <span className="hidden lg:flex items-center gap-1.5"><CheckCircle className="w-[14px] h-[14px]" style={{color: '#C86620'}} strokeWidth={2.5}/> EASY RETURNS & EXCHANGE</span>
-          </div>
-          <div className="flex items-center gap-6 text-[11px]">
-            <Link href="/contact" className="hidden items-center gap-1.5 hover:opacity-70 sm:flex"><MapPin className="w-[14px] h-[14px]" style={{color: '#C86620'}} strokeWidth={2}/> Store Locator</Link>
-            <span className="hidden md:flex items-center gap-1.5 hover:opacity-70 cursor-pointer"><Truck className="w-[14px] h-[14px]" style={{color: '#C86620'}} strokeWidth={2}/> Track Order</span>
-            <span className="hidden sm:flex items-center gap-1.5 hover:opacity-70 cursor-pointer"><HelpCircle className="w-[14px] h-[14px]" style={{color: '#C86620'}} strokeWidth={2}/> Help & Support</span>
           </div>
         </div>
       </div>
@@ -159,7 +157,29 @@ export default function Navbar() {
               </button>
             </form>
 
-            <div className="hidden w-[250px] lg:block" aria-hidden="true" />
+            {isAdminPanel && session ? (
+              <div className="hidden w-[250px] items-center justify-end gap-6 lg:flex">
+                <Link
+                  href="/admin"
+                  aria-label="Admin panel"
+                  className="flex flex-col items-center gap-0.5 text-[#062C1C] transition-colors hover:text-[#C86620]"
+                >
+                  <Shield className="h-5 w-5" strokeWidth={1.8} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider">Admin</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => signOut({ callbackUrl: '/admin/login' })}
+                  aria-label="Log out"
+                  className="flex flex-col items-center gap-0.5 text-[#8A491D] transition-colors hover:text-[#C86620]"
+                >
+                  <LogOut className="h-5 w-5" strokeWidth={1.8} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider">Logout</span>
+                </button>
+              </div>
+            ) : (
+              <div className="hidden w-[250px] lg:block" aria-hidden="true" />
+            )}
 
             {/* Mobile Toggle */}
             <button onClick={() => setIsOpen(!isOpen)} className="lg:hidden p-2 text-[#111111]" aria-label="Toggle menu">
@@ -239,6 +259,28 @@ export default function Navbar() {
                 {item.premium ? <span className="ml-auto rounded-full bg-[#C86620] px-2 py-1 text-[7px] leading-none tracking-[0.1em] text-white">NEW</span> : null}
               </Link>
             ))}
+
+            {isAdminPanel && session ? (
+              <div className="mt-3 flex gap-2 border-t border-[#EADEC9] pt-3">
+                <Link
+                  href="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#062C1C]/25 px-3 py-2 text-xs font-semibold text-[#062C1C]"
+                >
+                  <Shield className="h-3.5 w-3.5" /> Admin
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    signOut({ callbackUrl: '/admin/login' });
+                  }}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#C86620]/30 px-3 py-2 text-xs font-semibold text-[#8A491D]"
+                >
+                  <LogOut className="h-3.5 w-3.5" /> Logout
+                </button>
+              </div>
+            ) : null}
 
           </div>
         )}
