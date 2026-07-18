@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    console.log('Test DB route triggered');
-    console.log('supabaseUrl:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log('supabaseServiceKey length:', process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0);
-    
     const { data, error } = await supabaseAdmin
       .from('admins')
       .select('*');

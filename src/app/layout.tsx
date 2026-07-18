@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import Providers from '@/components/Providers';
 import Navbar from '@/components/Navbar';
@@ -7,16 +7,18 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import HeritageLaunchAlert from '@/components/HeritageLaunchAlert';
 
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+const cormorant = localFont({
+  src: './fonts/CormorantGaramond-Variable.ttf',
+  weight: '300 700',
+  style: 'normal',
   variable: '--font-display',
   display: 'swap',
 });
 
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
+const dmSans = localFont({
+  src: './fonts/DMSans-Variable.ttf',
+  weight: '300 800',
+  style: 'normal',
   variable: '--font-sans',
   display: 'swap',
 });

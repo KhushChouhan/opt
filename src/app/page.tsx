@@ -33,6 +33,25 @@ const BEST_SELLERS_STATIC = [
   { brand: 'Casio', name: 'Edifice Chronograph', price: 9995, image: '/images/premium_redesign/category_watches.png', category: 'watches', rating: 4.5 },
 ];
 
+const INSTAGRAM_POSTS = [
+  '/images/instagram/insta-01.jpeg',
+  '/images/instagram/insta-02.jpeg',
+  '/images/instagram/insta-03.jpeg',
+  '/images/instagram/insta-04.jpeg',
+  '/images/instagram/insta-05.jpeg',
+  '/images/instagram/insta-06.jpeg',
+];
+
+const TRUSTED_BRANDS = [
+  { name: 'Titan', logo: '/images/brands/titan-transparent.png' },
+  { name: 'Fastrack', logo: '/images/brands/fastrack-transparent.png' },
+  { name: 'Ray-Ban', logo: '/images/brands/ray-ban-original.svg' },
+  { name: 'Fossil', logo: '/images/brands/fossil-original.svg' },
+  { name: 'Casio', logo: '/images/brands/casio-original.svg' },
+  { name: 'Seiko', logo: '/images/brands/seiko-original.svg' },
+  { name: 'Citizen', logo: '/images/brands/citizen-original.svg' },
+];
+
 const HOME_HERO_SLIDES = [
   {
     id: 'main-campaign',
@@ -350,21 +369,22 @@ export default function Home() {
           </div>
 
           <div className="mobile-rail -mx-4 flex snap-x items-center gap-3 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-7 md:gap-2 md:overflow-visible md:px-0">
-            {[
-              { name: 'TITAN', className: 'tracking-[0.16em]' },
-              { name: 'Fastrack', className: 'italic tracking-[-0.03em]' },
-              { name: 'Ray-Ban', className: 'font-serif italic tracking-[-0.04em]' },
-              { name: 'FOSSIL', className: 'tracking-[0.18em]' },
-              { name: 'CASIO', className: 'tracking-[0.12em]' },
-              { name: 'SEIKO', className: 'font-serif tracking-[0.12em]' },
-              { name: 'CITIZEN', className: 'tracking-[0.14em]' },
-            ].map((brand) => (
+            {TRUSTED_BRANDS.map((brand) => (
               <Link
                 key={brand.name}
                 href={`/products?search=${encodeURIComponent(brand.name)}`}
-                className="group flex h-[58px] min-w-[136px] snap-start items-center justify-center rounded-[9px] border border-[#EEE4DB] bg-[#FCF8F4] px-4 text-center transition-all hover:-translate-y-0.5 hover:border-[#C86620]/45 hover:bg-[#FBF1E8] md:min-w-0"
+                aria-label={`Shop ${brand.name}`}
+                className="group flex h-[68px] min-w-[144px] snap-start items-center justify-center rounded-[9px] border border-[#EEE4DB] bg-[#FCF8F4] px-4 text-center transition-all hover:-translate-y-0.5 hover:border-[#C86620]/45 hover:bg-[#FBF1E8] hover:shadow-[0_7px_18px_rgba(138,73,29,0.08)] md:min-w-0"
               >
-                <span className={`font-sans text-[14px] font-bold text-[#282522] transition-colors group-hover:text-[#C86620] sm:text-[15px] ${brand.className}`}>{brand.name}</span>
+                <div className="relative h-[32px] w-full max-w-[112px] transition-transform duration-300 group-hover:scale-105">
+                  <Image
+                    src={brand.logo}
+                    alt={`${brand.name} logo`}
+                    fill
+                    className="object-contain"
+                    sizes="112px"
+                  />
+                </div>
               </Link>
             ))}
           </div>
@@ -532,9 +552,9 @@ export default function Home() {
             <h3 className="font-sans text-[11px] font-bold uppercase">INSTAGRAM</h3>
             <p className="mt-1 text-[9px]">@hariyana_watch_opticals49</p>
             <div className="mt-4 grid grid-cols-3 gap-1.5">
-              {[0, 1, 2, 3, 4, 5].map((item) => (
+              {INSTAGRAM_POSTS.map((image, item) => (
                 <div key={item} className="relative aspect-[1.2] overflow-hidden rounded-[5px] bg-[#F8EEE5]">
-                  <Image src="/images/premium_redesign/category_watches_reference.png" alt="Watch collection" fill className="object-cover" />
+                  <Image src={image} alt={`Hariyana Watch & Opticals Instagram post ${item + 1}`} fill sizes="(max-width: 767px) 82px, 90px" className="object-cover" />
                 </div>
               ))}
             </div>

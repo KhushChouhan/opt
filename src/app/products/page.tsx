@@ -85,9 +85,9 @@ interface MaterialFilter {
   terms: string[];
 }
 
-type FrameShape = 'cat-eye' | 'square' | 'rectangle' | 'pilot' | 'round';
+type FrameShape = 'cat-eye' | 'square' | 'rectangle' | 'pilot' | 'round' | 'rimless' | 'retro' | 'oval';
 
-const FRAME_SHAPES: FrameShape[] = ['cat-eye', 'square', 'rectangle', 'pilot', 'round'];
+const FRAME_SHAPES: FrameShape[] = ['cat-eye', 'square', 'rectangle', 'pilot', 'round', 'rimless', 'retro', 'oval'];
 
 const FRAME_SHAPE_ALIASES: Record<FrameShape, string[]> = {
   'cat-eye': ['cat eye', 'cateye', 'skyler'],
@@ -95,6 +95,9 @@ const FRAME_SHAPE_ALIASES: Record<FrameShape, string[]> = {
   rectangle: ['rectangle', 'rectangular'],
   pilot: ['pilot', 'aviator', 'double bridge'],
   round: ['round', 'circular'],
+  rimless: ['rimless', 'semi rimless', 'frameless'],
+  retro: ['retro', 'vintage', 'clubmaster', 'browline'],
+  oval: ['oval', 'ellipse', 'elliptical'],
 };
 
 const ACCESSORY_CATEGORIES = ['accessories', 'belts', 'wallets', 'perfumes'];

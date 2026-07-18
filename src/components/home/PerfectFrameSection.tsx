@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Camera, ArrowRight } from 'lucide-react';
@@ -12,7 +13,53 @@ const FRAME_STYLES = [
   { label: 'ROUND',     imgSrc: '/images/premium_redesign/icon_exact_round.png',     href: '/products?shape=round' },
 ];
 
+const MORE_FRAME_STYLES = [
+  { label: 'RIMLESS', imgSrc: '/images/premium_redesign/icon_exact_rimless.svg', href: '/products?shape=rimless' },
+  { label: 'RETRO',   imgSrc: '/images/premium_redesign/icon_exact_retro.svg',   href: '/products?shape=retro' },
+  { label: 'OVAL',    imgSrc: '/images/premium_redesign/icon_exact_oval.svg',    href: '/products?shape=oval' },
+];
+
 export default function PerfectFrameSection() {
+  const [showMoreFrames, setShowMoreFrames] = useState(false);
+
+  const renderFrameStyle = (
+    { label, imgSrc, href }: (typeof FRAME_STYLES)[number] | (typeof MORE_FRAME_STYLES)[number],
+    idx: number,
+    total: number,
+  ) => (
+    <Link
+      key={label}
+      href={href}
+      className="group flex flex-col items-center justify-center transition-colors hover:bg-[#FBF1E8]"
+      style={{
+        padding: '14px 8px 12px',
+        borderRight: idx < total - 1 ? '1px solid #DDD8CF' : 'none',
+      }}
+    >
+      <div
+        className="relative flex items-center justify-center transition-transform duration-300 ease-out group-hover:-translate-y-1 group-hover:scale-125"
+        style={{ width: '60px', height: '28px' }}
+      >
+        <Image src={imgSrc} alt={`${label} frame shape`} fill className="object-contain" />
+      </div>
+      <span
+        className="transition-colors group-hover:text-[#C86620]"
+        style={{
+          fontFamily: 'var(--font-sans), sans-serif',
+          fontSize: '8.5px',
+          fontWeight: 600,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: '#444444',
+          marginTop: '8px',
+          display: 'block',
+        }}
+      >
+        {label}
+      </span>
+    </Link>
+  );
+
   return (
     <section
       className="mx-auto w-[calc(100%-24px)] max-w-[1280px] sm:w-[94%]"
@@ -83,72 +130,70 @@ export default function PerfectFrameSection() {
         >
           <div
             className="grid min-w-[520px] sm:min-w-0"
-            style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}
+            style={{ gridTemplateColumns: `repeat(${FRAME_STYLES.length}, minmax(0, 1fr))` }}
           >
-            {FRAME_STYLES.map(({ label, imgSrc, href }, idx) => (
-              <Link
-                key={label}
-                href={href}
-                className="group flex flex-col items-center justify-center transition-colors hover:bg-[#FBF1E8]"
-                style={{
-                  padding: '14px 8px 12px',
-                  borderRight: idx < FRAME_STYLES.length - 1 ? '1px solid #DDD8CF' : 'none',
-                }}
-              >
-                {/* Exact Reference Icon */}
-                <div
-                  className="relative flex items-center justify-center transition-transform duration-300 ease-out group-hover:-translate-y-1 group-hover:scale-125"
-                  style={{ width: '60px', height: '28px' }}
-                >
-                  <Image
-                    src={imgSrc}
-                    alt={label}
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-                {/* Label */}
-                <span
-                  className="transition-colors group-hover:text-[#C86620]"
-                  style={{
-                    fontFamily: 'var(--font-sans), sans-serif',
-                    fontSize: '8.5px',
-                    fontWeight: 600,
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    color: '#444444',
-                    marginTop: '8px',
-                    display: 'block',
-                  }}
-                >
-                  {label}
-                </span>
-              </Link>
-            ))}
+            {FRAME_STYLES.map((frame, idx) => renderFrameStyle(frame, idx, FRAME_STYLES.length))}
+          </div>
+
+          <div
+            id="more-frame-shapes"
+            className={`grid overflow-hidden border-t border-[#DDD8CF] transition-all duration-300 ${
+              showMoreFrames ? 'max-h-28 opacity-100' : 'max-h-0 border-t-transparent opacity-0'
+            }`}
+            style={{ gridTemplateColumns: `repeat(${MORE_FRAME_STYLES.length}, minmax(0, 1fr))` }}
+            aria-hidden={!showMoreFrames}
+          >
+            {MORE_FRAME_STYLES.map((frame, idx) => renderFrameStyle(frame, idx, MORE_FRAME_STYLES.length))}
           </div>
         </div>
 
-        {/* TRY ON VIRTUAL Button */}
-        <Link
-          href="/products?category=glasses"
-          data-bump="true"
-          className="flex items-center justify-center gap-[6px] text-white transition-opacity hover:opacity-90"
-          style={{
-            width: '180px',
-            height: '42px',
-            backgroundColor: '#162B1F',
-            borderRadius: '8px',
-            fontFamily: 'var(--font-sans), sans-serif',
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: '0.07em',
-            textTransform: 'uppercase',
-            marginBottom: '10px',
-          }}
-        >
-          <Camera style={{ width: '14px', height: '14px', strokeWidth: 2 }} />
-          TRY ON VIRTUAL
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-2.5" style={{ marginBottom: '10px' }}>
+          <Link
+            href="/products?category=glasses"
+            data-bump="true"
+            className="flex items-center justify-center gap-[6px] text-white transition-opacity hover:opacity-90"
+            style={{
+              width: '180px',
+              height: '42px',
+              backgroundColor: '#162B1F',
+              borderRadius: '8px',
+              fontFamily: 'var(--font-sans), sans-serif',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.07em',
+              textTransform: 'uppercase',
+            }}
+          >
+            <Camera style={{ width: '14px', height: '14px', strokeWidth: 2 }} />
+            TRY ON VIRTUAL
+          </Link>
+          <button
+            type="button"
+            onClick={() => setShowMoreFrames((current) => !current)}
+            aria-expanded={showMoreFrames}
+            aria-controls="more-frame-shapes"
+            data-bump="true"
+            className="flex items-center justify-center gap-[6px] transition-colors hover:bg-[#FBF1E8]"
+            style={{
+              width: '180px',
+              height: '42px',
+              border: '1px solid #C86620',
+              borderRadius: '8px',
+              color: '#8A491D',
+              fontFamily: 'var(--font-sans), sans-serif',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.07em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {showMoreFrames ? 'HIDE EXTRA FRAMES' : 'VIEW MORE FRAMES'}
+            <ArrowRight
+              className={`transition-transform duration-300 ${showMoreFrames ? '-rotate-90' : 'rotate-90'}`}
+              style={{ width: '14px', height: '14px', strokeWidth: 2 }}
+            />
+          </button>
+        </div>
 
         {/* Bottom link */}
         <Link

@@ -71,6 +71,7 @@ export default function Navbar() {
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
   const isAdminPanel = pathname?.startsWith('/admin') ?? false;
+  const isHomePage = pathname === '/';
 
   const lastScrollY = useRef(0);
 
@@ -133,8 +134,8 @@ export default function Navbar() {
           {/* Top row: Logo, Search, Actions */}
           <div className="flex items-center justify-between py-2 lg:py-3">
 
-            <Link href="/" aria-label="Hariyana Watch & Opticals - Home" className="flex w-[125px] flex-shrink-0 items-center sm:w-[155px] lg:w-[235px]">
-              <Image src="/images/logo-header.png" alt="Hariyana Watch & Opticals" width={1536} height={1152} className="h-[72px] w-auto object-contain mix-blend-multiply sm:h-[85px] lg:h-[110px]" priority />
+            <Link href="/" aria-label="Hariyana Watch & Opticals - Home" className="flex w-[150px] flex-shrink-0 items-center sm:w-[188px] lg:w-[270px]">
+              <Image src="/images/logo-header.png" alt="Hariyana Watch & Opticals" width={1536} height={1152} className="h-[84px] w-auto object-contain mix-blend-multiply sm:h-[100px] lg:h-[128px]" priority />
             </Link>
 
             {/* Search Bar */}
@@ -176,6 +177,17 @@ export default function Navbar() {
                   <LogOut className="h-5 w-5" strokeWidth={1.8} />
                   <span className="text-[10px] font-semibold uppercase tracking-wider">Logout</span>
                 </button>
+              </div>
+            ) : isHomePage ? (
+              <div className="hidden w-[250px] items-center justify-end lg:flex">
+                <Link
+                  href="/admin"
+                  data-bump="true"
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#B98B52]/45 bg-[#062C1C] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition-all duration-300 hover:bg-[#0A3A27] hover:shadow-md"
+                >
+                  <Shield className="h-4 w-4 text-[#F2C58F]" />
+                  Store Admin
+                </Link>
               </div>
             ) : (
               <div className="hidden w-[250px] lg:block" aria-hidden="true" />
@@ -259,6 +271,18 @@ export default function Navbar() {
                 {item.premium ? <span className="ml-auto rounded-full bg-[#C86620] px-2 py-1 text-[7px] leading-none tracking-[0.1em] text-white">NEW</span> : null}
               </Link>
             ))}
+
+            {isHomePage && (
+              <Link
+                href="/admin"
+                onClick={() => setIsOpen(false)}
+                data-bump="true"
+                className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-[#B98B52]/45 bg-[#062C1C] px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-white shadow-sm"
+              >
+                <Shield className="h-4 w-4 text-[#F2C58F]" />
+                Store Admin
+              </Link>
+            )}
 
             {isAdminPanel && session ? (
               <div className="mt-3 flex gap-2 border-t border-[#EADEC9] pt-3">
