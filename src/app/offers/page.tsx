@@ -11,40 +11,22 @@ export const metadata: Metadata = {
 const OFFERS = [
   {
     eyebrow: 'Limited Time',
-    title: 'Buy 1, Get 1',
-    description: 'Select two eligible optical frames and enjoy exceptional value on your complete look.',
-    note: 'On selected optical frames',
-    image: '/images/luxury_optical_frames.png',
+    title: 'Buy Any Frames, Get Lens Free',
+    description: 'Purchase any of our premium optical frames and get your prescription lenses absolutely free.',
+    note: 'On all optical frames',
+    image: '/images/premium_redesign/offer_lenses_free_ai.png',
     href: '/products?category=glasses',
     accent: '#F5E5D6',
   },
   {
-    eyebrow: 'Summer Edit',
-    title: 'Flat 40% Off',
-    description: 'Discover UV-protected statement sunglasses chosen for effortless everyday styling.',
-    note: 'On selected sunglasses',
-    image: '/images/luxury_sunglasses.png',
-    href: '/products?category=sunglasses',
+    eyebrow: 'Special Offer',
+    title: 'Free Gift on ₹2000+',
+    description: 'Shop for ₹2000 or more across any category and receive a complimentary premium gift with your purchase.',
+    note: 'On shopping above ₹2000',
+    image: '/images/premium_redesign/offer_free_gift_ai.jpg',
+    href: '/products',
     accent: '#F9EBDD',
-  },
-  {
-    eyebrow: 'Watch Festival',
-    title: 'Up To 50% Off',
-    description: 'A refined selection of classic and contemporary watches at celebratory prices.',
-    note: 'On selected timepieces',
-    image: '/images/luxury_watches.png',
-    href: '/products?category=watches',
-    accent: '#EFE5D9',
-  },
-  {
-    eyebrow: 'Style Essentials',
-    title: 'Up To 30% Off',
-    description: 'Complete your wardrobe with premium accessories, fragrances, belts and wallets.',
-    note: 'On selected accessories',
-    image: '/images/luxury_accessories.png',
-    href: '/products?category=accessories',
-    accent: '#F3E7DD',
-  },
+  }
 ];
 
 const BENEFITS = [

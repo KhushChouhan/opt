@@ -103,7 +103,13 @@ const TRENDING_STYLES = [
   { tag: 'TECH EDIT', name: 'SMART MOTION', img: '/images/premium_redesign/trending_titanium.png', video: '/videos/trending/model-02.mp4', href: '/products?category=smart-watches', videoLabel: 'Smartwatch feature campaign' },
   { tag: 'WATCH EDIT', name: 'TIMELESS WRIST', img: '/images/premium_redesign/trending_street_drip.png', video: '/videos/trending/model-03.mp4', href: '/products?category=watches', videoLabel: 'Classic watch fashion campaign' },
   { tag: 'OPTICAL EDIT', name: 'MODERN OPTICS', img: '/images/premium_redesign/trending_flip_ups.png', video: '/videos/trending/model-04.mp4', href: '/products?category=glasses', videoLabel: 'Premium optical frame campaign' },
-  { tag: 'SUN EDIT', name: 'SUN-READY STYLE', img: '/images/premium_redesign/trending_retro_class.png', video: '/videos/trending/model-05.mp4', href: '/products?category=sunglasses', videoLabel: 'Gold aviator sunglasses campaign' },
+  { tag: 'BRAND EDIT', name: 'INTENSE FOCUS', img: '/images/premium_redesign/trending_intense_focus.jpg', video: '', href: '/products?category=sunglasses', videoLabel: 'Intense Focus campaign' },
+  { tag: 'NEW EDIT', name: 'PREMIUM MODEL', img: '/images/premium_redesign/trending_new_model.jpeg', video: '', href: '/products', videoLabel: 'Premium Model' },
+  { tag: 'NEW EDIT', name: 'PREMIUM LOOK', img: '/images/premium_redesign/trending_new_model_1.jpeg', video: '', href: '/products', videoLabel: 'Premium Look' },
+  { tag: 'NEW EDIT', name: 'ELEGANT CHARM', img: '/images/premium_redesign/trending_new_model_2.jpeg', video: '', href: '/products', videoLabel: 'Elegant Charm' },
+  { tag: 'NEW EDIT', name: 'BOLD VISION', img: '/images/premium_redesign/trending_new_model_3.jpeg', video: '', href: '/products', videoLabel: 'Bold Vision' },
+  { tag: 'NEW EDIT', name: 'STYLE ICON', img: '/images/premium_redesign/trending_new_model_4.jpeg', video: '', href: '/products', videoLabel: 'Style Icon' },
+  { tag: 'NEW EDIT', name: 'GLAMOUR LUXE', img: '/images/premium_redesign/trending_new_model_5.jpeg', video: '', href: '/products', videoLabel: 'Glamour Luxe' },
 ];
 
 function TrendingVideoCard({ item }: { item: (typeof TRENDING_STYLES)[number] }) {
@@ -139,31 +145,33 @@ function TrendingVideoCard({ item }: { item: (typeof TRENDING_STYLES)[number] })
 
   return (
     <article
-      className="group relative aspect-[0.9] min-w-[205px] snap-start overflow-hidden rounded-[12px] bg-[#E9DED3] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl md:min-w-0"
+      className="group relative aspect-[0.9] min-w-[205px] md:min-w-[250px] snap-start overflow-hidden rounded-[12px] bg-[#E9DED3] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
       onMouseEnter={playVideoOnHover}
       onMouseLeave={stopVideo}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) stopVideo();
       }}
     >
-      <video ref={videoRef} src={item.video} muted loop playsInline preload="metadata" aria-label={item.videoLabel} className="absolute inset-0 h-full w-full object-cover" />
+      {item.video && <video ref={videoRef} src={item.video} muted loop playsInline preload="metadata" aria-label={item.videoLabel} className="absolute inset-0 h-full w-full object-cover" />}
       <Image src={item.img} alt={`${item.name} campaign preview`} fill sizes="(max-width: 767px) 205px, 20vw" className={`object-cover transition-all duration-500 ${isPlaying ? 'scale-[1.02] opacity-0' : 'opacity-100 group-hover:scale-105'}`} />
       <div className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/10 transition-opacity duration-300 ${isPlaying ? 'opacity-0' : 'opacity-100'}`} />
 
       <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-        <button
-          type="button"
-          data-no-bump
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            if (isPlaying) stopVideo(); else void playVideo();
-          }}
-          aria-label={isPlaying ? `Pause ${item.name} video` : `Play ${item.name} video`}
-          className={`${isPlaying ? 'm-auto' : 'mb-auto mt-[46%]'} flex h-12 w-12 items-center justify-center rounded-full border border-white/60 bg-black/10 text-white shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-110`}
-        >
-          {isPlaying ? <Pause className="h-4 w-4 fill-white" /> : <Play className="ml-0.5 h-4 w-4 fill-white" />}
-        </button>
+        {item.video && (
+          <button
+            type="button"
+            data-no-bump
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (isPlaying) stopVideo(); else void playVideo();
+            }}
+            aria-label={isPlaying ? `Pause ${item.name} video` : `Play ${item.name} video`}
+            className={`${isPlaying ? 'm-auto' : 'mb-auto mt-[46%]'} flex h-12 w-12 items-center justify-center rounded-full border border-white/60 bg-black/10 text-white shadow-lg backdrop-blur-sm transition-transform duration-300 group-hover:scale-110`}
+          >
+            {isPlaying ? <Pause className="h-4 w-4 fill-white" /> : <Play className="ml-0.5 h-4 w-4 fill-white" />}
+          </button>
+        )}
         <div aria-hidden={isPlaying} className={`mt-auto w-full pb-2 text-center transition-all duration-300 ${isPlaying ? 'invisible translate-y-2 opacity-0' : 'visible translate-y-0 opacity-100'}`}>
           <span className="mb-0.5 block text-[10px] font-bold tracking-[0.2em] text-white/90">{item.tag}</span>
           <h3 className="mb-2 font-sans text-[17px] font-bold uppercase tracking-[0.02em] text-white drop-shadow-md">{item.name}</h3>
@@ -327,7 +335,7 @@ export default function Home() {
       <section className="mx-auto max-w-[1440px] px-4 pt-4 pb-2 sm:px-8 md:pt-5 lg:px-12">
         <div className="mobile-rail -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:px-8 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0 lg:gap-6">
           {[
-            { title: 'EYEGLASSES', sub: 'Explore Collection', img: '/images/premium_redesign/category_eyeglasses_reference.png', link: '/products?category=glasses' },
+            { title: 'EYEGLASSES', sub: 'Explore Collection', img: '/images/premium_redesign/offer_lenses_free_ai.png', link: '/products?category=glasses' },
             { title: 'SUNGLASSES', sub: 'Explore Collection', img: '/images/premium_redesign/category_sunglasses_reference.png', link: '/products?category=sunglasses' },
             { title: 'CONTACT LENSES', sub: 'Explore Now', img: '/images/premium_redesign/category_contact_lenses_reference.png', link: '/products?category=contact-lenses' },
             { title: 'WATCHES', sub: 'Explore Collection', img: '/images/premium_redesign/category_watches_reference.png', link: '/products?category=watches' },
@@ -401,7 +409,7 @@ export default function Home() {
 
         <button type="button" onClick={() => scrollTrending(-1)} aria-label="Previous trending styles" className="absolute left-1 top-[58%] z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#EADEC9] bg-white shadow-sm md:flex"><ChevronLeft className="h-4 w-4" /></button>
         <button type="button" onClick={() => scrollTrending(1)} aria-label="Next trending styles" className="absolute right-1 top-[58%] z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-[#EADEC9] bg-white shadow-sm md:flex"><ChevronRight className="h-4 w-4" /></button>
-        <div ref={trendingCarouselRef} className="mobile-rail -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 text-left sm:-mx-8 sm:px-8 md:mx-0 md:grid md:grid-cols-5 md:gap-4 md:overflow-visible md:px-0 md:text-center">
+        <div ref={trendingCarouselRef} className="mobile-rail -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 text-left sm:-mx-8 sm:px-8 md:mx-0 md:gap-4 md:px-0 md:text-center scrollbar-hide">
           {TRENDING_STYLES.map((item) => <TrendingVideoCard key={item.name} item={item} />)}
         </div>
       </section>
@@ -419,11 +427,8 @@ export default function Home() {
         </div>
         <div className="mobile-rail -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0 sm:gap-4 relative">
           {[
-            { tag: 'LIMITED TIME', title: 'BUY 1\nGET 1', sub: 'On Selected Frames', btn: 'SHOP NOW', img: '/images/premium_redesign/offer_buy1get1.png' },
-            { tag: 'SUMMER SPECIAL', title: 'FLAT\n40% OFF', sub: 'On Sunglasses', btn: 'SHOP SUNGLASSES', img: '/images/premium_redesign/offer_flat40.png' },
-            { tag: 'FESTIVAL SALE', title: 'UP TO\n50% OFF', sub: 'On Premium Watches', btn: 'EXPLORE WATCHES', img: '/images/premium_redesign/category_watches_reference.png' },
-            { tag: 'STUDENT EXCLUSIVE', title: 'EXTRA\n10% OFF', sub: 'On All Products', btn: 'VERIFY NOW', img: '/images/premium_redesign/offer_clean_student.png' },
-            { tag: 'CLEARANCE SALE', title: 'UP TO\n60% OFF', sub: 'On Last Season Styles', btn: 'SHOP NOW', img: '/images/premium_redesign/category_accessories_reference.png' },
+            { tag: 'LIMITED TIME', title: 'BUY ANY\nFRAMES', sub: 'Get Lenses Free', btn: 'SHOP FRAMES', img: '/images/premium_redesign/category_eyeglasses_reference.png' },
+            { tag: 'SPECIAL OFFER', title: 'FREE\nGIFT', sub: 'On shopping above ₹2000', btn: 'SHOP NOW', img: '/images/premium_redesign/offer_free_gift_ai.jpg' },
           ].map((offer, i) => (
             <div key={i} className="group relative flex min-h-[188px] min-w-[225px] snap-start flex-col justify-between overflow-hidden rounded-[14px] border border-[#E9D8C8] bg-gradient-to-br from-[#FFFDFC] via-[#FBF1E8] to-[#F4E4D5] p-4 shadow-[0_7px_22px_rgba(89,55,24,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-[#C86620]/45 hover:shadow-[0_12px_30px_rgba(89,55,24,0.12)] sm:p-[18px] md:min-w-0">
               <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#C86620] via-[#D99755] to-transparent" />
@@ -538,13 +543,13 @@ export default function Home() {
       <section className="mx-auto max-w-[1400px] px-4 py-3 sm:px-8 md:py-5">
         <div className="mobile-rail -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:px-8 md:mx-0 md:grid md:grid-cols-4 md:gap-4 md:overflow-visible md:px-0">
           <article className="relative min-h-[220px] min-w-[270px] snap-start overflow-hidden rounded-[12px] border bg-white p-5 md:min-w-0" style={{ borderColor: C.border }}>
-            <h3 className="font-sans text-[11px] font-bold uppercase">FROM OUR BLOG</h3>
-            <Link href="/blog" className="mt-2 inline-flex items-center gap-1 text-[9px] font-semibold text-[#C86620]">View All <ArrowRight className="h-3 w-3"/></Link>
-            <p className="mt-6 max-w-[140px] text-[12px] font-semibold leading-[1.45]">How to choose the perfect sunglasses?</p>
-            <p className="mt-4 text-[8px] uppercase tracking-[0.04em] text-[#777]">MAY 30, 2024</p>
-              <Link href="/blog" data-bump="true" className="absolute bottom-4 left-5 rounded-[4px] border border-[#BEB8B2] bg-white px-4 py-1.5 text-[8px] font-bold">READ MORE</Link>
-            <div className="absolute bottom-0 right-0 h-[178px] w-[46%]">
-              <Image src="/images/premium_redesign/blog_lifestyle.png" alt="Fashion eyewear blog" fill className="object-cover object-top" />
+            <h3 className="font-sans text-[11px] font-bold uppercase">NEW ARRIVAL</h3>
+            <Link href="/products?category=sunglasses" className="mt-2 inline-flex items-center gap-1 text-[9px] font-semibold text-[#C86620]">Shop Now <ArrowRight className="h-3 w-3"/></Link>
+            <p className="mt-6 max-w-[140px] text-[12px] font-semibold leading-[1.45]">Experience the power of AI with Meta Smart Glasses.</p>
+            <p className="mt-4 text-[8px] uppercase tracking-[0.04em] text-[#777]">LIMITED STOCK</p>
+              <Link href="/products?category=sunglasses" data-bump="true" className="absolute bottom-4 left-5 rounded-[4px] border border-[#BEB8B2] bg-white px-4 py-1.5 text-[8px] font-bold z-10">BOOK NOW</Link>
+            <div className="absolute bottom-0 right-0 h-[178px] w-[50%]">
+              <Image src="/images/premium_redesign/meta_smart_glasses_ad.jpg" alt="Meta Smart Glasses" fill className="object-cover object-center" />
             </div>
           </article>
 

@@ -142,7 +142,7 @@ export default function Navbar() {
             <form onSubmit={handleSearchSubmit} className="hidden lg:flex items-center flex-1 max-w-[600px] mx-10 relative">
               <input
                 type="text"
-                placeholder="Search for glasses, sunglasses, watches..."
+                placeholder="HARIYANN WATCH & OPTICALS"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-[46px] pl-5 pr-12 outline-none text-[13px] font-inter placeholder-[#888888]"
@@ -248,7 +248,7 @@ export default function Navbar() {
             <form onSubmit={handleSearchSubmit} className="flex items-center relative mb-4">
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="HARIYANN WATCH & OPTICALS"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-12 pl-4 pr-10 outline-none text-[15px] rounded-full border"
