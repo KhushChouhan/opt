@@ -427,18 +427,22 @@ export default function Home() {
         </div>
         <div className="mobile-rail -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0 sm:gap-4 relative">
           {[
-            { tag: 'LIMITED TIME', title: 'BUY ANY\nFRAMES', sub: 'Get Lenses Free', btn: 'SHOP FRAMES', img: '/images/premium_redesign/category_eyeglasses_reference.png' },
-            { tag: 'SPECIAL OFFER', title: 'FREE\nGIFT', sub: 'On shopping above ₹2000', btn: 'SHOP NOW', img: '/images/premium_redesign/offer_free_gift_ai.jpg' },
+            { tag: 'Limited Time', title: 'BUY 1\nGET 1', sub: 'On selected optical frames', btn: 'Shop Frames', href: '/products?category=glasses', img: '/images/premium_redesign/offer_buy1get1.png', position: 'object-[62%_64%]' },
+            { tag: 'Summer Special', title: 'FLAT\n40% OFF', sub: 'On selected sunglasses', btn: 'Shop Sunglasses', href: '/products?category=sunglasses', img: '/images/premium_redesign/offer_flat40.png', position: 'object-[56%_64%]' },
+            { tag: 'Lens Upgrade', title: 'FREE\nLENSES', sub: 'With selected frame purchases', btn: 'Explore Frames', href: '/products?category=glasses', img: '/images/premium_redesign/offer_lenses_free_ai.png', position: 'object-[56%_60%]' },
+            { tag: 'Special Gift', title: 'FREE\nGIFT', sub: 'On shopping above ₹2,000', btn: 'Shop Now', href: '/products', img: '/images/premium_redesign/offer_free_gift_ai.jpg', position: 'object-center' },
+            { tag: 'Watch Upgrade', title: 'UP TO\n20% OFF', sub: 'On selected premium watches', btn: 'Explore Watches', href: '/products?category=watches', img: '/images/premium_redesign/category_watches_reference.png', position: 'object-[56%_68%]' },
           ].map((offer, i) => (
-            <div key={i} className="group relative flex min-h-[188px] min-w-[225px] snap-start flex-col justify-between overflow-hidden rounded-[14px] border border-[#E9D8C8] bg-gradient-to-br from-[#FFFDFC] via-[#FBF1E8] to-[#F4E4D5] p-4 shadow-[0_7px_22px_rgba(89,55,24,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-[#C86620]/45 hover:shadow-[0_12px_30px_rgba(89,55,24,0.12)] sm:p-[18px] md:min-w-0">
+            <article key={i} className="group relative flex min-h-[196px] min-w-[238px] snap-start flex-col justify-between overflow-hidden rounded-[14px] border border-[#E9D8C8] bg-gradient-to-br from-[#FFFDFC] via-[#FBF1E8] to-[#F4E4D5] p-4 shadow-[0_7px_22px_rgba(89,55,24,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-[#C86620]/45 hover:shadow-[0_12px_30px_rgba(89,55,24,0.12)] sm:p-[18px] md:min-w-0">
               <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#C86620] via-[#D99755] to-transparent" />
-              {/* Product Image on the Right */}
-              <div className="pointer-events-none absolute right-[-13%] bottom-[3%] z-0 h-[82%] w-[68%] overflow-hidden rounded-lg transition-transform duration-500 group-hover:scale-[1.04]">
-                <Image src={offer.img} alt={offer.title.replace('\n', ' ')} fill className="rounded-lg object-contain object-right mix-blend-multiply" />
+              {/* Photography is isolated from the copy so every offer remains readable. */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-0 w-[54%] overflow-hidden">
+                <Image src={offer.img} alt={offer.title.replace('\n', ' ')} fill sizes="(max-width: 767px) 128px, 20vw" className={`object-cover ${offer.position} transition-transform duration-500 group-hover:scale-105`} />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FBF1E8] via-[#FBF1E8]/25 to-transparent" />
               </div>
 
               {/* Left Content */}
-              <div className="relative z-10 w-[65%] flex flex-col h-full">
+              <div className="relative z-10 flex h-full w-[63%] flex-col">
                 <div>
                   <span className="mb-2 inline-flex rounded-full border border-[#D9B48D] bg-white/75 px-2 py-1 text-[7px] font-bold uppercase tracking-[0.07em] text-[#9A4D18] sm:text-[8px]">{offer.tag}</span>
                   <h3 className="text-[15px] sm:text-[17px] font-black uppercase leading-[1.1] mb-1 whitespace-pre-line text-[#111111] font-inter">
@@ -448,13 +452,13 @@ export default function Home() {
                 </div>
                 
                 <div className="mt-auto">
-                  <Link href="/products" data-bump="true" className="inline-block rounded-[5px] bg-[#062C1C] px-3 py-[7px] text-[8px] font-bold uppercase text-white transition-colors hover:bg-[#0B422C] sm:text-[9px]">
+                  <Link href={offer.href} data-bump="true" className="inline-block rounded-[5px] bg-[#062C1C] px-3 py-[7px] text-[8px] font-bold uppercase text-white transition-colors hover:bg-[#0B422C] sm:text-[9px]">
                     {offer.btn}
                   </Link>
                   <p className="text-[7.5px] mt-2 text-[#777777] font-inter">*T&C Apply</p>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
 
           {/* Optional Carousel Arrow exactly like reference */}
@@ -566,11 +570,11 @@ export default function Home() {
             <a href="https://www.instagram.com/hariyana_watch_opticals49" target="_blank" rel="noopener noreferrer" data-bump="true" className="mx-auto mt-3 block w-max rounded-[4px] border border-[#BEB8B2] bg-white px-6 py-1.5 text-[8px] font-bold">FOLLOW US</a>
           </article>
 
-          <article className="min-h-[220px] min-w-[270px] snap-start rounded-[12px] border bg-white p-5 md:min-w-0" style={{ borderColor: C.border }}>
+          <article className="flex min-h-[252px] min-w-[270px] snap-start flex-col rounded-[12px] border bg-white p-5 md:min-w-0" style={{ borderColor: C.border }}>
             <h3 className="font-sans text-[11px] font-bold uppercase">FIND A STORE NEAR YOU</h3>
             <p className="mt-3 text-[9px] leading-[1.5]">Visit our stores for a premium<br/>experience</p>
-            <div className="relative mt-3 h-[105px] overflow-hidden rounded-[6px]">
-              <Image src="/images/premium_redesign/showroom_interior.png" alt="Hariyana showroom" fill className="object-cover" />
+            <div className="relative mt-3 h-[132px] overflow-hidden rounded-[7px] bg-[#17120F]">
+              <Image src="/images/premium_redesign/store_near_you.png" alt="Hariyana Watch & Opticals store interior" fill sizes="(max-width: 767px) calc(100vw - 72px), 25vw" className="object-cover object-[50%_52%]" />
             </div>
             <Link href="/contact" data-bump="true" className="relative mx-auto -mt-3 block w-max rounded-[4px] border border-[#BEB8B2] bg-white px-6 py-1.5 text-[8px] font-bold">LOCATE STORE</Link>
           </article>
