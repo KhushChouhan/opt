@@ -4,6 +4,39 @@ import Link from 'next/link';
 import { ArrowRight, BadgeCheck, Gem, ShieldCheck, Sparkles } from 'lucide-react';
 import { BRAND_LIST } from '@/data/brands';
 
+const BRAND_CAMPAIGN_IMAGES: Record<string, { src: string; alt: string; position: string }> = {
+  rayban: {
+    src: '/images/brand-campaigns/rayban-eyewear.png',
+    alt: 'Premium Ray-Ban style aviator and wayfarer sunglasses',
+    position: 'object-[50%_56%]',
+  },
+  titan: {
+    src: '/images/brand-campaigns/titan-dress-watch.png',
+    alt: 'Elegant Titan style dress watch with a navy dial',
+    position: 'object-[50%_52%]',
+  },
+  fastrack: {
+    src: '/images/brand-campaigns/fastrack-sport-watch.png',
+    alt: 'Bold Fastrack style black sports chronograph watch',
+    position: 'object-[50%_54%]',
+  },
+  oakley: {
+    src: '/images/brand-campaigns/oakley-performance-eyewear.png',
+    alt: 'Oakley style performance shield sunglasses',
+    position: 'object-[50%_54%]',
+  },
+  casio: {
+    src: '/images/brand-campaigns/casio-digital-watch.png',
+    alt: 'Rugged Casio style digital sports watch',
+    position: 'object-[50%_52%]',
+  },
+  seiko: {
+    src: '/images/brand-campaigns/seiko-mechanical-watch.png',
+    alt: 'Refined Seiko style mechanical watch with a blue dial',
+    position: 'object-[50%_52%]',
+  },
+};
+
 export const metadata: Metadata = {
   title: 'Brands | Hariyana Watch & Opticals',
   description: 'Explore authentic eyewear and watch brands curated by Hariyana Watch & Opticals.',
@@ -35,7 +68,7 @@ export default function BrandsPage() {
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {BRAND_LIST.map((brand, index) => {
-            const preview = brand.featuredSkus[0];
+            const campaign = BRAND_CAMPAIGN_IMAGES[brand.id];
             return (
               <article key={brand.id} className="group grid min-h-[310px] overflow-hidden rounded-[16px] border border-[#EADEC9] bg-white shadow-[0_8px_30px_rgba(80,50,25,0.06)] sm:grid-cols-[1.05fr_.95fr]">
                 <div className="flex flex-col justify-between p-6">
@@ -50,7 +83,13 @@ export default function BrandsPage() {
                   </Link>
                 </div>
                 <div className="relative min-h-[220px] overflow-hidden bg-[#F5EADF] sm:min-h-full">
-                  <Image src={preview.image_url} alt={`${brand.name} collection`} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 28vw" />
+                  <Image
+                    src={campaign?.src ?? brand.featuredSkus[0].image_url}
+                    alt={campaign?.alt ?? `${brand.name} collection`}
+                    fill
+                    className={`object-cover transition-transform duration-700 group-hover:scale-105 ${campaign?.position ?? 'object-center'}`}
+                    sizes="(max-width: 768px) 100vw, 28vw"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent" />
                 </div>
               </article>
