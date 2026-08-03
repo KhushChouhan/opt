@@ -99,17 +99,17 @@ const HOME_HERO_SLIDES = [
 ];
 
 const TRENDING_STYLES = [
-  { tag: 'LUXURY EDIT', name: 'SIGNATURE SCENT', img: '/images/premium_redesign/trending_urban_icons.png', video: '/videos/trending/model-01.mp4', href: '/products?category=perfumes', videoLabel: 'Signature fragrance campaign' },
-  { tag: 'TECH EDIT', name: 'SMART MOTION', img: '/images/premium_redesign/trending_titanium.png', video: '/videos/trending/model-02.mp4', href: '/products?category=smart-watches', videoLabel: 'Smartwatch feature campaign' },
-  { tag: 'WATCH EDIT', name: 'TIMELESS WRIST', img: '/images/premium_redesign/trending_street_drip.png', video: '/videos/trending/model-03.mp4', href: '/products?category=watches', videoLabel: 'Classic watch fashion campaign' },
-  { tag: 'OPTICAL EDIT', name: 'MODERN OPTICS', img: '/images/premium_redesign/trending_flip_ups.png', video: '/videos/trending/model-04.mp4', href: '/products?category=glasses', videoLabel: 'Premium optical frame campaign' },
-  { tag: 'BRAND EDIT', name: 'INTENSE FOCUS', img: '/images/premium_redesign/trending_intense_focus.jpg', video: '', href: '/products?category=sunglasses', videoLabel: 'Intense Focus campaign' },
   { tag: 'NEW EDIT', name: 'PREMIUM MODEL', img: '/images/premium_redesign/trending_new_model.jpeg', video: '', href: '/products', videoLabel: 'Premium Model' },
   { tag: 'NEW EDIT', name: 'PREMIUM LOOK', img: '/images/premium_redesign/trending_new_model_1.jpeg', video: '', href: '/products', videoLabel: 'Premium Look' },
   { tag: 'NEW EDIT', name: 'ELEGANT CHARM', img: '/images/premium_redesign/trending_new_model_2.jpeg', video: '', href: '/products', videoLabel: 'Elegant Charm' },
   { tag: 'NEW EDIT', name: 'BOLD VISION', img: '/images/premium_redesign/trending_new_model_3.jpeg', video: '', href: '/products', videoLabel: 'Bold Vision' },
   { tag: 'NEW EDIT', name: 'STYLE ICON', img: '/images/premium_redesign/trending_new_model_4.jpeg', video: '', href: '/products', videoLabel: 'Style Icon' },
   { tag: 'NEW EDIT', name: 'GLAMOUR LUXE', img: '/images/premium_redesign/trending_new_model_5.jpeg', video: '', href: '/products', videoLabel: 'Glamour Luxe' },
+  { tag: 'LUXURY EDIT', name: 'SIGNATURE SCENT', img: '/images/premium_redesign/trending_urban_icons.png', video: '/videos/trending/model-01.mp4', href: '/products?category=perfumes', videoLabel: 'Signature fragrance campaign' },
+  { tag: 'TECH EDIT', name: 'SMART MOTION', img: '/images/premium_redesign/trending_titanium.png', video: '/videos/trending/model-02.mp4', href: '/products?category=smart-watches', videoLabel: 'Smartwatch feature campaign' },
+  { tag: 'WATCH EDIT', name: 'TIMELESS WRIST', img: '/images/premium_redesign/trending_street_drip.png', video: '/videos/trending/model-03.mp4', href: '/products?category=watches', videoLabel: 'Classic watch fashion campaign' },
+  { tag: 'OPTICAL EDIT', name: 'MODERN OPTICS', img: '/images/premium_redesign/trending_flip_ups.png', video: '/videos/trending/model-04.mp4', href: '/products?category=glasses', videoLabel: 'Premium optical frame campaign' },
+  { tag: 'BRAND EDIT', name: 'INTENSE FOCUS', img: '/images/premium_redesign/trending_intense_focus.jpg', video: '', href: '/products?category=sunglasses', videoLabel: 'Intense Focus campaign' },
 ];
 
 function TrendingVideoCard({ item }: { item: (typeof TRENDING_STYLES)[number] }) {
